@@ -1,0 +1,75 @@
+Chunk ::= Block
+
+Block ::= { Stat } [ "return" [ ExpList ] [ ";" ] ]
+
+Stat ::=  ";" | 
+     VarList "=" ExpList | 
+     FunctionCall | 
+     "::" ident "::" | 
+     "break" | 
+     "goto" ident | 
+     "do" Block "end" | 
+     "while" Exp "do" Block "end" | 
+     "repeat" Block "until" Exp | 
+     "if" Exp "then" Block { "elseif" Exp "then" Block } [ "else" Block] "end" | 
+     "for" ident "=" Exp "," Exp [ "," Exp ] "do" Block "end" |
+     "for" NameList "in" ExpList "do" Block "end" |
+     "function" FuncName FuncBody | 
+     "local" "function" ident FuncBody |
+     "local" AttNameList [ "=" ExpList ]
+
+AttNameList ::= IdentAttrib {"," IdentAttrib}
+
+IdentAttrib ::= ident [ "<" ident ">" ]
+
+FuncName ::= ident {"." ident} [":" ident]
+
+VarList ::= Var {"," Var}
+
+Var ::=  ident | PrefixExp ("[" Exp "]" | "." ident)
+
+
+ExpList ::= Exp {"," Exp}
+
+#FieldList ::= Field { FieldSep Field } [ FieldSep ]
+FieldList ::= { Field FieldSep } [ Field ]
+
+Field ::= "[" Exp "]" "=" Exp | ident "=" Exp | Exp
+
+Exp ::=  BinOp1 | {ident | "(" Exp ")" [[":" ident] Args] ["[" Exp "]" | "." ident]}
+BinOp1 ::= BinOp2 {'or' BinOp2}
+BinOp2 ::= BinOp3 {'and' BinOp3}
+BinOp3 ::= BinOp4 {('<'|'>'|'<='|'>='|'~='|'==') BinOp4}
+BinOp4 ::= BinOp5 {'|' BinOp5}
+BinOp5 ::= BinOp6 {'~' BinOp6}
+BinOp6 ::= BinOp7 {'&' BinOp7}
+BinOp7 ::= BinOp8 {('<<'|'>>') BinOp8}
+BinOp8 ::= BinOp9 {'..' BinOp9}
+BinOp9 ::= BinOp10 {('+'|'-') BinOp10}
+BinOp10 ::= UnOp1 {('*'|'/'|'//'|'%') UnOp1}
+UnOp1 ::= {'not'|'#'|'-'|'~'} BinOp11
+BinOp11 ::= ConstExpr {'^'} ConstExpr
+ConstExpr ::= "nil" | "false" | "true" | numeral | literal_string | "..." | '(' Exp ')' | "function" FuncBody | "{" [ FieldList ] "}"
+
+FunctionCall ::= PrefixExp [":" ident] Args 
+
+PrefixExp ::= (ident | "(" Exp ")") {("[" Exp "]" | "." ident | Args | ":" ident Args)}
+
+Args ::=  "(" [ExpList] ")" | TableConstructor | literal_string
+
+FuncBody ::= "(" [ParList] ")" Block "end" # recurses up but is decidable
+
+ParList ::= NameList [ "," "..." ] | "..."
+
+NameList ::= ident {"," ident}
+
+TableConstructor ::= "{" [ FieldList ] "}"
+
+FieldSep ::= "," | ";"
+
+BinOp ::=  "+" | "-" | "*" | "/" | "//" | "^" | "%" | 
+     "&" | "~" | "|" | ">>" | "<<" | ".." | 
+     "<" | "<=" | ">" | ">=" | "==" | "~=" | 
+     "and" | "or"
+
+UnOp ::= "-" | "not" | "#" | "~"
