@@ -1,148 +1,62 @@
-Chunk ::= Block
+Chunk ::= Block eof
 
 Block ::= { Stat } [ "return" [ ExpList ] [ ";" ] ]
 
-Stat ::=  ";" | 
-     VarList "=" ExpList |
-     FunctionCall | 
-     "::" ident "::" |
-     "break" | 
-     "goto" ident | 
-     "do" Block "end" | 
-     "while" Exp "do" Block "end" | 
-     "repeat" Block "until" Exp | 
-     "if" Exp "then" Block { "elseif" Exp "then" Block } [ "else" Block ] "end" |
-     "for" ident "=" Exp "," Exp [ "," Exp ] "do" Block "end" |
-     "for" NameList "in" ExpList "do" Block "end" |
-     "function" FuncName FuncBody | 
-     "local" "function" ident FuncBody |
-     "local" AttNameList [ "=" ExpList ]
+Stat ::= ";" |
+         "break" |
+         "goto" ident |
+         "::" ident "::" |
+         "do" Block "end" | 
+         "while" Exp "do" Block "end" |
+         "repeat" Block "until" Exp |
+         "if" Exp "then" Block { "elseif" Exp "then" Block } [ "else" Block] "end" |
+         "for" ident ( "=" Exp "," Exp [ "," Exp ] "do" Block "end" |
+                       { "," ident } "in" ExpList "do" Block "end") |
+         "function" FuncName FuncBody |
+         "local" ( "function" ident FuncBody |
+                   AttNameList [ "=" ExpList ] ) |
+         StatExp
 
-AttNameList ::=  ident Attrib { "," ident Attrib }
+# if ends on ident or "]", it was a Variable, else it was a Function Call
+ValExp ::= ( ident | "(" Exp ")" ) { ( "[" Exp "]" | "." ident | [ ":" ident ] Args ) }
+StatExp ::= "(" Exp ")" [ StatExp2 ] | ident ( StatExp2 | VarAssign )
+StatExp2 ::= ( "[" Exp "]" | [ ":" ident ] Args ) [ StatExp2 ] | "." ident ( VarAssign | [StatExp2] )
+VarAssign::= { "," StatExp } "=" ExpList
 
-Attrib ::= [ "<" ident ">" ]
+ExpList ::= Exp { "," Exp }
 
-FuncName ::= ident {"." ident} [":" ident]
+Exp ::= BinOp1 { "or" BinOp1 }
+BinOp1 ::= BinOp2 { "and" BinOp2 }
+BinOp2 ::= BinOp3 { ( "<" | ">" | "<=" | ">=" | "~=" | "==" ) BinOp3 }
+BinOp3 ::= BinOp4 { "|" BinOp4 }
+BinOp4 ::= BinOp5 { "~" BinOp5 }
+BinOp5 ::= BinOp6 { "&" BinOp6 }
+BinOp6 ::= BinOp7 { ( "<<" | ">>" ) BinOp7 }
+BinOp7 ::= BinOp8 { ".." BinOp8 }
+BinOp8 ::= BinOp9 { ( "+" | "-" ) BinOp9 }
+BinOp9 ::= UnOp { ( "*" | "/" | "//" | "%" ) UnOp }
+UnOp ::= { "not" | "#" | "-" | "~" } BinOp10
+BinOp10 ::= TermExp { "^" TermExp }
+TermExp ::= "nil" | "false" | "true" | numeral | literal_string | "..." | "function" FuncBody | ValExp
 
-VarList ::= Var {"," Var}
+FuncName ::= ident { "." ident } [ ":" ident ]
 
-Var ::=  ident | PrefixExp "[" Exp "]" | PrefixExp "." ident 
+FuncBody ::= "(" [ ParList ] ")" Block "end"
 
-NameList ::= ident {"," ident}
+ParList ::= "..." | ident { "," ident } [ "," "..." ]
 
-ExpList ::= Exp {"," Exp}
+AttNameList ::= Attrib { "," Attrib }
 
-Exp ::=  "nil" | "false" | "true" | numeral | literal_string | "..." | FunctionDef |
-     PrefixExp | TableConstructor | Exp BinOp Exp | UnOp Exp 
+Attrib ::= ident [ "<" ident ">" ]
 
-PrefixExp ::= Var | FunctionCall | "(" Exp ")"
+Args ::= "(" [ ParList ] ")" | TableConstructor | literal_string
 
-FunctionCall ::=  PrefixExp Args | PrefixExp ":" ident Args 
+TableConstructor ::= "{" ( FieldList | "}" )
 
-Args ::=  "(" [ExpList] ")" | TableConstructor | literal_string
+# LL2 required to decide loop break (break if ll2 == "}")
+FieldList ::= Field { FieldSep Field } [ FieldSep ] "}"
 
-FunctionDef ::= "function" FuncBody
-
-FuncBody ::= "(" [ParList] ")" Block "end"
-
-ParList ::= NameList [ "," "..." ] | "..."
-
-TableConstructor ::= "{" [ FieldList ] "}"
-
-FieldList ::= Field { FieldSep Field } [ FieldSep ]
-
+# LL2 required to decide between 2nd and 3rd option (1st if ll1 == "[", 2nd if ll2 == "=" else 3rd)
 Field ::= "[" Exp "]" "=" Exp | ident "=" Exp | Exp
 
 FieldSep ::= "," | ";"
-
-BinOp ::=  "+" | "-" | "*" | "/" | "//" | "^" | "%" | 
-     "&" | "~" | "|" | ">>" | "<<" | ".." | 
-     "<" | "<=" | ">" | ">=" | "==" | "~=" | 
-     "and" | "or"
-
-UnOp ::= "-" | "not" | "#" | "~"
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## OLD STUFF LOL
-
-Chunk ::= Block
-
-Block ::= { Stat } [ RetStat ]
-
-Stat ::=  ";" |
-     VarList "=" ExpList |
-     FunctionCall |
-     Label |
-     "break" |
-     "goto" ident |
-     "do" Block "end" |
-     "while" Exp "do" Block "end" |
-     "repeat" Block "until" Exp |
-     "if" Exp "then" Block { "elseif" Exp "then" Block } [ "else" Block] "end" |
-     "for" ident "=" Exp "," Exp [ "," Exp ] "do" Block "end" |
-     "for" NameList "in" ExpList "do" Block "end" |
-     "function" FuncName FuncBody |
-     "local" "function" ident FuncBody |
-     "local" AttNameList [ "=" ExpList ]
-
-AttNameList ::=  ident Attrib {"," ident Attrib}
-
-Attrib ::= [ "<" ident ">" ]
-
-RetStat ::= "return" [ ExpList ] [";"]
-
-Label ::= "::" ident "::"
-
-FuncName ::= ident {"." ident} [":" ident]
-
-VarList ::= Var {"," Var}
-
-Var ::=  ident | PrefixExp "[" Exp "]" | PrefixExp "." ident
-
-NameList ::= ident {"," ident}
-
-ExpList ::= Exp {"," Exp}
-
-Exp ::=  "nil" | "false" | "true" | numeral | literal_string | "..." | FunctionDef |
-     PrefixExp | TableConstructor | Exp BinOp Exp | UnOp Exp
-
-PrefixExp ::= Var | FunctionCall | "(" Exp ")"
-
-FunctionCall ::=  PrefixExp Args | PrefixExp ":" ident Args
-
-Args ::=  "(" [ExpList] ")" | TableConstructor | literal_string
-
-FunctionDef ::= "function" FuncBody
-
-FuncBody ::= "(" [ParList] ")" Block "end"
-
-ParList ::= NameList [ "," "..." ] | "..."
-
-TableConstructor ::= "{" [ FieldList ] "}"
-
-FieldList ::= Field { FieldSep Field } [ FieldSep ]
-
-Field ::= "[" Exp "]" "=" Exp | ident "=" Exp | Exp
-
-FieldSep ::= "," | ";"
-
-BinOp ::=  "+" | "-" | "*" | "/" | "//" | "^" | "%" |
-     "&" | "~" | "|" | ">>" | "<<" | ".." |
-     "<" | "<=" | ">" | ">=" | "==" | "~=" |
-     "and" | "or"
-
-UnOp ::= "-" | "not" | "#" | "~"
