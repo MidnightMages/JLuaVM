@@ -1,0 +1,118 @@
+Chunk ::= Block
+
+Block ::= { Stat } [ "return" [ ExpList ] [ ";" ] ]
+
+Stat ::=  ";" | 
+     VarList "=" ExpList | 
+     FunctionCall | 
+     "::" ident "::" | 
+     "break" | 
+     "goto" ident | 
+     "do" Block "end" | 
+     "while" Exp "do" Block "end" | 
+     "repeat" Block "until" Exp | 
+     "if" Exp "then" Block { "elseif" Exp "then" Block } [ "else" Block] "end" | 
+     "for" ident "=" Exp "," Exp [ "," Exp ] "do" Block "end" |
+     "for" NameList "in" ExpList "do" Block "end" |
+     "function" FuncName FuncBody | 
+     "local" "function" ident FuncBody |
+     "local" AttNameList [ "=" ExpList ]
+
+AttNameList ::=  ident Attrib {"," ident Attrib}
+
+Attrib ::= [ "<" ident ">" ]
+
+FuncName ::= ident {"." ident} [":" ident]
+
+VarList ::= Var {"," Var}
+
+Var ::=  ident | PrefixExp "[" Exp "]" | PrefixExp "." ident
+Var ::=  ident | Var | "(" Exp ")" [[":" ident] Args] ("[" Exp "]" | "." ident)
+Var ::=  Var | ident | "(" Exp ")" [[":" ident] Args] ("[" Exp "]" | "." ident)
+Var ::=  {ident | "(" Exp ")" [[":" ident] Args] ("[" Exp "]" | "." ident)}
+
+NameList ::= ident {"," ident}
+
+ExpList ::= Exp {"," Exp}
+
+Exp ::=  "nil" | "false" | "true" | numeral | literal_string | "..." | FunctionDef | PrefixExp | TableConstructor | Exp BinOp Exp | UnOp Exp 
+Exp ::=  "nil" | "false" | "true" | numeral | literal_string | "..." | FunctionDef | PrefixExp | TableConstructor | ((Exp BinOp | UnOp) Exp)
+Exp ::=  ((Exp BinOp | UnOp) Exp) | "nil" | "false" | "true" | numeral | literal_string | "..." | FunctionDef | PrefixExp | TableConstructor
+Exp ::=  (Exp BinOp | UnOp) Exp | "nil" | "false" | "true" | numeral | literal_string | "..." | FunctionDef | PrefixExp | TableConstructor
+Exp ::=  (Exp BinOp | UnOp) Exp | "nil" | "false" | "true" | numeral | literal_string | "..." | FunctionDef | PrefixExp | TableConstructor
+
+Exp ::=  BinOp1 | PrefixExp | TableConstructor | Exp BinOp Exp | UnOp Exp 
+Exp ::=  BinOp1 | PrefixExp | "{" [ FieldList ] "}" | Exp BinOp Exp | UnOp Exp 
+Exp ::=  BinOp1 | PrefixExp | Exp BinOp Exp | UnOp Exp 
+Exp ::=  BinOp1 | Var | "(" Exp ")" [[":" ident] Args] | Exp BinOp Exp | UnOp Exp 
+Exp ::=  BinOp1 | {ident | "(" Exp ")" [[":" ident] Args] ("[" Exp "]" | "." ident)} | "(" Exp ")" [[":" ident] Args] | Exp BinOp Exp | UnOp Exp 
+Exp ::=  BinOp1 | {ident | "(" Exp ")" [[":" ident] Args] ["[" Exp "]" | "." ident]} | Exp BinOp Exp | UnOp Exp 
+
+Exp ::=  BinOp1 | {ident | "(" Exp ")" [[":" ident] Args] ["[" Exp "]" | "." ident]}
+
+BinOp1 ::= BinOp2 {'or' BinOp2}
+BinOp2 ::= BinOp3 {'and' BinOp3}
+BinOp3 ::= BinOp4 {('<'|'>'|'<='|'>='|'~='|'==') BinOp4}
+BinOp4 ::= BinOp5 {'|' BinOp5}
+BinOp5 ::= BinOp6 {'~' BinOp6}
+BinOp6 ::= BinOp7 {'&' BinOp7}
+BinOp7 ::= BinOp8 {('<<'|'>>') BinOp8}
+BinOp8 ::= BinOp9 {'..' BinOp9}
+BinOp9 ::= BinOp10 {('+'|'-') BinOp10}
+BinOp10 ::= UnOp1 {('*'|'/'|'//'|'%') UnOp1}
+UnOp1 ::= {'not'|'#'|'-'|'~'} BinOp11
+BinOp11 ::= ConstExpr {'^'} ConstExpr
+ConstExpr ::= "nil" | "false" | "true" | numeral | literal_string | "..." | '(' Exp ')' | "function" FuncBody | "{" [ FieldList ] "}"
+
+PrefixExp ::= Var | FunctionCall | "(" Exp ")"
+PrefixExp ::= Var | Var | "(" Exp ")" [":" ident] Args | "(" Exp ")"
+PrefixExp ::= Var | "(" Exp ")" [":" ident] Args | "(" Exp ")"
+PrefixExp ::= Var | "(" Exp ")" [[":" ident] Args]
+
+PrefixExp ::= Var | FunctionCall | "(" Exp ")"
+PrefixExp ::= (ident | PrefixExp "[" Exp "]" | PrefixExp "." ident) | (PrefixExp Args | PrefixExp ":" ident Args) | "(" Exp ")"
+PrefixExp ::= ident | PrefixExp "[" Exp "]" | PrefixExp "." ident | PrefixExp Args | PrefixExp ":" ident Args | "(" Exp ")"
+PrefixExp ::= ident | PrefixExp ("[" Exp "]" | "." ident | Args | ":" ident Args) | "(" Exp ")"
+PrefixExp ::= PrefixExp ("[" Exp "]" | "." ident | Args | ":" ident Args) | ident | "(" Exp ")"
+PrefixExp ::= (ident | "(" Exp ")") {("[" Exp "]" | "." ident | Args | ":" ident Args)}
+
+FunctionCall ::= PrefixExp Args | PrefixExp ":" ident Args 
+FunctionCall ::= PrefixExp [":" ident] Args 
+FunctionCall ::= (Var | FunctionCall | "(" Exp ")") [":" ident] Args 
+FunctionCall ::= FunctionCall | Var | "(" Exp ")" [":" ident] Args 
+FunctionCall ::= Var | "(" Exp ")" [":" ident] Args
+
+FunctionCall ::= PrefixExp [":" ident] Args 
+FunctionCall ::= (Var | FunctionCall | "(" Exp ")") [":" ident] Args 
+FunctionCall ::= FunctionCall [":" ident] Args | (Var | "(" Exp ")") [":" ident] Args 
+FunctionCall ::= (Var | "(" Exp ")") [":" ident] Args {[":" ident] Args}
+FunctionCall ::= (Var | "(" Exp ")") [":" ident] Args {[":" ident] Args}
+
+
+
+FunctionCall ::= ((ident | PrefixExp "[" Exp "]" | PrefixExp "." ident) | FunctionCall | "(" Exp ")") [":" ident] Args 
+FunctionCall ::= (ident | PrefixExp ("[" Exp "]" | "." ident) | FunctionCall | "(" Exp ")") [":" ident] Args 
+
+Args ::=  "(" [ExpList] ")" | TableConstructor | literal_string
+
+FunctionDef ::= "function" FuncBody
+
+FuncBody ::= "(" [ParList] ")" Block "end"
+
+ParList ::= NameList [ "," "..." ] | "..."
+
+TableConstructor ::= "{" [ FieldList ] "}"
+
+FieldList ::= Field { FieldSep Field } [ FieldSep ]
+
+Field ::= "[" Exp "]" "=" Exp | ident "=" Exp | Exp
+
+FieldSep ::= "," | ";"
+
+BinOp ::=  "+" | "-" | "*" | "/" | "//" | "^" | "%" | 
+     "&" | "~" | "|" | ">>" | "<<" | ".." | 
+     "<" | "<=" | ">" | ">=" | "==" | "~=" | 
+     "and" | "or"
+
+UnOp ::= "-" | "not" | "#" | "~"
+
