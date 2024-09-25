@@ -12,16 +12,18 @@ Stat ::= ";" |
          "if" Exp "then" Block { "elseif" Exp "then" Block } [ "else" Block] "end" |
          "for" ident ( "=" Exp "," Exp [ "," Exp ] "do" Block "end" |
                        { "," ident } "in" ExpList "do" Block "end") |
-         "function" FuncName FuncBody |
+         "function" ident { "." ident } [ ":" ident ] FuncBody |
          "local" ( "function" ident FuncBody |
-                   AttNameList [ "=" ExpList ] ) |
+                   ident Attrib { "," ident Attrib } [ "=" ExpList ] ) |
          StatExp
 
+Attrib ::= ident [ "<" ident ">" ]
+
 # if ends on ident or "]", it was a Variable, else it was a Function Call
-ValExp ::= ( ident | "(" Exp ")" ) { ( "[" Exp "]" | "." ident | [ ":" ident ] Args ) }
+ValExp ::= ( "(" Exp ")" | ident ) { ( "[" Exp "]" | "." ident | [ ":" ident ] Args ) }
 StatExp ::= "(" Exp ")" [ StatExp2 ] | ident ( StatExp2 | VarAssign )
 StatExp2 ::= ( "[" Exp "]" | [ ":" ident ] Args ) [ StatExp2 ] | "." ident ( VarAssign | [StatExp2] )
-VarAssign::= { "," StatExp } "=" ExpList
+VarAssign ::= { "," StatExp } "=" ExpList
 
 ExpList ::= Exp { "," Exp }
 
@@ -39,17 +41,12 @@ UnOp ::= { "not" | "#" | "-" | "~" } BinOp10
 BinOp10 ::= TermExp { "^" TermExp }
 TermExp ::= "nil" | "false" | "true" | numeral | literal_string | "..." | "function" FuncBody | ValExp
 
-FuncName ::= ident { "." ident } [ ":" ident ]
-
 FuncBody ::= "(" [ ParList ] ")" Block "end"
 
+# LL2 required to decide loop break (break if ll1 == , and ll2 == "...")
 ParList ::= "..." | ident { "," ident } [ "," "..." ]
 
-AttNameList ::= Attrib { "," Attrib }
-
-Attrib ::= ident [ "<" ident ">" ]
-
-Args ::= "(" [ ParList ] ")" | TableConstructor | literal_string
+Args ::= "(" [ ParList ] ")" | literal_string | TableConstructor
 
 TableConstructor ::= "{" ( FieldList | "}" )
 

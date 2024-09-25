@@ -1,5 +1,8 @@
 package dev.asdf00.jluavm.parsing;
 
+import dev.asdf00.jluavm.parsing.exceptions.LuaParserException;
+import dev.asdf00.jluavm.parsing.exceptions.LuaReadingException;
+
 import java.util.EnumSet;
 
 import static dev.asdf00.jluavm.parsing.TokenType.*;
@@ -9,24 +12,31 @@ public class Parser {
     private TokenType ltok = EOF;  // TokenType of la
     private Token cur;  // current token
     private Token la;  // lookahead token
+    private Token lla;  // lookahead token 2
 
     public Parser(String input) {
         lexer = new Lexer(input);
     }
 
-    private void ensure(boolean condition) {
-
-    }
-
     private void check(TokenType type) {
-
+        if (ltok != type) {
+            throw new LuaParserException(la.pos(), "Expected <%s>, got <%s>".formatted(type.rep, ltok.rep));
+        }
+        scan();
     }
 
     private void scan() {
-
+        cur = la;
+        la = lla;
+        lla = lexer.next();
+        ltok = la.type();
     }
 
-    public void parse() {
+    public void parse() throws LuaReadingException {
+        cur = lexer.next();
+        la = lexer.next();
+        lla = lexer.next();
+        ltok = la.type();
         Chunk();
     }
 
@@ -145,6 +155,7 @@ public class Parser {
                     scan();
                     check(IDENT);
                 }
+                FuncBody();
             }
             case LOCAL -> {
                 scan();
@@ -167,21 +178,7 @@ public class Parser {
                 }
             }
             case IDENT, LPAR -> {
-                // VarList or FunctionCall
-                VarOrFunctionCall();
-                if (VAR_END.contains(cur.type())) {
-                    // previous was Var
-                    while (ltok == COMMA) {
-                        scan();
-                        VarOrFunctionCall();
-                        ensure(VAR_END.contains(cur.type()));
-                    }
-                    check(ASSIGN);
-                    ExpList();
-                } else {
-                    // previous was FunctionCall
-
-                }
+                StatExp();
             }
         }
     }
@@ -194,43 +191,91 @@ public class Parser {
         }
     }
 
-    private static final EnumSet<TokenType> VAR_END = EnumSet.of(IDENT, RBRAK);
-
-    /**
-     * After this method returns, it can be checked if this method read a Var or a FunctionCall by checking if
-     * {@code VAR_LIST_END.contains(cur.type())}.
-     */
-    private void VarOrFunctionCall() {
-        if (ltok == IDENT) {
+    private void ValExp() {
+        if (ltok == LPAR) {
             scan();
-        } else {
-            check(LPAR);
             Exp();
             check(RPAR);
+        } else {
+            check(IDENT);
         }
-        loop: for (;;) {
-            switch (ltok) {
-                case LBRAK -> {
+        for (;;) {
+            if (ltok == RBRAK) {
+                scan();
+                Exp();
+                check(RBRAK);
+            } else if (ltok == DOT) {
+                scan();
+                check(IDENT);
+            } else if (ltok == COLON || ARGS_START.contains(ltok)) {
+                if (ltok == COLON) {
                     scan();
                     check(IDENT);
-                    check(RBRAK);
                 }
-                case DOT -> {
-                    scan();
-                    check(IDENT);
-                }
-                case COLON, LPAR, LBRAC, LITERAL_STRING -> {
-                    if (ltok == COLON) {
-                        scan();
-                        check(IDENT);
-                    }
-                    Args();
-                }
-                default -> {
-                    break loop;
+                Args();
+            } else {
+                break;
+            }
+        }
+    }
+
+    private void StatExp() {
+        if (ltok == LPAR) {
+            scan();
+            Exp();
+            check(RPAR);
+            if (STAT_EXP_2_START.contains(ltok)) {
+                StatExp2();
+            }
+        } else {
+            check(IDENT);
+            if (ltok == COMMA || ltok == ASSIGN) {
+                VarAssign();
+            } else {
+                if (STAT_EXP_2_START.contains(ltok)) {
+                    StatExp2();
                 }
             }
         }
+    }
+
+    private static final EnumSet<TokenType> STAT_EXP_2_START = EnumSet.of(LBRAK, COLON, DOT, LPAR);
+    private void StatExp2() {
+        if (ltok != DOT) {
+            if (ltok == LBRAK) {
+                scan();
+                Exp();
+                check(RBRAK);
+            } else {
+                if (ltok == COLON) {
+                    scan();
+                    check(IDENT);
+                }
+                Args();
+            }
+            if (STAT_EXP_2_START.contains(ltok)) {
+                StatExp2();
+            }
+        } else {
+            check(DOT);
+            check(IDENT);
+            if (ltok == COMMA || ltok == ASSIGN) {
+                VarAssign();
+            } else {
+                if (STAT_EXP_2_START.contains(ltok)) {
+                    StatExp2();
+                }
+            }
+        }
+    }
+
+    private void VarAssign() {
+        while (ltok == COMMA) {
+            scan();
+            StatExp();
+        }
+        check(ASSIGN);
+        ExpList();
     }
 
     private void ExpList() {
@@ -241,8 +286,183 @@ public class Parser {
         }
     }
 
-    private static final EnumSet<TokenType> EXP_START = EnumSet.of(NIL, FALSE, TRUE, NUMERAL, LITERAL_STRING, TDOT, FUNCTION, LPAR, IDENT);
+    private static final EnumSet<TokenType> EXP_START = EnumSet.of(NIL, FALSE, TRUE, NUMERAL, LITERAL_STRING, TDOT,
+            FUNCTION, LPAR, IDENT, NOT, HASH, SUB, BXOR);
     private void Exp() {
+        // or
+        BinOp1();
+        while (ltok == OR) {
+            scan();
+            BinOp1();
+        }
+    }
+
+    private void BinOp1() {
+        // and
+        BinOp2();
+        while (ltok == AND) {
+            scan();
+            BinOp2();
+        }
+    }
+
+    private void BinOp2() {
+        // < > <= >= ~= ==
+        BinOp3();
+        loop: for (;;) {
+            switch (ltok) {
+                case LT -> {
+                    scan();
+                }
+                case GT -> {
+                    scan();
+                }
+                case LE -> {
+                    scan();
+                }
+                case GE -> {
+                    scan();
+                }
+                case NE -> {
+                    scan();
+                }
+                case EQ -> {
+                    scan();
+                }
+                default -> {
+                    break loop;
+                }
+            }
+            BinOp3();
+        }
+    }
+
+    private void BinOp3() {
+        // |
+        BinOp4();
+        while (ltok == BOR) {
+            scan();
+            BinOp4();
+        }
+    }
+
+    private void BinOp4() {
+        // ~
+        BinOp5();
+        while (ltok == BXOR) {
+            scan();
+            BinOp5();
+        }
+    }
+
+    private void BinOp5() {
+        // &
+        BinOp6();
+        while (ltok == BAND) {
+            scan();
+            BinOp6();
+        }
+    }
+
+    private void BinOp6() {
+        // << >>
+        BinOp7();
+        for (;;) {
+            if (ltok == SHL) {
+                scan();
+            } else if (ltok == SHR) {
+                scan();
+            } else {
+                break;
+            }
+            BinOp7();
+        }
+    }
+
+    private void BinOp7() {
+        // ..
+        BinOp8();
+        while (ltok == DDOT) {
+            scan();
+            BinOp8();
+        }
+    }
+
+    private void BinOp8() {
+        // + -
+        BinOp9();
+        for (;;) {
+            if (ltok == ADD) {
+                scan();
+            } else if (ltok == SUB) {
+                scan();
+            } else {
+                break;
+            }
+            BinOp9();
+        }
+    }
+
+    private void BinOp9() {
+        // * / // %
+        UnOp();
+        loop: for (;;) {
+            switch (ltok) {
+                case MULT -> {
+                    scan();
+                }
+                case DIV -> {
+                    scan();
+                }
+                case FDIV -> {
+                    scan();
+                }
+                case MOD -> {
+                    scan();
+                }
+                default -> {
+                    break loop;
+                }
+            }
+            UnOp();
+        }
+    }
+
+    private void UnOp() {
+        // not # - ~
+        loop: for (;;) {
+            switch (ltok) {
+                case NOT -> {
+                    scan();
+                }
+                case HASH -> {
+                    scan();
+                }
+                case SUB -> {
+                    scan();
+                }
+                case BXOR -> {
+                    scan();
+                }
+                default -> {
+                    break loop;
+                }
+            }
+        }
+        BinOp10();
+    }
+
+    private void BinOp10() {
+        // ^
+        TermExp();
+        while (ltok == EXPONENT) {
+            scan();
+            TermExp();
+        }
+    }
+
+    private void TermExp() {
+        // constants, funcdef or ValExp
         switch (ltok) {
             case NIL -> {
                 scan();
@@ -263,42 +483,75 @@ public class Parser {
                 scan();
             }
             case FUNCTION -> {
-                // FunctionDef
                 scan();
                 FuncBody();
             }
-
+            default -> {
+                ValExp();
+            }
         }
     }
 
-    private void PrefixExp() {
-
-    }
-
-    private void FunctionCall() {
-
-    }
-
-
-    private static final EnumSet<TokenType> ARGS_START = EnumSet.of(LPAR, LBRAC, LITERAL_STRING);
-    private void Args() {
-
-    }
-
     private void FuncBody() {
-
+        check(LPAR);
+        if (ltok == TDOT || ltok == IDENT) {
+            ParList();
+        }
+        check(RPAR);
+        Block();
+        check(END);
     }
 
     private void ParList() {
+        if (ltok == TDOT) {
+            scan();
+        } else {
+            check(IDENT);
+            while (ltok == COMMA && lla.type() != TDOT) {
+                scan();
+                check(IDENT);
+            }
+            if (ltok == COMMA) {
+                scan();
+                check(TDOT);
+            }
+        }
+    }
 
+    private static final EnumSet<TokenType> ARGS_START = EnumSet.of(LPAR, LITERAL_STRING, LBRAC);
+    private void Args() {
+        if (ltok == LPAR) {
+            scan();
+            if (ltok == TDOT || ltok == IDENT) {
+                ParList();
+            }
+            check(RPAR);
+        } else if (ltok == LITERAL_STRING) {
+            scan();
+        } else {
+            TableConstructor();
+        }
     }
 
     private void TableConstructor() {
-
+        check(LBRAC);
+        if (ltok == RBRAC) {
+            scan();
+        } else {
+            FieldList();
+        }
     }
 
     private void FieldList() {
-
+        Field();
+        while ((ltok == COMMA || ltok == SEMICOLON) && lla.type() != RBRAC) {
+            FieldSep();
+            Field();
+        }
+        if (ltok == COMMA || ltok == SEMICOLON) {
+            FieldSep();
+        }
+        check(RBRAC);
     }
 
     private void Field() {
@@ -308,6 +561,12 @@ public class Parser {
             check(RBRAK);
             check(ASSIGN);
             Exp();
+        } else if (ltok == IDENT && lla.type() == ASSIGN) {
+            scan();
+            scan();  // ASSIGN
+            Exp();
+        } else {
+            Exp();
         }
     }
 
@@ -315,54 +574,5 @@ public class Parser {
         if (ltok == COMMA || ltok == SEMICOLON) {
             scan();
         }
-    }
-
-    private void BinOp0() {
-        // or
-    }
-
-    private void BinOp1() {
-        // and
-    }
-
-    private void BinOp2() {
-        // < > <= >= ~= ==
-    }
-
-    private void BinOp3() {
-        // binor |
-    }
-
-    private void BinOp4() {
-        // negate ~
-    }
-
-    private void BinOp5() {
-        // binand &
-    }
-
-    private void BinOp6() {
-        // << >>
-    }
-
-    private void BinOp7() {
-        // ..
-    }
-
-    private void BinOp8() {
-        // + -
-    }
-
-    private void BinOp9() {
-        // * / // %
-    }
-
-    private void UnOp() {
-
-    }
-
-    private void BinOp10() {
-        // ^
-
     }
 }

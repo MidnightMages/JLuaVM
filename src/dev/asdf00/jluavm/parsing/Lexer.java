@@ -237,7 +237,7 @@ public class Lexer {
                         }
                         default -> {
                             if (!isDecDigit(cur)) {
-                                throw new LuaLexerException(input.prevPos(), "Unknown escape sequence'\\%s'".formatted(cur));
+                                throw new LuaLexerException(input.prevPos(), "Unknown escape sequence '\\%s'".formatted(cur));
                             }
                             int codePoint = cur - '0';
                             if (isDecDigit(input.peek())) {
