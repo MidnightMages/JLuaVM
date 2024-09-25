@@ -27,7 +27,7 @@ public class Lexer {
         cur = input.next();
     }
 
-    public Token next() {
+    public Token next() throws LuaLexerException {
         // skip whitespace and comments
         for (; ; ) {
             while (Character.isWhitespace(cur)) {
@@ -39,7 +39,7 @@ public class Lexer {
                 advance();
                 if (cur == '[' && input.peek() == '[') {
                     // multiline comment
-                    while (cur != ']' && input.peek() != ']' && cur != CEOF) {
+                    while (cur != CEOF && !(cur == ']' && input.peek() == ']')) {
                         cur = input.next();
                     }
                     if (cur == CEOF) {
@@ -423,7 +423,7 @@ public class Lexer {
         public CharStream(char[] cs) {
             this.cs = cs;
             ptr = 0;
-            line = 0;
+            line = 1;
             col = 0;
             pLine = -1;
             pCol = -1;
