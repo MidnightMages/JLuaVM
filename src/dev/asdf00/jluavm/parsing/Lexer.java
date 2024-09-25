@@ -1,5 +1,6 @@
 package dev.asdf00.jluavm.parsing;
 
+import dev.asdf00.jluavm.parsing.exceptions.InternalLuaLexerError;
 import dev.asdf00.jluavm.parsing.exceptions.LuaLexerException;
 
 import java.util.Set;
@@ -96,6 +97,7 @@ public class Lexer {
                 advance();
                 if (cur == 'x' || cur == 'X') {
                     isHex = true;
+                    isValid = false;
                     nb.append(cur);
                     advance();
                 }
@@ -158,7 +160,7 @@ public class Lexer {
                 double val = isInteger ? Long.parseLong(number) : Double.parseDouble(number);
                 return new Token(NUMERAL, pos, number, val);
             } catch (NumberFormatException e) {
-                throw new LuaLexerException(pos, "'%s' is not a valid number".formatted(number));
+                throw new InternalLuaLexerError("Unexpected failure while reading number '%s'".formatted(number));
             }
         }
 
@@ -266,11 +268,11 @@ public class Lexer {
             advance();
             int level = 0;
             while (cur == '=') {
-                if (cur == CEOF) {
-                    throw new LuaLexerException(pos, "Unexpected EOF in long string literal");
-                }
                 level++;
                 advance();
+            }
+            if (cur == CEOF) {
+                throw new LuaLexerException(pos, "Unexpected EOF in long string literal");
             }
             if (cur != '[') {
                 throw new LuaLexerException(pos, "Unexpected character '%s' in long string literal".formatted(cur));
