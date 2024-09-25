@@ -5,7 +5,6 @@ import dev.asdf00.jluavm.parsing.exceptions.LuaLexerException;
 import java.util.Set;
 
 import static dev.asdf00.jluavm.parsing.TokenType.*;
-import static dev.asdf00.jluavm.parsing.TokenType.RBRAK;
 
 public class Lexer {
     private static final char CEOF = (char) -1;

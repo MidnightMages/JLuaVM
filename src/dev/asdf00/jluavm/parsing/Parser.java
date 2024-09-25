@@ -5,9 +5,14 @@ import java.util.EnumSet;
 import static dev.asdf00.jluavm.parsing.TokenType.*;
 
 public class Parser {
+    private final Lexer lexer;
     private TokenType ltok = EOF;  // TokenType of la
     private Token cur;  // current token
     private Token la;  // lookahead token
+
+    public Parser(String input) {
+        lexer = new Lexer(input);
+    }
 
     private void ensure(boolean condition) {
 
@@ -21,8 +26,13 @@ public class Parser {
 
     }
 
+    public void parse() {
+        Chunk();
+    }
+
     private void Chunk() {
         Block();
+        check(EOF);
     }
 
     private void Block() {
@@ -31,7 +41,12 @@ public class Parser {
         }
         if (ltok == RETURN) {
             scan();
-
+            if (EXP_START.contains(ltok)) {
+                ExpList();
+            }
+            if (ltok == SEMICOLON) {
+                scan();
+            }
         }
     }
 
@@ -42,18 +57,18 @@ public class Parser {
                 // nop
                 scan();
             }
-            case DCOLON -> {
-                // label
-                scan();
-                check(IDENT);
-                check(DCOLON);
-            }
             case BREAK -> {
                 scan();
             }
             case GOTO -> {
                 scan();
                 check(IDENT);
+            }
+            case DCOLON -> {
+                // label
+                scan();
+                check(IDENT);
+                check(DCOLON);
             }
             case DO -> {
                 scan();
