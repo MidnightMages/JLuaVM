@@ -22,6 +22,23 @@ public enum TokenType {
     // arithmetic
     LT("<"),
     GT(">"),
+    LE("<="),
+    GE(">="),
+    NE("~="),
+    EQ("=="),
+    BOR("|"),
+    BXOR("~"),
+    BAND("&"),
+    SHL("<<"),
+    SHR(">>"),
+    ADD("+"),
+    SUB("-"),
+    MULT("*"),
+    DIF("/"),
+    FDIF("//"),
+    MOD("%"),
+    HASH("#"),
+    EXPONENT("^"),
 
 
     // keywords
@@ -44,6 +61,8 @@ public enum TokenType {
     NIL("nil"),
     FALSE("false"),
     TRUE("true"),
+    AND("and"),
+    OR("or"),
 
     // constants
     NUMERAL(""),
