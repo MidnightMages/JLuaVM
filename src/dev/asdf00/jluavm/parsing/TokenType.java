@@ -63,6 +63,7 @@ public enum TokenType {
     TRUE("true"),
     AND("and"),
     OR("or"),
+    NOT("not"),
 
     // constants
     NUMERAL("$numeral$"),

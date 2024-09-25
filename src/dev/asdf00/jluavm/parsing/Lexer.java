@@ -9,7 +9,8 @@ import static dev.asdf00.jluavm.parsing.TokenType.*;
 public class Lexer {
     private static final char CEOF = (char) -1;
     private static final Set<String> KEYWORDS = Set.of("break", "goto", "do", "end", "while", "repeat", "until", "if",
-            "then", "elseif", "else", "for", "in", "function", "local", "return", "nil", "false", "true", "and", "or");
+            "then", "elseif", "else", "for", "in", "function", "local", "return", "nil", "false", "true", "and", "or",
+            "not");
 
     private final CharStream input;
     private char cur;
