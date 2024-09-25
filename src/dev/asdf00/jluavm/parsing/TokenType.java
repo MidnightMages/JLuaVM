@@ -1,7 +1,7 @@
 package dev.asdf00.jluavm.parsing;
 
 public enum TokenType {
-    IDENT(""),
+    IDENT("$ident$"),
 
     // symbols
     SEMICOLON(";"),
@@ -34,8 +34,8 @@ public enum TokenType {
     ADD("+"),
     SUB("-"),
     MULT("*"),
-    DIF("/"),
-    FDIF("//"),
+    DIV("/"),
+    FDIV("//"),
     MOD("%"),
     HASH("#"),
     EXPONENT("^"),
@@ -65,10 +65,10 @@ public enum TokenType {
     OR("or"),
 
     // constants
-    NUMERAL(""),
-    LITERAL_STRING(""),
+    NUMERAL("$numeral$"),
+    LITERAL_STRING("$literal_string$"),
 
-    EOF(""),
+    EOF("$eof$"),
     ;
 
     public final String rep;
