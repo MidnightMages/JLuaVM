@@ -2,9 +2,11 @@ package dev.asdf00.jluavm.parser;
 
 import dev.asdf00.jluavm.Constants;
 import dev.asdf00.jluavm.parsing.Parser;
+import dev.asdf00.jluavm.parsing.exceptions.LuaParserException;
 import org.junit.jupiter.api.Test;
 
 import static dev.asdf00.jluavm.Constants.largeValidLuaProgram;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class SnippetTest {
 
@@ -55,9 +57,26 @@ return subscribedCoroutineMap[a]
     void testBlock2() {
         var parser = parse("""
 subscribedCoroutineMap[eventKey] = 1
+return 1
 """);
 
         parser = parser;
+    }
+
+    @Test
+    void testAssignNonAssignable() {
+        assertThrows(LuaParserException.class, () -> parse("""
+                subscribedCoroutineMap[eventKey]() = 1
+                return 1
+                """));
+    }
+
+    @Test
+    void testStatementEndsOnAssignable() {
+        assertThrows(LuaParserException.class, () -> parse("""
+                subscribedCoroutineMap[eventKey]
+                return 1
+                """));
     }
 
     @Test

@@ -280,7 +280,7 @@ public class Parser {
     }
 
     private static final EnumSet<TokenType> EXP_START = EnumSet.of(NIL, FALSE, TRUE, NUMERAL, LITERAL_STRING, TDOT,
-            FUNCTION, LPAR, IDENT, NOT, HASH, SUB, BXOR);
+            FUNCTION, LPAR, IDENT, NOT, HASH, SUB, BXOR, LBRAC);
     private void Exp() {
         // or
         BinOp1();
