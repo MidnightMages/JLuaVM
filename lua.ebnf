@@ -46,7 +46,7 @@ FuncBody ::= "(" [ ParList ] ")" Block "end"
 # LL2 required to decide loop break (break if ll1 == , and ll2 == "...")
 ParList ::= "..." | ident { "," ident } [ "," "..." ]
 
-Args ::= "(" [ ParList ] ")" | literal_string | TableConstructor
+Args ::= "(" [ ExpList ] ")" | literal_string | TableConstructor
 
 TableConstructor ::= "{" ( FieldList | "}" )
 

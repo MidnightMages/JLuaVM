@@ -20,7 +20,7 @@ public class Parser {
 
     private void check(TokenType type) {
         if (ltok != type) {
-            throw new LuaParserException(la.pos(), "Expected <%s>, got <%s>".formatted(type.rep, ltok.rep));
+            throw new LuaParserException(la.pos(), "(At %s) Expected <%s>, got <%s>".formatted(la.pos(), type.rep, ltok.rep));
         }
         scan();
     }
@@ -522,8 +522,8 @@ public class Parser {
     private void Args() {
         if (ltok == LPAR) {
             scan();
-            if (ltok == TDOT || ltok == IDENT) {
-                ParList();
+            if (EXP_START.contains(ltok)) {
+                ExpList();
             }
             check(RPAR);
         } else if (ltok == LITERAL_STRING) {
