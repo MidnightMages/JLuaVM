@@ -17,7 +17,7 @@ Stat ::= ";" |
                    ident Attrib { "," ident Attrib } [ "=" ExpList ] ) |
          StatExp
 
-Attrib ::= ident [ "<" ident ">" ]
+Attrib ::= [ "<" ident ">" ]
 
 # if ends on ident or "]", it was a Variable, else it was a Function Call
 ValExp ::= ( "(" Exp ")" | ident ) { ( "[" Exp "]" | "." ident | [ ":" ident ] Args ) }

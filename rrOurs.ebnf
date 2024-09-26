@@ -1,0 +1,55 @@
+Chunk = Block, eof.
+
+Block = { Stat }, [ "return", [ ExpList ], [ ";" ] ].
+
+Stat = ";" |
+         "break" |
+         "goto", ident |
+         "::", ident, "::" |
+         "do" ,Block, "end" | 
+         "while", Exp, "do", Block, "end" |
+         "repeat" ,Block ,"until", Exp |
+         "if" ,Exp, "then" ,Block ,{ "elseif" ,Exp, "then" ,Block }, [ "else" ,Block], "end" |
+         "for" ,ident, ( "=" ,Exp, ",", Exp, [ "," ,Exp ] ,"do", Block ,"end" |
+                       { ",", ident } ,"in" ,ExpList ,"do", Block, "end") |
+         "function", ident ,{ ".", ident }, [ ":" ,ident ] ,FuncBody |
+         "local", ( "function", ident, FuncBody |
+                   ident, Attrib, { ",", ident, Attrib } ,[ "=" ,ExpList ] ) |
+         StatExp.
+
+Attrib = [ "<", ident, ">" ].
+
+ValExp = ( "(", Exp, ")" | ident ), { ( "[" ,Exp, "]" | "." ,ident | [ ":" ,ident ] ,Args ) }.
+StatExp = "(", Exp ,")", [ StatExp2 ] | ident, ( StatExp2 | VarAssign ).
+StatExp2 = ( "[", Exp, "]" | [ ":", ident ], Args ) ,[ StatExp2 ] | "." ,ident, ( VarAssign | [StatExp2] ).
+VarAssign = { "," ,StatExp }, "=", ExpList.
+
+ExpList = Exp ,{ ",", Exp }.
+
+Exp = BinOp1, { "or" ,BinOp1 }.
+BinOp1 = BinOp2 ,{ "and", BinOp2 }.
+BinOp2 = BinOp3 ,{ ( "<" | ">" | "<=" | ">=" | "~=" | "==" ), BinOp3 }.
+BinOp3 = BinOp4 ,{ "|" ,BinOp4 }.
+BinOp4 = BinOp5 ,{ "~", BinOp5 }.
+BinOp5 = BinOp6, { "&" ,BinOp6 }.
+BinOp6 = BinOp7 ,{ ( "<<" | ">>" ) ,BinOp7 }.
+BinOp7 = BinOp8 ,{ ".." ,BinOp8 }.
+BinOp8 = BinOp9 ,{ ( "+" | "-" ) ,BinOp9 }.
+BinOp9 = UnOp, { ( "*" | "/" | "//" | "%" ) ,UnOp }.
+UnOp = { "not" | "#" | "-" | "~" }, BinOp10.
+BinOp10 = TermExp, { "^" ,TermExp }.
+TermExp = "nil" | "false" | "true" | numeral | literal_string | "..." | "function" ,FuncBody | ValExp | TableConstructor.
+
+FuncBody = "(" ,[ ParList ] ,")", Block ,"end".
+
+ParList = "..." | ident, { ",", ident }, [ "," ,"..." ].
+
+Args = "(" ,[ ExpList ], ")" | literal_string | TableConstructor.
+
+TableConstructor = "{" ,( FieldList | "}" ).
+
+FieldList = Field, { FieldSep, Field }, [ FieldSep ], "}".
+
+Field = "[" ,Exp, "]", "=", Exp | ident ,"=", Exp | Exp.
+
+FieldSep = "," | ";".
