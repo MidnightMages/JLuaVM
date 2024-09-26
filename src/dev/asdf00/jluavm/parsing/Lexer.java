@@ -114,6 +114,7 @@ public class Lexer {
                     allowPM = false;
                     isExp = true;
                     if (cur == '+' || cur == '-') {
+                        isValid = false;
                         continue;
                     }
                 }
@@ -130,23 +131,19 @@ public class Lexer {
                     if (cur == '.') {
                         isInteger = false;
                         isValid = false;
+                        isHex = false;
                         continue;
                     }
                 } else if (!isExp) {
-                    // exponent?
-                    if (isHex) {
-                        if (cur == 'p' || cur == 'P') {
-                            isHex = false;
-                            allowPM = true;
-                            isValid = false;
-                            continue;
-                        }
-                    } else {
-                        if (cur == 'e' || cur == 'E') {
-                            allowPM = true;
-                            isValid = false;
-                            continue;
-                        }
+                // exponent?
+                    if (!isValid) {
+                        throw new LuaLexerException(pos, "'%s' is not a valid number".formatted(nb.toString()));
+                    }
+                    if (cur == 'p' || cur == 'P' || cur == 'e' || cur == 'E') {
+                        isHex = false;
+                        allowPM = true;
+                        isValid = false;
+                        continue;
                     }
                 }
                 break;
@@ -157,7 +154,38 @@ public class Lexer {
                 throw new LuaLexerException(pos, "'%s' is not a valid number".formatted(number));
             }
             try {
-                double val = isInteger ? Long.parseLong(number) : Double.parseDouble(number);
+                double val;
+                if (number.startsWith("0x")) {
+                    if (isInteger) {
+                        val = Long.parseLong(number.substring(2), 16);
+                    } else {
+                        int point = number.indexOf('.');
+                        int ppos = number.indexOf('p');
+                        if (ppos < 0) {
+                            ppos = number.indexOf('P');
+                        }
+                        if (ppos < 0) {
+                            val = Double.parseDouble(String.valueOf(Long.parseLong(number.substring(2, point), 16)) + number.substring(point));
+                        } else {
+                            val = Double.parseDouble(String.valueOf(Long.parseLong(number.substring(2, point), 16)) + number.substring(point, ppos))
+                                    * Math.pow(2, Long.parseLong(number.substring(ppos + 1)));
+                        }
+                    }
+                } else {
+                    if (isInteger) {
+                        val = Long.parseLong(number);
+                    } else {
+                        int ppos = number.indexOf('p');
+                        if (ppos < 0) {
+                            ppos = number.indexOf('P');
+                        }
+                        if (ppos < 0) {
+                            val = Double.parseDouble(number);
+                        } else {
+                            val = Double.parseDouble(number.substring(0, ppos)) * Math.pow(2, Long.parseLong(number.substring(ppos + 1)));
+                        }
+                    }
+                }
                 return new Token(NUMERAL, pos, number, val);
             } catch (NumberFormatException e) {
                 throw new InternalLuaLexerError("Unexpected failure while reading number '%s'".formatted(number));
@@ -200,12 +228,12 @@ public class Lexer {
                             if (!isHexDigit(cur)) {
                                 throw new LuaLexerException(input.prevPos(), "Unexpected character '%s' in hex escape sequence".formatted(cur));
                             }
-                            codePoint += Integer.parseInt("0x%s".formatted(cur)) * 16;
+                            codePoint += Integer.parseInt(String.valueOf(cur), 16) * 16;
                             advance();
                             if (!isHexDigit(cur)) {
                                 throw new LuaLexerException(input.prevPos(), "Unexpected character '%s' in hex escape sequence".formatted(cur));
                             }
-                            codePoint += Integer.parseInt("0x%s".formatted(cur));
+                            codePoint += Integer.parseInt(String.valueOf(cur), 16);
                             sb.append((char) codePoint);
                         }
                         case 'u' -> {
@@ -226,7 +254,7 @@ public class Lexer {
                                     throw new LuaLexerException(input.prevPos(), "Unexpected character '%s' in hex escape sequence".formatted(cur));
                                 }
                                 codePoint *= 16;
-                                codePoint += Integer.parseInt("0x%s".formatted(cur));
+                                codePoint += Integer.parseInt(String.valueOf(cur), 16);
                                 foundOne = true;
                                 advance();
                             }

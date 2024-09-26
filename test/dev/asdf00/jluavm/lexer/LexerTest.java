@@ -367,10 +367,21 @@ public class LexerTest {
     }
 
     @Test
-    void floats() {
-        var number = "1.;1.5e;0x;0x1f.;0x1f.e".split(":");
+    void numeralFails() {
+        var number = "1.;1.5e;0x;0x1f.;0x1f.e;34.e3".split(";");
         for (var t : number) {
             assertThrows(LuaLexerException.class, () -> {
+                var l = new Lexer("local a ={%s}=={%s}\nb = a +{%s}*2".formatted(t, t, t));
+                collectTokens(l);
+            });
+        }
+    }
+
+    @Test
+    void weirdNumerals() {
+        var number = "0xffd.2;0xffd.2p3;0xffd.2e2;03.2p4;3.2e5;0x45d;36;3.2p-4;3.2e-4".split(";");
+        for (var t : number) {
+            assertDoesNotThrow(() -> {
                 var l = new Lexer("local a ={%s}=={%s}\nb = a +{%s}*2".formatted(t, t, t));
                 collectTokens(l);
             });
