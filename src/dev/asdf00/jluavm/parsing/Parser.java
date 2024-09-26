@@ -32,8 +32,12 @@ public class Parser {
         ltok = la.type();
     }
 
+    private boolean isAssignable() {
+        return cur.type() == RBRAK || cur.type() == IDENT;
+    }
+
     public void parse() throws LuaReadingException {
-        cur = lexer.next();
+        cur = null;
         la = lexer.next();
         lla = lexer.next();
         ltok = la.type();
@@ -191,6 +195,40 @@ public class Parser {
         }
     }
 
+    private void StatExp() {
+        if (ltok == LPAR) {
+            scan();
+            Exp();
+            check(RPAR);
+        } else {
+            check(IDENT);
+        }
+        loop: for (;;) {
+            switch (ltok) {
+                case LBRAK, DOT -> {
+                    DeRef();
+                }
+                case COLON, LPAR, LITERAL_STRING, LBRAC -> {
+                    FuncCall();
+                }
+                default -> {
+                    break loop;
+                }
+            }
+        }
+        if (isAssignable()) {
+            while (ltok == COMMA) {
+                scan();
+                ValExp();
+                if (!isAssignable()) {
+                    throw new LuaParserException(la.pos(), "(At %s) Expected <%s>, got <%s>".formatted(la.pos(), DOT.rep, ltok.rep));
+                }
+            }
+            check(ASSIGN);
+            ExpList();
+        }
+    }
+
     private void ValExp() {
         if (ltok == LPAR) {
             scan();
@@ -199,83 +237,38 @@ public class Parser {
         } else {
             check(IDENT);
         }
-        for (;;) {
-            if (ltok == LBRAK) {
-                scan();
-                Exp();
-                check(RBRAK);
-            } else if (ltok == DOT) {
-                scan();
-                check(IDENT);
-            } else if (ltok == COLON || ARGS_START.contains(ltok)) {
-                if (ltok == COLON) {
-                    scan();
-                    check(IDENT);
+        loop: for (;;) {
+            switch (ltok) {
+                case LBRAK, DOT -> {
+                    DeRef();
                 }
-                Args();
-            } else {
-                break;
+                case COLON, LPAR, LITERAL_STRING, LBRAC -> {
+                    FuncCall();
+                }
+                default -> {
+                    break loop;
+                }
             }
         }
     }
 
-    private void StatExp() {
-        if (ltok == LPAR) {
+    private void DeRef() {
+        if (ltok == LBRAK) {
             scan();
             Exp();
-            check(RPAR);
-            if (STAT_EXP_2_START.contains(ltok)) {
-                StatExp2();
-            }
-        } else {
-            check(IDENT);
-            if (ltok == COMMA || ltok == ASSIGN) {
-                VarAssign();
-            } else {
-                if (STAT_EXP_2_START.contains(ltok)) {
-                    StatExp2();
-                }
-            }
-        }
-    }
-
-    private static final EnumSet<TokenType> STAT_EXP_2_START = EnumSet.of(LBRAK, COLON, DOT, LPAR);
-    private void StatExp2() {
-        if (ltok != DOT) {
-            if (ltok == LBRAK) {
-                scan();
-                Exp();
-                check(RBRAK);
-            } else {
-                if (ltok == COLON) {
-                    scan();
-                    check(IDENT);
-                }
-                Args();
-            }
-            if (STAT_EXP_2_START.contains(ltok)) {
-                StatExp2();
-            }
+            check(RBRAK);
         } else {
             check(DOT);
             check(IDENT);
-            if (ltok == COMMA || ltok == ASSIGN) {
-                VarAssign();
-            } else {
-                if (STAT_EXP_2_START.contains(ltok)) {
-                    StatExp2();
-                }
-            }
         }
     }
 
-    private void VarAssign() {
-        while (ltok == COMMA) {
+    private void FuncCall() {
+        if (ltok == COLON) {
             scan();
-            StatExp();
+            check(IDENT);
         }
-        check(ASSIGN);
-        ExpList();
+        Args();
     }
 
     private void ExpList() {

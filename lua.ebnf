@@ -19,11 +19,13 @@ Stat ::= ";" |
 
 Attrib ::= [ "<" ident ">" ]
 
-# if ends on ident or "]", it was a Variable, else it was a Function Call
-ValExp ::= ( "(" Exp ")" | ident ) { ( "[" Exp "]" | "." ident | [ ":" ident ] Args ) }
-StatExp ::= "(" Exp ")" [ StatExp2 ] | ident ( StatExp2 | VarAssign )
-StatExp2 ::= ( "[" Exp "]" | [ ":" ident ] Args ) [ StatExp2 ] | "." ident ( VarAssign | [StatExp2] )
-VarAssign ::= { "," StatExp } "=" ExpList
+# assignable if cur = "]" | ident
+# ValExp inlined to check for local variables on first ident
+StatExp ::= ( "(" Exp ")" | ident ) { ( DeRef | FuncCall) }
+            ( ###assignable### { "," ValExp ###assignable### } "=" ExpList | ###not_assignable### )
+ValExp ::= ( "(" Exp ")" | ident ) { ( DeRef | FuncCall) }
+DeRef ::= "[" Exp "]" | "." ident
+FuncCall ::= [ ":" ident ] Args
 
 ExpList ::= Exp { "," Exp }
 
