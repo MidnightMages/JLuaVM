@@ -20,8 +20,7 @@ Stat ::= ";" |
 Attrib ::= [ "<" ident ">" ]
 
 # assignable if cur = "]" | ident
-# ValExp inlined to check for local variables on first ident
-StatExp ::= ( "(" Exp ")" | ident ) { ( DeRef | FuncCall) }
+StatExp ::= ( "(" Exp ")" ( DeRef | FuncCall) | ident ) { ( DeRef | FuncCall) }
             ( ###assignable### { "," ValExp ###assignable### } "=" ExpList | ###not_assignable### )
 ValExp ::= ( "(" Exp ")" | ident ) { ( DeRef | FuncCall) }
 DeRef ::= "[" Exp "]" | "." ident

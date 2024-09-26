@@ -200,6 +200,11 @@ public class Parser {
             scan();
             Exp();
             check(RPAR);
+            if (ltok == LBRAK || ltok == DOT) {
+                DeRef();
+            } else {
+                FuncCall();
+            }
         } else {
             check(IDENT);
         }
