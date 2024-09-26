@@ -200,7 +200,7 @@ public class Parser {
             check(IDENT);
         }
         for (;;) {
-            if (ltok == RBRAK) {
+            if (ltok == LBRAK) {
                 scan();
                 Exp();
                 check(RBRAK);
@@ -485,6 +485,9 @@ public class Parser {
             case FUNCTION -> {
                 scan();
                 FuncBody();
+            }
+            case LBRAC -> {
+                TableConstructor();
             }
             default -> {
                 ValExp();

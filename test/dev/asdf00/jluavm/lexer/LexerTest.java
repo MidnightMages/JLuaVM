@@ -3,14 +3,15 @@ package dev.asdf00.jluavm.lexer;
 import dev.asdf00.jluavm.parsing.Lexer;
 import dev.asdf00.jluavm.parsing.Token;
 import dev.asdf00.jluavm.parsing.TokenType;
+import dev.asdf00.jluavm.parsing.exceptions.LuaLexerException;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.stream.Collectors;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
-public class SnippetsTest {
+public class LexerTest {
 
     private static ArrayList<Token> collectTokens(Lexer lexer) {
         var toks = new ArrayList<Token>();
@@ -24,15 +25,28 @@ public class SnippetsTest {
         return toks;
     }
 
-    private static ArrayList<Token> collectTokensAssertType(Lexer lexer, String tokens){
+    private static String getStringRep(ArrayList<Token> toks) {
+        return toks.stream().map(t -> switch (t.type()) {
+            case IDENT -> t.stVal();
+            case NUMERAL -> String.valueOf(t.nVal());
+            default -> t.type().rep;
+        }).collect(Collectors.joining(" "));
+    }
+
+    private static ArrayList<Token> collectTokensAssertType(Lexer lexer, String tokens) {
         var toks = collectTokens(lexer);
+        var tokString = getStringRep(toks);
         var toksActual = toks.stream().map(t -> t.type().name()).collect(Collectors.joining(";"));
         assertEquals(tokens, toksActual);
         return toks;
     }
 
-    private static void lexAssertTokens(String code, String expectedTokens){
-        collectTokensAssertType(new Lexer(code), expectedTokens);
+    private static ArrayList<Token> lexAssertTokens(String code, String expectedTokens) {
+        return collectTokensAssertType(new Lexer(code), expectedTokens);
+    }
+
+    private static ArrayList<Token> lexAndCollectTokens(String code) {
+        return collectTokens(new Lexer(code));
     }
 
     @Test
@@ -44,31 +58,31 @@ public class SnippetsTest {
     @Test
     void multilineComment() {
         lexAssertTokens("""
-local coroutineResumeOrig = _G.coroutine.resume
+                local coroutineResumeOrig = _G.coroutine.resume
 
---[[
-   
-_G.computer = {}
-_G.computer.sleep = function(duration) -- performs a non-wasteful-sleep
-   
-end
-                
-_G.computer.getMachineEvents = function() -- returns (string eventName, varargsPacked)[]
-    return {}
-end
-                
-_G.computer.waitForMachineEvent = function(timeout) -- returns after timeout or instantly if GetMachineEvents were to return a non-empty table
-   
-end
-                
-_G.computer.shutdown = function(reboot)
-   
-end
-                
-_G.computer.uptime = function() -- time since computer boot (not increasing while paused)
-   
-end
-]]""", "LOCAL;IDENT;ASSIGN;IDENT;DOT;IDENT;DOT;IDENT;EOF");
+                --[[
+                   
+                _G.computer = {}
+                _G.computer.sleep = function(duration) -- performs a non-wasteful-sleep
+                   
+                end
+                                
+                _G.computer.getMachineEvents = function() -- returns (string eventName, varargsPacked)[]
+                    return {}
+                end
+                                
+                _G.computer.waitForMachineEvent = function(timeout) -- returns after timeout or instantly if GetMachineEvents were to return a non-empty table
+                   
+                end
+                                
+                _G.computer.shutdown = function(reboot)
+                   
+                end
+                                
+                _G.computer.uptime = function() -- time since computer boot (not increasing while paused)
+                   
+                end
+                ]]""", "LOCAL;IDENT;ASSIGN;IDENT;DOT;IDENT;DOT;IDENT;EOF");
     }
 
     @Test
@@ -349,6 +363,74 @@ end
                 os.spawnCoroutine(boot)
                 coroutineScheduler()
                 """);
-        var toks = collectTokensAssertType(lexer, "WHILE;TRUE;DO;IDENT;LPAR;LITERAL_STRING;RPAR;END;EOF");
+        var toks = collectTokensAssertType(lexer, "LOCAL;IDENT;ASSIGN;IDENT;DOT;IDENT;DOT;IDENT;LOCAL;IDENT;ASSIGN;LBRAC;RBRAC;LOCAL;IDENT;ASSIGN;LBRAC;RBRAC;LOCAL;IDENT;ASSIGN;LBRAC;RBRAC;LOCAL;IDENT;ASSIGN;LBRAC;RBRAC;LOCAL;IDENT;ASSIGN;LBRAC;RBRAC;LOCAL;IDENT;ASSIGN;LBRAC;RBRAC;LOCAL;IDENT;ASSIGN;LBRAC;RBRAC;LOCAL;IDENT;ASSIGN;LBRAC;RBRAC;LOCAL;FUNCTION;IDENT;LPAR;IDENT;COMMA;IDENT;RPAR;LOCAL;IDENT;ASSIGN;IDENT;LBRAK;IDENT;RBRAK;IF;NOT;IDENT;THEN;IDENT;LBRAK;IDENT;RBRAK;ASSIGN;LBRAC;IDENT;RBRAC;ELSE;IDENT;DOT;IDENT;LPAR;IDENT;COMMA;IDENT;RPAR;END;IDENT;LBRAK;IDENT;RBRAK;ASSIGN;IDENT;END;LOCAL;FUNCTION;IDENT;LPAR;IDENT;RPAR;LOCAL;IDENT;ASSIGN;IDENT;LBRAK;IDENT;RBRAK;FOR;IDENT;ASSIGN;NUMERAL;COMMA;HASH;IDENT;DO;IDENT;LBRAK;IDENT;LBRAK;IDENT;RBRAK;RBRAK;ASSIGN;NIL;END;IDENT;LBRAK;IDENT;RBRAK;ASSIGN;NIL;END;LOCAL;FUNCTION;IDENT;LPAR;IDENT;RPAR;LOCAL;IDENT;ASSIGN;IDENT;LBRAK;IDENT;LBRAK;IDENT;RBRAK;RBRAK;FOR;IDENT;ASSIGN;NUMERAL;COMMA;HASH;IDENT;DO;IF;IDENT;LBRAK;IDENT;RBRAK;EQ;IDENT;THEN;IDENT;DOT;IDENT;LPAR;IDENT;COMMA;IDENT;RPAR;BREAK;END;END;IDENT;LBRAK;IDENT;RBRAK;ASSIGN;NIL;END;LOCAL;FUNCTION;IDENT;LPAR;IDENT;COMMA;IDENT;RPAR;IDENT;LBRAK;IDENT;RBRAK;ASSIGN;IDENT;IDENT;DOT;IDENT;LPAR;IDENT;COMMA;IDENT;RPAR;END;LOCAL;FUNCTION;IDENT;LPAR;IDENT;RPAR;LOCAL;IDENT;ASSIGN;IDENT;LBRAK;NUMERAL;RBRAK;LOCAL;IDENT;ASSIGN;IDENT;LBRAK;IDENT;RBRAK;IF;IDENT;THEN;FOR;IDENT;ASSIGN;NUMERAL;COMMA;HASH;IDENT;DO;LOCAL;IDENT;ASSIGN;IDENT;LBRAK;IDENT;RBRAK;IDENT;LPAR;IDENT;COMMA;IDENT;RPAR;END;IDENT;LPAR;IDENT;RPAR;END;END;LOCAL;IDENT;ASSIGN;LBRAC;RBRAC;IDENT;DOT;IDENT;ASSIGN;NUMERAL;IDENT;DOT;IDENT;ASSIGN;NUMERAL;IDENT;DOT;IDENT;ASSIGN;NUMERAL;LOCAL;IDENT;ASSIGN;NIL;IDENT;DOT;IDENT;DOT;IDENT;ASSIGN;FUNCTION;LPAR;IDENT;COMMA;TDOT;RPAR;IDENT;LBRAK;IDENT;RBRAK;ASSIGN;IDENT;DOT;IDENT;LPAR;RPAR;IDENT;ASSIGN;IDENT;DOT;IDENT;IDENT;DOT;IDENT;DOT;IDENT;LPAR;LBRAC;IDENT;COMMA;IDENT;DOT;IDENT;LPAR;TDOT;RPAR;RBRAC;RPAR;END;IDENT;DOT;IDENT;DOT;IDENT;ASSIGN;FUNCTION;LPAR;IDENT;RPAR;LOCAL;IDENT;ASSIGN;IDENT;DOT;IDENT;DOT;IDENT;LPAR;IDENT;RPAR;RETURN;FUNCTION;LPAR;TDOT;RPAR;LOCAL;IDENT;ASSIGN;IDENT;DOT;IDENT;LPAR;IDENT;DOT;IDENT;DOT;IDENT;LPAR;IDENT;COMMA;TDOT;RPAR;RPAR;IF;NOT;IDENT;LBRAK;NUMERAL;RBRAK;THEN;IDENT;LPAR;LITERAL_STRING;DDOT;IDENT;LPAR;IDENT;LBRAK;NUMERAL;RBRAK;RPAR;RPAR;END;RETURN;IDENT;DOT;IDENT;LPAR;IDENT;COMMA;NUMERAL;RPAR;END;END;IDENT;DOT;IDENT;ASSIGN;LBRAC;RBRAC;IDENT;DOT;IDENT;DOT;IDENT;ASSIGN;FUNCTION;LPAR;IDENT;COMMA;TDOT;RPAR;LOCAL;IDENT;ASSIGN;IDENT;DOT;IDENT;DOT;IDENT;LPAR;IDENT;RPAR;IDENT;LPAR;IDENT;COMMA;IDENT;DOT;IDENT;LPAR;TDOT;RPAR;RPAR;END;IDENT;DOT;IDENT;ASSIGN;LBRAC;RBRAC;IDENT;DOT;IDENT;ASSIGN;FUNCTION;LPAR;IDENT;COMMA;IDENT;RPAR;IF;IDENT;EQ;NIL;AND;IDENT;EQ;NIL;THEN;IDENT;LPAR;LITERAL_STRING;RPAR;END;IDENT;ASSIGN;IDENT;DOT;IDENT;RETURN;IDENT;DOT;IDENT;DOT;IDENT;LPAR;LBRAC;IDENT;COMMA;IDENT;RBRAC;RPAR;END;IDENT;DOT;IDENT;ASSIGN;FUNCTION;LPAR;IDENT;COMMA;TDOT;RPAR;IDENT;DOT;IDENT;LPAR;IDENT;COMMA;LBRAC;IDENT;COMMA;IDENT;DOT;IDENT;LPAR;TDOT;RPAR;RBRAC;RPAR;END;IDENT;DOT;IDENT;ASSIGN;FUNCTION;LPAR;IDENT;COMMA;IDENT;RPAR;LOCAL;IDENT;ASSIGN;LBRAC;RBRAC;IF;IDENT;EQ;LITERAL_STRING;THEN;FUNCTION;IDENT;COLON;IDENT;LPAR;RPAR;FOR;IDENT;ASSIGN;HASH;IDENT;COMMA;NUMERAL;COMMA;SUB;NUMERAL;DO;IF;IDENT;LBRAK;IDENT;RBRAK;EQ;IDENT;THEN;IDENT;DOT;IDENT;LPAR;IDENT;COMMA;IDENT;RPAR;END;END;END;IDENT;DOT;IDENT;LPAR;IDENT;COMMA;IDENT;RPAR;ELSE;IDENT;LBRAK;LITERAL_STRING;RBRAK;ASSIGN;FALSE;FUNCTION;IDENT;COLON;IDENT;LPAR;RPAR;IDENT;DOT;IDENT;ASSIGN;TRUE;END;IDENT;DOT;IDENT;LPAR;FUNCTION;LPAR;RPAR;WHILE;TRUE;DO;LOCAL;IDENT;ASSIGN;IDENT;DOT;IDENT;LPAR;IDENT;DOT;IDENT;LPAR;NIL;COMMA;IDENT;RPAR;RPAR;IF;IDENT;LBRAK;LITERAL_STRING;RBRAK;NE;FALSE;THEN;BREAK;END;IDENT;LPAR;IDENT;DOT;IDENT;LPAR;IDENT;RPAR;RPAR;END;END;RPAR;END;RETURN;IDENT;END;IDENT;DOT;IDENT;DOT;IDENT;ASSIGN;FUNCTION;LPAR;IDENT;RPAR;IDENT;DOT;IDENT;DOT;IDENT;LPAR;IDENT;COMMA;NIL;RPAR;END;LOCAL;IDENT;ASSIGN;FALSE;LOCAL;IDENT;ASSIGN;NIL;IDENT;DOT;IDENT;DOT;IDENT;ASSIGN;FUNCTION;LPAR;IDENT;RPAR;IDENT;ASSIGN;TRUE;IDENT;ASSIGN;IDENT;OR;FALSE;END;LOCAL;FUNCTION;IDENT;LPAR;TDOT;RPAR;IDENT;LPAR;LITERAL_STRING;COMMA;TDOT;RPAR;END;LOCAL;IDENT;ASSIGN;NIL;LOCAL;FUNCTION;IDENT;LPAR;RPAR;LOCAL;IDENT;ASSIGN;NUMERAL;WHILE;TRUE;DO;IF;IDENT;THEN;IDENT;LPAR;LITERAL_STRING;RPAR;FOR;IDENT;ASSIGN;HASH;IDENT;COMMA;NUMERAL;COMMA;SUB;NUMERAL;DO;IDENT;LBRAK;IDENT;RBRAK;LPAR;RPAR;END;IDENT;LPAR;LITERAL_STRING;RPAR;IDENT;DOT;IDENT;LPAR;IDENT;RPAR;END;FOR;IDENT;ASSIGN;NUMERAL;COMMA;HASH;IDENT;DO;IDENT;LPAR;IDENT;LBRAK;IDENT;RBRAK;RPAR;END;LOCAL;IDENT;ASSIGN;IDENT;DOT;IDENT;LPAR;RPAR;FOR;IDENT;ASSIGN;NUMERAL;COMMA;HASH;IDENT;DO;IDENT;LPAR;IDENT;LBRAK;IDENT;RBRAK;RPAR;END;LOCAL;IDENT;ASSIGN;IDENT;DOT;IDENT;LPAR;RPAR;LOCAL;IDENT;ASSIGN;LBRAC;RBRAC;LOCAL;IDENT;ASSIGN;IDENT;DOT;IDENT;FOR;IDENT;COMMA;IDENT;IN;IDENT;LPAR;IDENT;RPAR;DO;IF;IDENT;LT;IDENT;THEN;IDENT;DOT;IDENT;LPAR;IDENT;COMMA;IDENT;RPAR;IDENT;LPAR;IDENT;COMMA;NIL;RPAR;IDENT;LPAR;IDENT;RPAR;ELSEIF;IDENT;LT;IDENT;THEN;IDENT;ASSIGN;IDENT;END;END;FOR;IDENT;ASSIGN;NUMERAL;COMMA;HASH;IDENT;DO;IDENT;LBRAK;IDENT;LBRAK;IDENT;RBRAK;RBRAK;ASSIGN;NIL;END;IF;HASH;IDENT;EQ;NUMERAL;THEN;LOCAL;IDENT;ASSIGN;IDENT;DOT;IDENT;LPAR;IDENT;SUB;IDENT;COMMA;NUMERAL;RPAR;IDENT;DOT;IDENT;LPAR;IDENT;RPAR;GOTO;IDENT;END;LOCAL;IDENT;ASSIGN;IDENT;DOT;IDENT;LPAR;IDENT;COMMA;NUMERAL;RPAR;LOCAL;IDENT;ASSIGN;IDENT;LBRAK;IDENT;RBRAK;IDENT;LBRAK;IDENT;RBRAK;ASSIGN;NIL;IDENT;ASSIGN;IDENT;DOT;IDENT;IDENT;ASSIGN;IDENT;DOT;IDENT;LPAR;RPAR;LOCAL;IDENT;ASSIGN;NIL;IF;IDENT;NE;NIL;THEN;IDENT;ASSIGN;IDENT;DOT;IDENT;LPAR;IDENT;LPAR;IDENT;COMMA;IDENT;DOT;IDENT;LPAR;IDENT;RPAR;RPAR;RPAR;ELSE;IDENT;ASSIGN;IDENT;DOT;IDENT;LPAR;IDENT;LPAR;IDENT;RPAR;RPAR;END;IDENT;ASSIGN;NIL;IF;IDENT;EQ;IDENT;DOT;IDENT;THEN;IDENT;LPAR;IDENT;LBRAK;NUMERAL;RBRAK;EQ;TRUE;COMMA;LITERAL_STRING;RPAR;LOCAL;IDENT;ASSIGN;IDENT;LBRAK;NUMERAL;RBRAK;LOCAL;IDENT;ASSIGN;IDENT;LBRAK;NUMERAL;RBRAK;LOCAL;IDENT;ASSIGN;IDENT;LBRAK;NUMERAL;RBRAK;IF;IDENT;NE;NIL;THEN;IDENT;LBRAK;IDENT;RBRAK;ASSIGN;IDENT;DOT;IDENT;LPAR;RPAR;ADD;IDENT;END;IF;IDENT;NE;NIL;THEN;IDENT;LPAR;IDENT;COMMA;IDENT;RPAR;END;ELSEIF;IDENT;EQ;IDENT;DOT;IDENT;THEN;IDENT;LPAR;IDENT;LBRAK;NUMERAL;RBRAK;EQ;TRUE;COMMA;LITERAL_STRING;RPAR;LOCAL;IDENT;ASSIGN;IDENT;LBRAK;NUMERAL;RBRAK;IDENT;LPAR;IDENT;LBRAK;NUMERAL;RBRAK;COMMA;IDENT;LBRAK;NUMERAL;RBRAK;RPAR;ELSEIF;IDENT;EQ;IDENT;DOT;IDENT;THEN;LOCAL;IDENT;ASSIGN;IDENT;LBRAK;IDENT;RBRAK;IF;IDENT;NE;IDENT;DOT;IDENT;LPAR;RPAR;THEN;IDENT;LBRAK;IDENT;RBRAK;ASSIGN;NIL;IDENT;LPAR;IDENT;COMMA;IDENT;RPAR;ELSE;IF;IDENT;LBRAK;NUMERAL;RBRAK;EQ;FALSE;THEN;IDENT;LPAR;LITERAL_STRING;DDOT;IDENT;LPAR;IDENT;LBRAK;NUMERAL;RBRAK;RPAR;RPAR;END;IF;IDENT;DOT;IDENT;LPAR;IDENT;RPAR;EQ;LITERAL_STRING;THEN;IDENT;LPAR;IDENT;COMMA;NIL;RPAR;END;END;ELSE;IDENT;LPAR;LITERAL_STRING;RPAR;END;DCOLON;IDENT;DCOLON;IF;IDENT;DOT;IDENT;LPAR;RPAR;NE;NIL;THEN;IDENT;DOT;IDENT;LPAR;RPAR;END;END;IDENT;LPAR;LITERAL_STRING;RPAR;END;LOCAL;FUNCTION;IDENT;LPAR;RPAR;END;IDENT;DOT;IDENT;LPAR;IDENT;RPAR;IDENT;LPAR;RPAR;EOF");
+    }
+
+    @Test
+    void floats() {
+        var number = "1.;1.5e;0x;0x1f.;0x1f.e".split(":");
+        for (var t : number) {
+            assertThrows(LuaLexerException.class, () -> {
+                var l = new Lexer("local a ={%s}=={%s}\nb = a +{%s}*2".formatted(t, t, t));
+                collectTokens(l);
+            });
+        }
+    }
+
+    @Test
+    void binUnOps() {
+        var snippet = """
+                    local a = true or false and not (true~ false)
+                    if a == (function() return true and a or "teststring" end)() then
+                        for i in function() return nil end do
+                            print(a)
+                        end
+                    end
+                """;
+
+        lexAssertTokens(snippet, "LOCAL;IDENT;ASSIGN;TRUE;OR;FALSE;AND;NOT;LPAR;TRUE;BXOR;FALSE;RPAR;IF;IDENT;EQ;LPAR;FUNCTION;LPAR;RPAR;RETURN;TRUE;AND;IDENT;OR;LITERAL_STRING;END;RPAR;LPAR;RPAR;THEN;FOR;IDENT;IN;FUNCTION;LPAR;RPAR;RETURN;NIL;END;DO;IDENT;LPAR;IDENT;RPAR;END;END;EOF");
+    }
+
+    @Test
+    void stringTest() {
+        assertThrows(LuaLexerException.class, () -> lexAndCollectTokens("local a = \"\n\""));
+        assertThrows(LuaLexerException.class, () -> lexAndCollectTokens("local a = \""));
+        assertThrows(LuaLexerException.class, () -> lexAndCollectTokens("local a = '"));
+        assertThrows(LuaLexerException.class, () -> lexAndCollectTokens("local a = '\n'"));
+        assertThrows(LuaLexerException.class, () -> lexAndCollectTokens("local a = 2'\n"));
+        assertThrows(LuaLexerException.class, () -> lexAndCollectTokens("local a = 2'"));
+        assertThrows(LuaLexerException.class, () -> lexAndCollectTokens("local a = 1 for'"));
+        assertThrows(LuaLexerException.class, () -> lexAndCollectTokens("return'"));
+        assertDoesNotThrow(() -> lexAndCollectTokens("for a in ' do print(') end"));
+        assertDoesNotThrow(() -> lexAndCollectTokens("for a in \" do print(\") end"));
+        assertThrows(LuaLexerException.class, () -> lexAndCollectTokens("for a in ' do print(\") end"));
+        assertThrows(LuaLexerException.class, () -> lexAndCollectTokens("for a in \" do print(') end"));
+        assertThrows(LuaLexerException.class, () -> lexAndCollectTokens("for a in b:c('\n\"') end"));
+        assertThrows(LuaLexerException.class, () -> lexAndCollectTokens("for a in b:c('\"\n') end"));
+        assertDoesNotThrow(() -> lexAndCollectTokens("for a in b:c('\"\\n') end"));
+        assertDoesNotThrow(() -> lexAndCollectTokens("for a in b:c('\\n\"') end"));
+
+        var validEscSeqs = "abfnrtvz0123456789\\\"'".toCharArray();
+        for (var l : validEscSeqs) {
+            assertDoesNotThrow(() -> lexAndCollectTokens("a = '\\" + l + "'"));
+        }
+
+        for (var l : "abcdefghijklmnopqrstuvwxyz0123456789,.-#+;:_+*~[]()".toCharArray()) {
+            boolean ok = true;
+            for (char validEscSeq : validEscSeqs) {
+                if (validEscSeq == l) {
+                    ok = false;
+                    break;
+                }
+            }
+            if (ok)
+                assertThrows(LuaLexerException.class, () -> lexAndCollectTokens("a = '\\" + l + "'"), "Char was: "+l);
+        }
+        var toks = lexAssertTokens("a = '\\1234'", "IDENT;ASSIGN;LITERAL_STRING;EOF");
+        assertEquals("{4",toks.get(2).stVal());
+
+        var toks2 = lexAssertTokens("a = '\\xAA \\u{57}'", "IDENT;ASSIGN;LITERAL_STRING;EOF");
+
+        toks = toks;
     }
 }

@@ -39,7 +39,7 @@ BinOp8 ::= BinOp9 { ( "+" | "-" ) BinOp9 }
 BinOp9 ::= UnOp { ( "*" | "/" | "//" | "%" ) UnOp }
 UnOp ::= { "not" | "#" | "-" | "~" } BinOp10
 BinOp10 ::= TermExp { "^" TermExp }
-TermExp ::= "nil" | "false" | "true" | numeral | literal_string | "..." | "function" FuncBody | ValExp
+TermExp ::= "nil" | "false" | "true" | numeral | literal_string | "..." | "function" FuncBody | ValExp | TableConstructor
 
 FuncBody ::= "(" [ ParList ] ")" Block "end"
 
