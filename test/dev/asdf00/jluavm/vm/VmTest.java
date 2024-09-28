@@ -299,4 +299,25 @@ public class VmTest {
                 print("done")
                 """, LuaParserException.class);
     }
+
+    @Test
+    void floorDiv() {
+        // assert that LUA{a//b} == floor((float)a/(float)b) for pos and negative
+        for (int a = -10; a < 10; a++) {
+            for (int b = -10; b < 10; b++) {
+                if (b == 0)
+                    continue;
+
+                var expected = Math.floor((float)a / (float) b);
+                var vm = new LuaVM();
+                vm.load("return %s//%s".formatted((float)a,(float)b));
+                var res = vm.run();
+                Assertions.assertEquals(LuaVM.VmRunState.SUCCESS, res.state());
+                var rvs = res.returnVars();
+                Assertions.assertEquals(1,rvs.length);
+                var rv = (float)rvs[0];
+                Assertions.assertEquals(expected, rv, 0.000001f);
+            }
+        }
+    }
 }
