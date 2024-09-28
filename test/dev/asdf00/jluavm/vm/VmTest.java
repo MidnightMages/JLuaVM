@@ -63,7 +63,7 @@ public class VmTest {
                 if §true|false§ then
                 a,a.b = {},7 else
                 a.b,a = 7,{} end
-                                
+
                 local rv = ""
                 for _,i in ipairs({1,2,3}) do
                     rv = rv .. tostring(c[i])..","
@@ -144,7 +144,5 @@ public class VmTest {
                 rv2 = rv.."|"..tostring(a).."|"..tostring(a_orig.a)
                 return rv2
                 """, new Object[]{"f;f1;f2;g;h;mt_a=1.2;mt_a=1.1;mt_a=1;|2|nil"});
-
-
     }
 }
