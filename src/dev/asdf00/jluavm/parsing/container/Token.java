@@ -1,4 +1,4 @@
-package dev.asdf00.jluavm.parsing;
+package dev.asdf00.jluavm.parsing.container;
 
 public record Token(TokenType type, Position pos, String stVal, double nVal) {
     public Token(TokenType type, Position pos) {

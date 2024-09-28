@@ -1,4 +1,4 @@
-package dev.asdf00.jluavm.parsing;
+package dev.asdf00.jluavm.parsing.container;
 
 public enum TokenType {
     IDENT("$ident$"),

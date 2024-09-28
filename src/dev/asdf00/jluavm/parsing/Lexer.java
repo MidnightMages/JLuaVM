@@ -1,11 +1,14 @@
 package dev.asdf00.jluavm.parsing;
 
+import dev.asdf00.jluavm.parsing.container.Position;
+import dev.asdf00.jluavm.parsing.container.Token;
+import dev.asdf00.jluavm.parsing.container.TokenType;
 import dev.asdf00.jluavm.parsing.exceptions.InternalLuaLexerError;
 import dev.asdf00.jluavm.parsing.exceptions.LuaLexerException;
 
 import java.util.Set;
 
-import static dev.asdf00.jluavm.parsing.TokenType.*;
+import static dev.asdf00.jluavm.parsing.container.TokenType.*;
 
 public class Lexer {
     private static final char CEOF = (char) -1;

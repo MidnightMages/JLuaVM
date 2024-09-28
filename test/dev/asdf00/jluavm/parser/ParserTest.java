@@ -1,6 +1,7 @@
 package dev.asdf00.jluavm.parser;
 
 import dev.asdf00.jluavm.parsing.Parser;
+import dev.asdf00.jluavm.parsing.SymTable;
 import dev.asdf00.jluavm.parsing.exceptions.LuaParserException;
 import org.junit.jupiter.api.Test;
 
@@ -10,8 +11,7 @@ import java.util.stream.Stream;
 
 import static dev.asdf00.jluavm.Constants.largeValidLuaProgram;
 import static dev.asdf00.jluavm.Util.expandOptions;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class ParserTest {
 
@@ -19,6 +19,22 @@ public class ParserTest {
         var parser = new Parser(code);
         parser.parse();
         return parser;
+    }
+
+    private String getSymTab(Parser parser) {
+        try {
+            var f = Parser.class.getDeclaredField("symTab");
+            f.setAccessible(true);
+            var st = (SymTable) f.get(parser);
+            f = SymTable.class.getDeclaredField("prevScope");
+            f.setAccessible(true);
+            var rscope = f.get(st);
+            var m = rscope.getClass().getDeclaredMethod("toFullString");
+            m.setAccessible(true);
+            return (String) m.invoke(rscope);
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Test
@@ -45,6 +61,7 @@ public class ParserTest {
                 do print(i+i) end
                 do print(5+i) end
                 do print(5) end
+                i = 3
                 """);
     }
 
@@ -123,5 +140,24 @@ public class ParserTest {
         workingSnippets = expandOptions(workingSnippets);
         for (var s : workingSnippets)
             assertDoesNotThrow(() -> parse(s), "Testcode: " + s);
+    }
+
+    @Test
+    void testClosure() {
+        var parser = parse("""
+                local a = 1
+                local b = 2
+                local function c(d, e, ...)
+                    a = "test"
+                end
+                """);
+        assertEquals("VarScope {parent=-1, id=0, funcBorder=false, closable=false, names={" +
+                "a=VarInfo{jName='_0$a', isGlobal=false, isConstant=false, isClosable=false, isInClosure=true, isWritten=true}, " +
+                "b=VarInfo{jName='_0$b', isGlobal=false, isConstant=false, isClosable=false, isInClosure=false, isWritten=false}, " +
+                "c=VarInfo{jName='_0$c', isGlobal=false, isConstant=false, isClosable=false, isInClosure=false, isWritten=false}}, " +
+                "children=[VarScope {parent=0, id=1, funcBorder=true, closable=false, names={" +
+                "d=VarInfo{jName='_1$d', isGlobal=false, isConstant=false, isClosable=false, isInClosure=false, isWritten=false}, " +
+                "e=VarInfo{jName='_1$e', isGlobal=false, isConstant=false, isClosable=false, isInClosure=false, isWritten=false}}, " +
+                "children=[]}]}", getSymTab(parser));
     }
 }
