@@ -444,4 +444,9 @@ public class LexerTest {
 
         toks = toks;
     }
+
+    @Test
+    void invalidIdentifier() {
+        assertThrows(LuaLexerException.class, () -> lexAndCollectTokens("$ = 1"));
+    }
 }
