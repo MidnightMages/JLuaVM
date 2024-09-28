@@ -71,4 +71,23 @@ public class VmTest {
                 rv = rv .. tostring(c["b"])..","..tostring(c.b)..','.. tostring(a["b"])..","..tostring(a.b)..","..tostring(#a)
                 """, new Object[]{"hi,1,2,7,7,nil,nil,0"});
     }
+
+    @Test
+    void closure() {
+        loadAssertSuccessAndRv("""
+                a = 3
+                b = 4
+                c = function(a)
+                    e = a
+                    d = function(c)
+                         return "("..tostring(b)..","..tostring(c)..","..tostring(e)..")"
+                    end
+                    e = 7
+                    b = 9
+                    return tostring(a)..","..tostring(b)..":"..d(8)
+                end
+                b = 5
+                return c(7)
+                """, new Object[]{"7,9:(9,8,7)"});
+    }
 }
