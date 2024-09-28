@@ -63,7 +63,7 @@ public class VmTest {
                 if §true|false§ then
                 a,a.b = {},7 else
                 a.b,a = 7,{} end
-                
+                                
                 local rv = ""
                 for _,i in ipairs({1,2,3}) do
                     rv = rv .. tostring(c[i])..","
@@ -89,5 +89,62 @@ public class VmTest {
                 b = 5
                 return c(7)
                 """, new Object[]{"7,9:(9,8,7)"});
+    }
+
+    @Test
+    void horrificSnippets() {
+        // semi-resurrection
+        loadAssertSuccessAndRv("""
+                local a = { b = { c = 2 }}
+                local x = a.b
+                function f(z) z.b = 3 return 4 end
+                a, a.b.c = f(a), 5
+                return tostring(x.c)
+                """, new Object[]{"5"});
+
+        // assignment order
+        loadAssertSuccessAndRv("""
+                rv = ""
+                function f(a) rv=rv.."f;"; return 1 end
+                function f1(a) rv=rv.."f1;"; return 1.1 end
+                function f2(a) rv=rv.."f2;"; return 1.2 end
+                function g(a) rv=rv.."g;"; return 2 end
+                function h(a) rv=rv.."h;"; return 3 end
+
+                a = {}
+                setmetatable(a,a)
+                a["__newindex"] = function(k,v,a)
+                    rv = rv.."mt_"..tostring(v).."="..tostring(a)..";"
+                    rawset(k,v,a)
+                end
+
+                a_orig = a
+                a.a,a.a,a.a,a,a = f(1),f1(1),f2(1), g(1), h(1)
+                rv2 = rv.."|"..tostring(a).."|"..tostring(a_orig.a)
+                return rv2
+                """, new Object[]{"f;f1;f2;g;h;mt_a=1.2;|2|1"});
+
+        loadAssertSuccessAndRv("""
+                rv = ""
+                function f(a) rv=rv.."f;"; return 1 end
+                function f1(a) rv=rv.."f1;"; return 1.1 end
+                function f2(a) rv=rv.."f2;"; return 1.2 end
+                function g(a) rv=rv.."g;"; return 2 end
+                function h(a) rv=rv.."h;"; return 3 end
+
+                a = {}
+                setmetatable(a,a)
+                a["__newindex"] = function(k,v,a)
+                    rv = rv.."mt_"..tostring(v).."="..tostring(a)..";"
+                    --rawset(k,v,a)
+                end
+
+                a_orig = a
+                a.a,a.a,a.a,a,a = f(1),f1(1),f2(1), g(1), h(1)
+                rv2 = rv.."|"..tostring(a).."|"..tostring(a_orig.a)
+                return rv2
+                """, new Object[]{"f;f1;f2;g;h;mt_a=1.2;mt_a=1.1;mt_a=1;|2|nil"});
+
+
     }
 }
