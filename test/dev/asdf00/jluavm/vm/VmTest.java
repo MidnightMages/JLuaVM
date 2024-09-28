@@ -320,4 +320,36 @@ public class VmTest {
             }
         }
     }
+
+    @Test
+    void closing() {
+        loadAssertSuccessAndRv("""
+                rv = ""
+                do
+                    local a =  {__close = function() rv=rv.."closing"..";" end}
+                    local tbl = setmetatable(a,a)
+                    print("1")
+                    local b <close> = a
+                    print("2")
+                    local c <close> = a
+                    print("3")
+                end
+                
+                return rv""", new Object[]{"closing;closing;"});
+
+        loadAssertSuccessAndRv("""
+                rv = ""
+                do
+                    local a1 =  {__close = function() rv=rv.."closinga1"..";" end}
+                    setmetatable(a1,a1)
+                    local a2 =  {__close = function() rv=rv.."closinga2"..";" end}
+                    setmetatable(a2,a2)
+                    print("1")
+                    local b <close> = a1
+                    print("2")
+                    local c <close> = a2
+                    print("3")
+                end
+                return rv""", new Object[]{"closinga2;closinga1;"});
+    }
 }
