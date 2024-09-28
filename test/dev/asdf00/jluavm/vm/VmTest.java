@@ -39,6 +39,14 @@ public class VmTest {
         }
     }
 
+    private static void loadAssertSuccess(String s) {
+        for (var expanded : expandOptions(s)) {
+            var vm = new LuaVM();
+            Assertions.assertDoesNotThrow(() -> vm.load(expanded));
+            Assertions.assertDoesNotThrow(vm::run);
+        }
+    }
+
     @Test
     void simpleFunc() {
         loadAssertSuccessAndRv("""
@@ -185,6 +193,110 @@ public class VmTest {
                 end
                 
                 print("ok!")
+                """, LuaParserException.class);
+        loadAssertException("""
+                local TF = §true|false§
+                do
+                    if TF then
+                        goto dest
+                    end
+                    local a = 1
+                    §print(a)|§
+                    ::dest::
+                    print(1)
+                end
+                
+                print("ok!")
+                """, LuaParserException.class);
+
+        var allowedA = "adf";
+        var forbiddenA = "bcez";
+        var snippetA = """
+                print("b")
+                local looping = true
+                do
+                    goto %s
+                    ::a::
+                    do
+                        if not looping then
+                            looping = true
+                            goto a
+                        end
+                        ::b::
+                        local a2 = 2
+                        ::c::
+                    end
+                    ::d::
+                    local a = 1
+                    ::e::
+                    print("c")
+                    ::f::
+                end
+                print("done")
+                """;
+
+        for (var lbl : allowedA.toCharArray()){
+            loadAssertSuccess(snippetA.formatted(lbl));
+        }
+        for (var lbl : forbiddenA.toCharArray()){
+            loadAssertException(snippetA.formatted(lbl), LuaParserException.class);
+        }
+
+        var allowedB = "abcdf";
+        var forbiddenB = "ez";
+        var snippetB = """                
+                print("b")
+                local looping = false
+                do
+                    goto §a|d|f§
+                    ::a::
+                    do
+                        if not looping then
+                            looping = true
+                            goto %s
+                        end
+                        ::b::
+                        local a2 = 2
+                        ::c::
+                    end
+                    ::d::
+                    local a = 1
+                    ::e::
+                    print("c")
+                    ::f::
+                end
+                print("done")
+                """;
+
+        for (var lbl : allowedB.toCharArray()){
+            loadAssertSuccess(snippetB.formatted(lbl));
+        }
+        for (var lbl : forbiddenB.toCharArray()){
+            loadAssertException(snippetB.formatted(lbl), LuaParserException.class);
+        }
+
+        loadAssertException("""
+                print("b")
+                local looping = false
+                do
+                    goto f
+                    ::a::
+                    do
+                        if not looping then
+                            looping = true
+                            goto x
+                        end
+                        ::b::
+                        local a2 = 2
+                        ::c::
+                    end
+                    ::d::
+                    local a = 1
+                    ::e::
+                    print("c")
+                    ::f::
+                end
+                print("done")
                 """, LuaParserException.class);
     }
 }
