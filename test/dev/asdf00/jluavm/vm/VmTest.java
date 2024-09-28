@@ -1,6 +1,7 @@
 package dev.asdf00.jluavm.vm;
 
 import dev.asdf00.jluavm.LuaVM;
+import dev.asdf00.jluavm.parsing.exceptions.LuaParserException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -27,6 +28,14 @@ public class VmTest {
             var res = vm.run();
             Assertions.assertEquals(LuaVM.VmRunState.SUCCESS, res.state());
             Assertions.assertArrayEquals(expectedRets, res.returnVars());
+        }
+    }
+
+    private static void loadAssertException(String s, Class<? extends LuaParserException> exc) {
+        for (var expanded : expandOptions(s)) {
+            var vm = new LuaVM();
+            Assertions.assertThrows(exc, () -> vm.load(expanded));
+            //vm.run();
         }
     }
 
@@ -144,5 +153,38 @@ public class VmTest {
                 rv2 = rv.."|"..tostring(a).."|"..tostring(a_orig.a)
                 return rv2
                 """, new Object[]{"f;f1;f2;g;h;mt_a=1.2;mt_a=1.1;mt_a=1;|2|nil"});
+    }
+
+    @Test
+    void label() {
+        loadAssertException("""
+                ::a::
+                print("b")
+                ::a::
+                """, LuaParserException.class);
+
+        loadAssertException("""
+                ::a::
+                print("b")
+                do
+                    ::a::
+                    print("c")
+                end
+                """, LuaParserException.class);
+
+        loadAssertException("""
+                local TF = §true|false§
+                do
+                    if TF then
+                        goto dest
+                    end
+                    local a = 1
+                    §print(a)|§
+                    ::dest::
+                    print(1)
+                end
+                
+                print("ok!")
+                """, LuaParserException.class);
     }
 }
