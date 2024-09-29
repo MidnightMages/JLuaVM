@@ -45,7 +45,7 @@ public class Parser {
     }
 
     private void define(Token ident, int attributes) {
-        if (!symTab.add(ident.stVal(), (attributes & 1) == 1, (attributes & 2) == 2)) {
+        if (!symTab.add(ident, (attributes & 1) == 1, (attributes & 2) == 2)) {
             throw new LuaSemanticException(ident.pos(), "'%s' is defined twice!".formatted(cur.stVal()));
         }
     }
@@ -59,12 +59,13 @@ public class Parser {
     }
 
     private void Chunk() {
-        Block(null);
+        symTab.enterScope(true, false);
+        Block();
+        symTab.exitScope();
         check(EOF);
     }
 
-    private void Block(ArrayList<String> params) {
-        symTab.enterScope(params);
+    private void Block() {
         while (STAT_START.contains(ltok)) {
             Stat();
         }
@@ -77,7 +78,6 @@ public class Parser {
                 scan();
             }
         }
-        symTab.exitScope();
     }
 
     private static final EnumSet<TokenType> STAT_START = EnumSet.of(IDENT, LPAR, DCOLON, BREAK, GOTO, DO, WHILE, REPEAT, IF, FOR, FUNCTION, LOCAL);
@@ -102,41 +102,52 @@ public class Parser {
             }
             case DO -> {
                 scan();
-                Block(null);
+                symTab.enterScope(false, false);
+                Block();
+                symTab.exitScope();
                 check(END);
             }
             case WHILE -> {
                 scan();
                 Exp();
                 check(DO);
-                Block(null);
+                Block();
                 check(END);
             }
             case REPEAT -> {
                 scan();
-                Block(null);
+                symTab.enterScope(false, true);
+                Block();
                 check(UNTIL);
                 Exp();
+                symTab.exitScope();
             }
             case IF -> {
                 scan();
                 Exp();
                 check(THEN);
-                Block(null);
+                symTab.enterScope(false, false);
+                Block();
+                symTab.exitScope();
                 while (ltok == ELSEIF) {
                     scan();
                     Exp();
                     check(THEN);
-                    Block(null);
+                    symTab.enterScope(false, false);
+                    Block();
+                    symTab.exitScope();
                 }
                 if (ltok == ELSE) {
                     scan();
-                    Block(null);
+                    symTab.enterScope(false, false);
+                    Block();
+                    symTab.exitScope();
                 }
                 check(END);
             }
             case FOR -> {
                 scan();
+                symTab.enterScope(false, true);
                 check(IDENT);
                 if (ltok == ASSIGN) {
                     scan();
@@ -161,21 +172,25 @@ public class Parser {
                     ExpList();
                 }
                 check(DO);
-                Block(null);
+                Block();
+                symTab.exitScope();
                 check(END);
             }
             case FUNCTION -> {
                 scan();
                 check(IDENT);
+                define(cur, 0);
                 while (ltok == DOT) {
                     scan();
                     check(IDENT);
                 }
+                boolean hasSelf = false;
                 if (ltok == COLON) {
                     scan();
+                    hasSelf = true;
                     check(IDENT);
                 }
-                FuncBody();
+                FuncBody(hasSelf);
             }
             case LOCAL -> {
                 scan();
@@ -183,7 +198,7 @@ public class Parser {
                     scan();
                     check(IDENT);
                     define(cur, 0);
-                    FuncBody();
+                    FuncBody(false);
                 } else {
                     check(IDENT);
                     Token locVar = cur;
@@ -536,7 +551,7 @@ public class Parser {
             }
             case FUNCTION -> {
                 scan();
-                FuncBody();
+                FuncBody(false);
             }
             case LBRAC -> {
                 TableConstructor();
@@ -547,37 +562,37 @@ public class Parser {
         }
     }
 
-    private void FuncBody() {
+    private void FuncBody(boolean hasSelf) {
+        symTab.enterScope(true, false);
         check(LPAR);
-        ArrayList<String> pars;
+        if (hasSelf) {
+            define(new Token(IDENT, cur.pos(), "self"), 0);
+        }
         if (ltok == TDOT || ltok == IDENT) {
-            pars = ParList();
-        } else {
-            pars = new ArrayList<>();
+            ParList();
         }
         check(RPAR);
-        Block(pars);
+        Block();
+        symTab.exitScope();
         check(END);
     }
 
-    private ArrayList<String> ParList() {
-        ArrayList<String> pars = new ArrayList<>();
+    private void ParList() {
         if (ltok == TDOT) {
             scan();
         } else {
             check(IDENT);
-            pars.add(cur.stVal());
+            define(cur, 0);
             while (ltok == COMMA && lla.type() != TDOT) {
                 scan();
                 check(IDENT);
-                pars.add(cur.stVal());
+                define(cur, 0);
             }
             if (ltok == COMMA) {
                 scan();
                 check(TDOT);
             }
         }
-        return pars;
     }
 
     private static final EnumSet<TokenType> ARGS_START = EnumSet.of(LPAR, LITERAL_STRING, LBRAC);

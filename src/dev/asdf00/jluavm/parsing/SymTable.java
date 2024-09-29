@@ -1,5 +1,6 @@
 package dev.asdf00.jluavm.parsing;
 
+import dev.asdf00.jluavm.parsing.container.Token;
 import dev.asdf00.jluavm.parsing.container.VarInfo;
 
 import java.util.ArrayList;
@@ -8,28 +9,29 @@ import java.util.stream.Collectors;
 
 public class SymTable {
     private int idSupplier = 0;
-    private VarScope curScope;
-    private VarScope prevScope;
+    private VarScope rootScope = null;
+    private VarScope curScope = null;
 
-    public void enterScope(ArrayList<String> params) {
-        prevScope = curScope;
-        curScope = new VarScope(curScope, idSupplier++, params != null);
-        if (prevScope != null) {
-            prevScope.children.add(curScope);
+    public void enterScope(boolean isFunctionBorder, boolean isLoop) {
+        var prev = curScope;
+        curScope = new VarScope(curScope, idSupplier++, isFunctionBorder, isLoop);
+        if (rootScope == null) {
+            rootScope = curScope;
         }
-        if (params != null) {
-            for (var name : params) {
-                curScope.add(name, false, false);
-            }
+        if (prev != null) {
+            prev.children.add(curScope);
         }
     }
 
     public void exitScope() {
-        prevScope = curScope;
         curScope = curScope.exitScope();
     }
 
-    public boolean add(String ident, boolean isConst, boolean isClosable) {
+    public boolean label(Token label) {
+        return true;
+    }
+
+    public boolean add(Token ident, boolean isConst, boolean isClosable) {
         return curScope.add(ident, isConst, isClosable);
     }
 
@@ -37,34 +39,32 @@ public class SymTable {
         return curScope.get(ident, false);
     }
 
-    public VarInfo getFromPrevScope(String ident) {
-        return prevScope.get(ident, false);
-    }
-
     private static class VarScope {
         private final VarScope parent;
         public final ArrayList<VarScope> children = new ArrayList<>();
         private final int id;
         private final boolean isFunctionBorder;
+        private final boolean isLoop;
         private boolean containsClosable = false;
         private final HashMap<String, VarInfo> names = new HashMap<>();
 
-        public VarScope(VarScope parent, int id, boolean isFunctionBorder) {
+        public VarScope(VarScope parent, int id, boolean isFunctionBorder, boolean isLoop) {
             this.parent = parent;
             this.id = id;
             this.isFunctionBorder = isFunctionBorder;
+            this.isLoop = isLoop;
         }
 
         public VarScope exitScope() {
             return parent;
         }
 
-        public boolean add(String ident, boolean isConst, boolean isClosable) {
+        public boolean add(Token ident, boolean isConst, boolean isClosable) {
             if (names.containsKey(ident)) {
                 return false;
             }
             containsClosable |= isClosable;
-            names.put(ident, new VarInfo("_" + id + '$' + ident, isConst, isClosable));
+            names.put(ident.stVal(), new VarInfo(ident.pos().sourcePt(), "_" + id + '$' + ident, isConst, isClosable));
             return true;
         }
 

@@ -8,14 +8,12 @@ public class VarInfo {
     private static final int WRITTEN = 16;
     public final String jName;
     private int flags;
+    public final int sourcePt;
+    public int lastUsedPt;
 
-    public VarInfo(String jName) {
+    public VarInfo(int sourcePt, String jName, boolean isConst, boolean isClosable) {
         this.jName = jName;
-        flags = IS_GLOBAL;
-    }
-
-    public VarInfo(String jName, boolean isConst, boolean isClosable) {
-        this.jName = jName;
+        this.sourcePt = sourcePt;
         flags = 0;
         if (isConst) {
             flags |= CONSTANT;
