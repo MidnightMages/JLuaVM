@@ -205,4 +205,23 @@ public class ParserTest {
             }
         }
     }
+
+    @Test
+    void returns() {
+        for (var src : new String[]{
+                "return false",
+                "return false;",
+                "do return false end",
+                "do return false; end",
+        })
+            assertDoesNotThrow(() -> parse(src), () -> "Code: " + src);
+
+        for (var src : new String[]{
+                "return false;;",
+                "return false;;;",
+                "return false;;;;",
+                "return false;;;;;",
+        })
+            assertThrows(LuaParserException.class, () -> parse(src), () -> "Code: " + src);
+    }
 }
