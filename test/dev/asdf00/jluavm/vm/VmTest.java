@@ -191,7 +191,7 @@ public class VmTest {
                     ::dest::
                     print(1)
                 end
-                
+                                
                 print("ok!")
                 """, LuaParserException.class);
         loadAssertException("""
@@ -205,7 +205,7 @@ public class VmTest {
                     ::dest::
                     print(1)
                 end
-                
+                                
                 print("ok!")
                 """, LuaParserException.class);
 
@@ -235,10 +235,10 @@ public class VmTest {
                 print("done")
                 """;
 
-        for (var lbl : allowedA.toCharArray()){
+        for (var lbl : allowedA.toCharArray()) {
             loadAssertSuccess(snippetA.formatted(lbl));
         }
-        for (var lbl : forbiddenA.toCharArray()){
+        for (var lbl : forbiddenA.toCharArray()) {
             loadAssertException(snippetA.formatted(lbl), LuaParserException.class);
         }
 
@@ -268,10 +268,10 @@ public class VmTest {
                 print("done")
                 """;
 
-        for (var lbl : allowedB.toCharArray()){
+        for (var lbl : allowedB.toCharArray()) {
             loadAssertSuccess(snippetB.formatted(lbl));
         }
-        for (var lbl : forbiddenB.toCharArray()){
+        for (var lbl : forbiddenB.toCharArray()) {
             loadAssertException(snippetB.formatted(lbl), LuaParserException.class);
         }
 
@@ -298,6 +298,15 @@ public class VmTest {
                 end
                 print("done")
                 """, LuaParserException.class);
+
+        loadAssertException("""
+                do
+                    function a()
+                        goto lbl
+                    end
+                    ::lbl::
+                end
+                """, LuaParserException.class);
     }
 
     @Test
@@ -308,14 +317,14 @@ public class VmTest {
                 if (b == 0)
                     continue;
 
-                var expected = Math.floor((float)a / (float) b);
+                var expected = Math.floor((float) a / (float) b);
                 var vm = new LuaVM();
-                vm.load("return %s//%s".formatted((float)a,(float)b));
+                vm.load("return %s//%s".formatted((float) a, (float) b));
                 var res = vm.run();
                 Assertions.assertEquals(LuaVM.VmRunState.SUCCESS, res.state());
                 var rvs = res.returnVars();
-                Assertions.assertEquals(1,rvs.length);
-                var rv = (float)rvs[0];
+                Assertions.assertEquals(1, rvs.length);
+                var rv = (float) rvs[0];
                 Assertions.assertEquals(expected, rv, 0.000001f);
             }
         }
@@ -334,7 +343,7 @@ public class VmTest {
                     local c <close> = a
                     print("3")
                 end
-                
+                                
                 return rv""", new Object[]{"closing;closing;"});
 
         loadAssertSuccessAndRv("""
@@ -351,5 +360,36 @@ public class VmTest {
                     print("3")
                 end
                 return rv""", new Object[]{"closinga2;closinga1;"});
+
+        loadAssertSuccessAndRv("""
+                origPrint = print
+                                
+                rv = ""
+                print = function(a) rv = rv .. tostring(a)..";" end
+                                
+                i = 0
+                function f(x)
+                    print("fval"..tostring(x))
+                    i=i+1
+                    return i>2
+                end
+                                
+                function getMt()
+                   local t = {["__close"]=function() print("closing") end, ["name"]="a table"}
+                   setmetatable(t,t)
+                   return t
+                end
+                                
+                repeat
+                    print("iter")
+                    local a <close> = getMt()
+                    print("b")
+                until f(a.name)
+                print("c")
+                print("done")
+                                
+                origPrint(rv)
+                return rv
+                """, new Object[]{"iter;b;fvala table;closing;iter;b;fvala table;closing;iter;b;fvala table;closing;c;done;"});
     }
 }
