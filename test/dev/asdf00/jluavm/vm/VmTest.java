@@ -391,5 +391,28 @@ public class VmTest {
                 origPrint(rv)
                 return rv
                 """, new Object[]{"iter;b;fvala table;closing;iter;b;fvala table;closing;iter;b;fvala table;closing;c;done;"});
+
+        loadAssertException("""
+                §local|§ mt = {["__close"]=function() end}
+                setmetatable(mt,mt)
+                a <§close|const§> = mt
+                """, LuaParserException.class);
+
+        loadAssertSuccessAndRv("""
+                §local|§ mt = {["__close"]=function() end}
+                setmetatable(mt,mt)
+                local a <§close|const§> = mt
+                return "ok
+                """, new Object[]{"ok"});
+    }
+
+    @Test
+    void globals() {
+        loadAssertSuccessAndRv("""
+                do a = 1 end
+                function b() a = 2 end
+                b()
+                return a
+                """, new Object[]{2});
     }
 }

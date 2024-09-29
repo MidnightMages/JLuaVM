@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
 
+import static dev.asdf00.jluavm.Util.expandOptions;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class LexerTest {
@@ -435,10 +436,10 @@ public class LexerTest {
                 }
             }
             if (ok)
-                assertThrows(LuaLexerException.class, () -> lexAndCollectTokens("a = '\\" + l + "'"), "Char was: "+l);
+                assertThrows(LuaLexerException.class, () -> lexAndCollectTokens("a = '\\" + l + "'"), "Char was: " + l);
         }
         var toks = lexAssertTokens("a = '\\1234'", "IDENT;ASSIGN;LITERAL_STRING;EOF");
-        assertEquals("{4",toks.get(2).stVal());
+        assertEquals("{4", toks.get(2).stVal());
 
         var toks2 = lexAssertTokens("a = '\\xAA \\u{57}'", "IDENT;ASSIGN;LITERAL_STRING;EOF");
 
@@ -448,5 +449,15 @@ public class LexerTest {
     @Test
     void invalidIdentifier() {
         assertThrows(LuaLexerException.class, () -> lexAndCollectTokens("$ = 1"));
+    }
+
+    @Test
+    void invalidStringMarkers() {
+        var snippets = new String[]{
+                "local a = [=§a|=a|==a|,|;|-§[abcef]]",
+        };
+        for (var s : expandOptions(snippets)) {
+            assertThrows(LuaLexerException.class, () -> lexAndCollectTokens(s), ()->"Code was "+s );
+        }
     }
 }

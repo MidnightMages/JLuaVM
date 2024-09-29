@@ -2,12 +2,12 @@ package dev.asdf00.jluavm.parser;
 
 import dev.asdf00.jluavm.parsing.Parser;
 import dev.asdf00.jluavm.parsing.SymTable;
+import dev.asdf00.jluavm.parsing.exceptions.LuaLexerException;
 import dev.asdf00.jluavm.parsing.exceptions.LuaParserException;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.stream.Stream;
+import java.util.function.Supplier;
 
 import static dev.asdf00.jluavm.Constants.largeValidLuaProgram;
 import static dev.asdf00.jluavm.Util.expandOptions;
@@ -32,7 +32,8 @@ public class ParserTest {
             var m = rscope.getClass().getDeclaredMethod("toFullString");
             m.setAccessible(true);
             return (String) m.invoke(rscope);
-        } catch (ReflectiveOperationException e) {
+        }
+        catch (ReflectiveOperationException e) {
             throw new RuntimeException(e);
         }
     }
@@ -77,12 +78,14 @@ public class ParserTest {
 
     @Test
     void testBlock2() {
-        var parser = parse("""
-                subscribedCoroutineMap[eventKey] = 1
-                return 1
-                """);
+        var src = """
+                §;|§subscribedCoroutineMap[eventKey] = 1§;do end|§
+                §;|§return 1§;||;;|;;;§
+                """;
+        for (var expanded : expandOptions(src))
+            assertDoesNotThrow(() -> parse(expanded), "Code was: " + expanded);
 
-        parser = parser;
+        src = src;
     }
 
     @Test
@@ -152,12 +155,54 @@ public class ParserTest {
                 end
                 """);
         assertEquals("VarScope {parent=-1, id=0, funcBorder=false, closable=false, names={" +
-                "a=VarInfo{jName='_0$a', isGlobal=false, isConstant=false, isClosable=false, isInClosure=true, isWritten=true}, " +
-                "b=VarInfo{jName='_0$b', isGlobal=false, isConstant=false, isClosable=false, isInClosure=false, isWritten=false}, " +
-                "c=VarInfo{jName='_0$c', isGlobal=false, isConstant=false, isClosable=false, isInClosure=false, isWritten=false}}, " +
-                "children=[VarScope {parent=0, id=1, funcBorder=true, closable=false, names={" +
-                "d=VarInfo{jName='_1$d', isGlobal=false, isConstant=false, isClosable=false, isInClosure=false, isWritten=false}, " +
-                "e=VarInfo{jName='_1$e', isGlobal=false, isConstant=false, isClosable=false, isInClosure=false, isWritten=false}}, " +
-                "children=[]}]}", getSymTab(parser));
+                     "a=VarInfo{jName='_0$a', isGlobal=false, isConstant=false, isClosable=false, isInClosure=true, isWritten=true}, " +
+                     "b=VarInfo{jName='_0$b', isGlobal=false, isConstant=false, isClosable=false, isInClosure=false, isWritten=false}, " +
+                     "c=VarInfo{jName='_0$c', isGlobal=false, isConstant=false, isClosable=false, isInClosure=false, isWritten=false}}, " +
+                     "children=[VarScope {parent=0, id=1, funcBorder=true, closable=false, names={" +
+                     "d=VarInfo{jName='_1$d', isGlobal=false, isConstant=false, isClosable=false, isInClosure=false, isWritten=false}, " +
+                     "e=VarInfo{jName='_1$e', isGlobal=false, isConstant=false, isClosable=false, isInClosure=false, isWritten=false}}, " +
+                     "children=[]}]}", getSymTab(parser));
+    }
+
+    @Test
+    void simpleLoops() {
+        var src = new String[]{
+                "while true do §return false|§ end",
+                "repeat §return false|§ until true§;|§",
+                "for §k,|§v in pairs({}) do §return false||bla('a')§ end",
+                "for i=1,4§|,2§ do §return false||bla('a')§ end",
+        };
+        for (var expanded : expandOptions(src))
+            assertDoesNotThrow(() -> parse(expanded), () -> "Code: " + expanded);
+    }
+
+    void assertThrowsLexerOrParserException(Runnable r, Supplier<String> err) {
+        try {
+            r.run();
+        }
+        catch (LuaLexerException | LuaParserException ignored) {
+        }
+        catch (Exception ex) {
+            Assertions.fail(err.get(), ex);
+        }
+    }
+
+    @Test
+    void incompleteStrings() {
+        var snippets = new String[]{
+                "local a = [[#abcde#fg]",
+                "local a = [a b cdef ]]§]|§§]]|§§]]]]|§",
+                "local a = [§=|==§[a # a]§=]|| §]",
+        };
+        for (var s : expandOptions(snippets)) {
+            var segments = s.split("#", -1);
+            String src = "";
+            for (int i = 0; i < segments.length; i++) {
+                src += segments[i];
+                if (i != 0) src += " ";
+                final String src2 = src;
+                assertThrowsLexerOrParserException(() -> parse(src2), () -> "Code was " + src2);
+            }
+        }
     }
 }
