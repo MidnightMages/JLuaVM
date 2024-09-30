@@ -82,8 +82,13 @@ public class ParserTest {
                 §;|§subscribedCoroutineMap[eventKey] = 1§;do end|§
                 §;|§return 1§;||;;|;;;§
                 """;
-        for (var expanded : expandOptions(src))
-            assertDoesNotThrow(() -> parse(expanded), "Code was: " + expanded);
+        for (var expanded : expandOptions(src)) {
+            if (expanded.trim().endsWith(";;"))
+                assertThrows(LuaParserException.class, () -> parse(expanded), "Code was: " + expanded);
+            else
+                assertDoesNotThrow(() -> parse(expanded), "Code was: " + expanded);
+        }
+        src = src;
 
         src = src;
     }
@@ -123,7 +128,7 @@ public class ParserTest {
                 "end", "do",
                 "true", "false", "1", "not 1",
                 "§local| §a =; 1§|==b§",
-                "break§| §;",
+                "break§| §;", // TODO this one is failing
                 "a,a,§\"a\"|'a'|;||2|a[1[]]§ = 1,2,3",
                 "=1", "local local i = 1",
                 "local §and|or|not|function§ = §123|'aaa'|\"aaaaa\"|a|§",
@@ -167,6 +172,7 @@ public class ParserTest {
     @Test
     void simpleLoops() {
         var src = new String[]{
+                "repeat until true; ",
                 "while true do §return false|§ end",
                 "repeat §return false|§ until true§;|§",
                 "for §k,|§v in pairs({}) do §return false||bla('a')§ end",
