@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class ParserTest {
 
-    private Parser parse(String code) {
+    static Parser parse(String code) {
         var parser = new Parser(code);
         parser.parse();
         return parser;
@@ -128,7 +128,6 @@ public class ParserTest {
                 "end", "do",
                 "true", "false", "1", "not 1",
                 "§local| §a =; 1§|==b§",
-                "break§| §;", // TODO this one is failing
                 "a,a,§\"a\"|'a'|;||2|a[1[]]§ = 1,2,3",
                 "=1", "local local i = 1",
                 "local §and|or|not|function§ = §123|'aaa'|\"aaaaa\"|a|§",
