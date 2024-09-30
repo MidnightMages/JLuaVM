@@ -80,7 +80,7 @@ public class Parser {
         }
     }
 
-    private static final EnumSet<TokenType> STAT_START = EnumSet.of(IDENT, LPAR, DCOLON, BREAK, GOTO, DO, WHILE, REPEAT, IF, FOR, FUNCTION, LOCAL);
+    private static final EnumSet<TokenType> STAT_START = EnumSet.of(SEMICOLON, IDENT, LPAR, DCOLON, BREAK, GOTO, DO, WHILE, REPEAT, IF, FOR, FUNCTION, LOCAL);
     private void Stat() {
         switch (ltok) {
             case SEMICOLON -> {
