@@ -6,10 +6,13 @@ import dev.asdf00.jluavm.parsing.container.VarInfo;
 import dev.asdf00.jluavm.parsing.exceptions.LuaParserException;
 import dev.asdf00.jluavm.parsing.exceptions.LuaLoadingException;
 import dev.asdf00.jluavm.parsing.exceptions.LuaSemanticException;
+import dev.asdf00.jluavm.parsing.ir.IRBlock;
+import dev.asdf00.jluavm.parsing.ir.IRFunction;
 import dev.asdf00.jluavm.utils.Tuple;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.Stack;
 
 import static dev.asdf00.jluavm.parsing.container.TokenType.*;
 
@@ -20,6 +23,9 @@ public class Parser {
     private Token cur;  // current token
     private Token la;  // lookahead token
     private Token lla;  // lookahead token 2
+
+    private final Stack<IRFunction> funcStack = new Stack<>();
+    private Stack<IRBlock> blockStack;
 
     public Parser(String input) {
         symTab = new SymTable();
