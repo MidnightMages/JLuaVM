@@ -1,8 +1,9 @@
 package dev.asdf00.jluavm.rtutils;
 import dev.asdf00.jluavm.types.*;
+import dev.asdf00.jluavm.exceptions.runtime.*;
 
 public class BinaryOpNode_RTIMPL$$ {
-    public static LuaVariable$ IL__add(LuaVariable$ x, LuaVariable$ y){
+    public static LuaVariable$ IL__add(LuaVariable$ x, LuaVariable$ y) {
         if (!x.isNumber()) { // if arg is not a number, it has to be a table, otherwise fail
             var tbl = ((LuaTable$) x);
             var f = tbl.getMtFunc("add");
@@ -19,9 +20,12 @@ public class BinaryOpNode_RTIMPL$$ {
         }
         assert x instanceof LuaNumber$;
         assert y instanceof LuaNumber$;
-        return ((LuaNumber$)x).add((LuaNumber$)y);
+        if (!x.isNumber() || !y.isNumber()) {
+            throw new LuaTypeError("attempted to perform operation '%s add %s'".formatted(x.getType().fancyName, y.getType().fancyName));
+        }
+        return ((LuaNumber$) x).add((LuaNumber$) y);
     }
-    public static LuaVariable$ IL__sub(LuaVariable$ x, LuaVariable$ y){
+    public static LuaVariable$ IL__sub(LuaVariable$ x, LuaVariable$ y) {
         if (!x.isNumber()) { // if arg is not a number, it has to be a table, otherwise fail
             var tbl = ((LuaTable$) x);
             var f = tbl.getMtFunc("sub");
@@ -38,9 +42,12 @@ public class BinaryOpNode_RTIMPL$$ {
         }
         assert x instanceof LuaNumber$;
         assert y instanceof LuaNumber$;
-        return ((LuaNumber$)x).sub((LuaNumber$)y);
+        if (!x.isNumber() || !y.isNumber()) {
+            throw new LuaTypeError("attempted to perform operation '%s sub %s'".formatted(x.getType().fancyName, y.getType().fancyName));
+        }
+        return ((LuaNumber$) x).sub((LuaNumber$) y);
     }
-    public static LuaVariable$ IL__mul(LuaVariable$ x, LuaVariable$ y){
+    public static LuaVariable$ IL__mul(LuaVariable$ x, LuaVariable$ y) {
         if (!x.isNumber()) { // if arg is not a number, it has to be a table, otherwise fail
             var tbl = ((LuaTable$) x);
             var f = tbl.getMtFunc("mul");
@@ -57,9 +64,12 @@ public class BinaryOpNode_RTIMPL$$ {
         }
         assert x instanceof LuaNumber$;
         assert y instanceof LuaNumber$;
-        return ((LuaNumber$)x).mul((LuaNumber$)y);
+        if (!x.isNumber() || !y.isNumber()) {
+            throw new LuaTypeError("attempted to perform operation '%s mul %s'".formatted(x.getType().fancyName, y.getType().fancyName));
+        }
+        return ((LuaNumber$) x).mul((LuaNumber$) y);
     }
-    public static LuaVariable$ IL__div(LuaVariable$ x, LuaVariable$ y){
+    public static LuaVariable$ IL__div(LuaVariable$ x, LuaVariable$ y) {
         if (!x.isNumber()) { // if arg is not a number, it has to be a table, otherwise fail
             var tbl = ((LuaTable$) x);
             var f = tbl.getMtFunc("div");
@@ -76,9 +86,12 @@ public class BinaryOpNode_RTIMPL$$ {
         }
         assert x instanceof LuaNumber$;
         assert y instanceof LuaNumber$;
-        return ((LuaNumber$)x).div((LuaNumber$)y);
+        if (!x.isNumber() || !y.isNumber()) {
+            throw new LuaTypeError("attempted to perform operation '%s div %s'".formatted(x.getType().fancyName, y.getType().fancyName));
+        }
+        return ((LuaNumber$) x).div((LuaNumber$) y);
     }
-    public static LuaVariable$ IL__idiv(LuaVariable$ x, LuaVariable$ y){
+    public static LuaVariable$ IL__idiv(LuaVariable$ x, LuaVariable$ y) {
         if (!x.isNumber()) { // if arg is not a number, it has to be a table, otherwise fail
             var tbl = ((LuaTable$) x);
             var f = tbl.getMtFunc("idiv");
@@ -95,9 +108,12 @@ public class BinaryOpNode_RTIMPL$$ {
         }
         assert x instanceof LuaNumber$;
         assert y instanceof LuaNumber$;
-        return ((LuaNumber$)x).idiv((LuaNumber$)y);
+        if (!x.isNumber() || !y.isNumber()) {
+            throw new LuaTypeError("attempted to perform operation '%s idiv %s'".formatted(x.getType().fancyName, y.getType().fancyName));
+        }
+        return ((LuaNumber$) x).idiv((LuaNumber$) y);
     }
-    public static LuaVariable$ IL__mod(LuaVariable$ x, LuaVariable$ y){
+    public static LuaVariable$ IL__mod(LuaVariable$ x, LuaVariable$ y) {
         if (!x.isNumber()) { // if arg is not a number, it has to be a table, otherwise fail
             var tbl = ((LuaTable$) x);
             var f = tbl.getMtFunc("mod");
@@ -114,9 +130,12 @@ public class BinaryOpNode_RTIMPL$$ {
         }
         assert x instanceof LuaNumber$;
         assert y instanceof LuaNumber$;
-        return ((LuaNumber$)x).mod((LuaNumber$)y);
+        if (!x.isNumber() || !y.isNumber()) {
+            throw new LuaTypeError("attempted to perform operation '%s mod %s'".formatted(x.getType().fancyName, y.getType().fancyName));
+        }
+        return ((LuaNumber$) x).mod((LuaNumber$) y);
     }
-    public static LuaVariable$ IL__pow(LuaVariable$ x, LuaVariable$ y){
+    public static LuaVariable$ IL__pow(LuaVariable$ x, LuaVariable$ y) {
         if (!x.isNumber()) { // if arg is not a number, it has to be a table, otherwise fail
             var tbl = ((LuaTable$) x);
             var f = tbl.getMtFunc("pow");
@@ -133,6 +152,9 @@ public class BinaryOpNode_RTIMPL$$ {
         }
         assert x instanceof LuaNumber$;
         assert y instanceof LuaNumber$;
-        return ((LuaNumber$)x).pow((LuaNumber$)y);
+        if (!x.isNumber() || !y.isNumber()) {
+            throw new LuaTypeError("attempted to perform operation '%s pow %s'".formatted(x.getType().fancyName, y.getType().fancyName));
+        }
+        return ((LuaNumber$) x).pow((LuaNumber$) y);
     }
 }

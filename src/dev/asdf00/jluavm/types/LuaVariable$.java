@@ -24,6 +24,10 @@ public abstract class LuaVariable$ {
         return isType(LuaType.NUM);
     }
 
+    public LuaType getType() {
+        return varKind;
+    }
+
     public enum LuaType {
         NIL("nil"),
         BOOL("boolean"),

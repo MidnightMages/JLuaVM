@@ -26,10 +26,13 @@ internal partial class Program {
 
 """;
         }
-        rv += $"""
+        rv += $$"""
         assert x instanceof LuaNumber$;
         assert y instanceof LuaNumber$;
-        return {directCode.TrimEnd(';')};
+        if (!x.isNumber() || !y.isNumber()) {
+            throw new LuaTypeError("attempted to perform operation '%s {{opName}} %s'".formatted(x.getType().fancyName, y.getType().fancyName));
+        }
+        return {{directCode.TrimEnd(';')}};
 """;
         return EndOfLineComments().Replace(rv, string.Empty);
     }
@@ -37,7 +40,7 @@ internal partial class Program {
     private static void Main(string[] args) {
 
         // reference https://www.lua.org/manual/5.4/manual.html#2.4
-        string FCallNumNum(string funcName) => $"((LuaNumber$)x).{funcName}((LuaNumber$)y)";
+        string FCallNumNum(string funcName) => $"((LuaNumber$) x).{funcName}((LuaNumber$) y)";
         var binaryOperations = new Dictionary<string, string>() {
             {"add", FCallNumNum("add") },
             {"sub", FCallNumNum("sub") },
@@ -80,6 +83,7 @@ public class BinaryOpNode$$ extends Node {
         });
         GenFile("dev.asdf00.jluavm.rtutils.BinaryOpNode_RTIMPL", () => $$"""
 import dev.asdf00.jluavm.types.*;
+import dev.asdf00.jluavm.exceptions.runtime.*;
 
 public class BinaryOpNode_RTIMPL$$ {
 {{GetGeneratedBodies()}}
@@ -87,7 +91,7 @@ public class BinaryOpNode_RTIMPL$$ {
 """);
 
         string GetGeneratedBodies() => binaryOperations.Select((kv) => $$"""
-    public static LuaVariable$ IL__{{kv.Key}}(LuaVariable$ x, LuaVariable$ y){
+    public static LuaVariable$ IL__{{kv.Key}}(LuaVariable$ x, LuaVariable$ y) {
 {{GetBinaryOperationSnippetXY(kv.Key, kv.Value)}}
     }
 """).Aggregate((a, b) => a + "\n" + b);
