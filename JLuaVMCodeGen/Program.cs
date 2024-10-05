@@ -57,7 +57,6 @@ internal partial class Program {
             return $$"""
 import dev.asdf00.jluavm.parsing.container.TokenType;
 import dev.asdf00.jluavm.parsing.ir.Node;
-import dev.asdf00.jluavm.types.*;
 
 import java.util.Objects;
 
@@ -74,18 +73,24 @@ public class BinaryOpNode$$ extends Node {
 
     @Override
     public String generate() {
-        return P("BinaryOpNode$$.IL__%s(%s, %s)".formatted(Objects.requireNonNull(tokenType.metatableFuncName), x.generate(), y.generate()));
+        return P("BinaryOpNode_RTIMPL$$.IL__%s(%s, %s)".formatted(Objects.requireNonNull(tokenType.metatableFuncName), x.generate(), y.generate()));
     }
-{{GetGeneratedBodies()}}
 }
 """;
+        });
+        GenFile("dev.asdf00.jluavm.rtutils.BinaryOpNode_RTIMPL", () => $$"""
+import dev.asdf00.jluavm.types.*;
 
-            string GetGeneratedBodies() => binaryOperations.Select((kv) => $$"""
+public class BinaryOpNode_RTIMPL$$ {
+{{GetGeneratedBodies()}}
+}
+""");
+
+        string GetGeneratedBodies() => binaryOperations.Select((kv) => $$"""
     public static LuaVariable$ IL__{{kv.Key}}(LuaVariable$ x, LuaVariable$ y){
 {{GetBinaryOperationSnippetXY(kv.Key, kv.Value)}}
     }
 """).Aggregate((a, b) => a + "\n" + b);
-        });
     }
 
     [GeneratedRegex("//.*?$")]
