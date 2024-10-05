@@ -12,7 +12,7 @@ internal partial class Program {
         File.WriteAllText(Path.Combine(jluavmRootDir, "src", @namespace.Replace('.', Path.DirectorySeparatorChar)) + "$$.java", $"package {@namespace[..@namespace.LastIndexOf('.')]};\n" + contents.Invoke());
     }
 
-    private static string GetBinaryOperationSnippetXY(string opName, string directCode) {
+    private static string GetBinaryOperationSnippetXY(string opName, string directCode, CoercionType coercionMethod) {
         var rv = "";
         foreach (var varname in "xy") {
             rv += $$"""
@@ -26,12 +26,20 @@ internal partial class Program {
 
 """;
         }
+        if (coercionMethod != CoercionType.None) {
+            foreach (var varname in "xy") {
+                rv += $"""
+        {varname} = IL___COERCETo{coercionMethod switch { CoercionType.ToNum => "Num", CoercionType.ToString => "Str", _ => throw new NotImplementedException() }}({varname});
+
+""";
+            }
+        }
         rv += $$"""
-        assert x instanceof LuaNumber$;
-        assert y instanceof LuaNumber$;
         if (!x.isNumber() || !y.isNumber()) {
             throw new LuaTypeError("attempted to perform operation '%s {{opName}} %s'".formatted(x.getType().fancyName, y.getType().fancyName));
-        }
+        }        
+        assert x instanceof LuaNumber$;
+        assert y instanceof LuaNumber$;
         return {{directCode.TrimEnd(';')}};
 """;
         return EndOfLineComments().Replace(rv, string.Empty);
@@ -41,17 +49,17 @@ internal partial class Program {
 
         // reference https://www.lua.org/manual/5.4/manual.html#2.4
         string FCallNumNum(string funcName) => $"((LuaNumber$) x).{funcName}((LuaNumber$) y)";
-        var binaryOperations = new Dictionary<string, string>() {
-            {"add", FCallNumNum("add") },
-            {"sub", FCallNumNum("sub") },
+        var binaryOperations = new List<MethodDef>() {
+            new("add", FCallNumNum("add"), CoercionType.ToNum),
+            new("sub", FCallNumNum("sub"), CoercionType.ToNum),
 
-            {"mul", FCallNumNum("mul") },
-            {"div", FCallNumNum("div") },
-            {"idiv", FCallNumNum("idiv") },
-            {"mod", FCallNumNum("mod") },
+            new("mul", FCallNumNum("mul"), CoercionType.ToNum),
+            new("div", FCallNumNum("div"), CoercionType.ToNum),
+            new("idiv", FCallNumNum("idiv"), CoercionType.ToNum),
+            new("mod", FCallNumNum("mod"), CoercionType.ToNum),
 
 
-            {"pow", FCallNumNum("pow") },
+            new("pow", FCallNumNum("pow"), CoercionType.ToNum),
         };
 
 
@@ -86,13 +94,21 @@ import dev.asdf00.jluavm.types.*;
 import dev.asdf00.jluavm.exceptions.runtime.*;
 
 public class BinaryOpNode_RTIMPL$$ {
+    public static LuaVariable$ IL___COERCEToNum(LuaVariable$ a){
+        return a; // TODO return a LuaNumber$ if coercion is possible, otherwise return the argument a
+    }
+
+    public static LuaVariable$ IL___COERCEToStr(LuaVariable$ a){
+        return a; // TODO return a LuaString$ if coercion is possible, otherwise return the argument a
+    }
 {{GetGeneratedBodies()}}
 }
 """);
 
         string GetGeneratedBodies() => binaryOperations.Select((kv) => $$"""
-    public static LuaVariable$ IL__{{kv.Key}}(LuaVariable$ x, LuaVariable$ y) {
-{{GetBinaryOperationSnippetXY(kv.Key, kv.Value)}}
+
+    public static LuaVariable$ IL__{{kv.FuncName}}(LuaVariable$ x, LuaVariable$ y) {
+{{GetBinaryOperationSnippetXY(kv.FuncName, kv.DirectSnippet, kv.CoercionKind)}}
     }
 """).Aggregate((a, b) => a + "\n" + b);
     }
@@ -100,3 +116,5 @@ public class BinaryOpNode_RTIMPL$$ {
     [GeneratedRegex("//.*?$")]
     private static partial Regex EndOfLineComments();
 }
+
+internal record struct MethodDef(string FuncName, string DirectSnippet, CoercionType CoercionKind) {}
