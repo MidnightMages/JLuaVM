@@ -31,14 +31,14 @@ public enum TokenType {
     BAND("&"),
     SHL("<<"),
     SHR(">>"),
-    ADD("+"),
-    SUB("-"),
-    MULT("*"),
+    ADD("+","add"),
+    SUB("-","sub"),
+    MULT("*","mul"),
     DIV("/", "div"),
-    FDIV("//"),
-    MOD("%"),
+    FDIV("//", "idiv"),
+    MOD("%","mod"),
     HASH("#"),
-    EXPONENT("^"),
+    EXPONENT("^", "pow"),
 
 
     // keywords

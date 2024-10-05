@@ -10,7 +10,7 @@ import dev.asdf00.jluavm.parsing.ir.IRBlock;
 import dev.asdf00.jluavm.parsing.ir.IRFunction;
 import dev.asdf00.jluavm.parsing.ir.Node;
 import dev.asdf00.jluavm.parsing.ir.controlflow.GotoNode;
-import dev.asdf00.jluavm.parsing.ir.operations.BinaryOpNode$;
+import dev.asdf00.jluavm.parsing.ir.operations.BinaryOpNode$$;
 import dev.asdf00.jluavm.utils.Tuple;
 
 import java.util.ArrayList;
@@ -512,53 +512,38 @@ public class Parser {
         }
     }
 
-    private void BinOp8() {
+    private Node BinOp8() {
         // + -
-        BinOp9();
+        var result = BinOp9();
         for (;;) {
-            if (ltok == ADD) {
+            if (ltok == ADD || ltok == SUB) {
                 scan();
-            } else if (ltok == SUB) {
-                scan();
+                result = new BinaryOpNode$$(result, BinOp9(), ltok);
             } else {
                 break;
             }
-            BinOp9();
         }
+        return result;
     }
 
     // private Node BinOp9() {
-    private void BinOp9() {
+    private Node BinOp9() {
         // * / // %
         UnOp();
-        Node result = null; //UnOp();
+        Node result = null; //UnOp(); // TODO move the UnOp down and replace null
         loop: for (;;) {
             switch (ltok) {
-                case MULT -> {
+                case MULT, DIV, FDIV, MOD -> {
                     scan();
                     UnOp();
-                }
-                case DIV -> {
-                    scan();
-                    UnOp();
-
-                    Node y = null;//UnOp();
-                    result = new BinaryOpNode$(result, y, ltok);
-                }
-                case FDIV -> {
-                    scan();
-                    UnOp();
-                }
-                case MOD -> {
-                    scan();
-                    UnOp();
+                    result = new BinaryOpNode$$(result, null, ltok); // TODO move the UnOp down and replace null
                 }
                 default -> {
                     break loop;
                 }
             }
         }
-        // return result;
+        return result;
     }
 
     private void UnOp() {
@@ -585,13 +570,16 @@ public class Parser {
         BinOp10();
     }
 
-    private void BinOp10() {
+    private Node BinOp10() {
         // ^
         TermExp();
+        Node result = null; //UnOp(); // TODO move the TermExp down and replace null
         while (ltok == EXPONENT) {
             scan();
             TermExp();
+            result = new BinaryOpNode$$(result, null, ltok); // TODO move the TermExp down and replace null
         }
+        return result;
     }
 
     private void TermExp() {
