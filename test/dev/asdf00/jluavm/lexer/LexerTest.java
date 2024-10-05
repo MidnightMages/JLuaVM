@@ -3,7 +3,7 @@ package dev.asdf00.jluavm.lexer;
 import dev.asdf00.jluavm.parsing.Lexer;
 import dev.asdf00.jluavm.parsing.container.Token;
 import dev.asdf00.jluavm.parsing.container.TokenType;
-import dev.asdf00.jluavm.parsing.exceptions.LuaLexerException;
+import dev.asdf00.jluavm.exceptions.loading.LuaLexerException;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;

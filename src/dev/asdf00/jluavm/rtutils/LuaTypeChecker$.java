@@ -1,6 +1,6 @@
 package dev.asdf00.jluavm.rtutils;
 
-import dev.asdf00.jluavm.parsing.exceptions.LuaTypeError;
+import dev.asdf00.jluavm.exceptions.runtime.LuaTypeError;
 import dev.asdf00.jluavm.types.LuaVariable$;
 
 public class LuaTypeChecker$ {
@@ -10,7 +10,7 @@ public class LuaTypeChecker$ {
             return (T) val;
         } else {
             // TODO: add msg
-            throw new LuaTypeError();
+            throw new LuaTypeError(null);
         }
     }
 

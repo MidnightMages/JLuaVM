@@ -1,7 +1,7 @@
 package dev.asdf00.jluavm.vm;
 
 import dev.asdf00.jluavm.LuaVM;
-import dev.asdf00.jluavm.parsing.exceptions.LuaParserException;
+import dev.asdf00.jluavm.exceptions.loading.LuaParserException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 

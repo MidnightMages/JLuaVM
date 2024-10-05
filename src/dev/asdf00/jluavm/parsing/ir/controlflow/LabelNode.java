@@ -2,7 +2,7 @@ package dev.asdf00.jluavm.parsing.ir.controlflow;
 
 import dev.asdf00.jluavm.parsing.container.LabelInfo;
 import dev.asdf00.jluavm.parsing.container.VarInfo;
-import dev.asdf00.jluavm.parsing.exceptions.LuaSemanticException;
+import dev.asdf00.jluavm.exceptions.loading.LuaSemanticException;
 import dev.asdf00.jluavm.parsing.ir.Node;
 
 public class LabelNode extends Node {

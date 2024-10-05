@@ -1,8 +1,7 @@
 package dev.asdf00.jluavm.parser;
 
-import dev.asdf00.jluavm.parsing.exceptions.LuaLexerException;
-import dev.asdf00.jluavm.parsing.exceptions.LuaLoadingException;
-import dev.asdf00.jluavm.parsing.exceptions.LuaParserException;
+import dev.asdf00.jluavm.exceptions.LuaLoadingException;
+import dev.asdf00.jluavm.exceptions.loading.LuaParserException;
 import org.junit.jupiter.api.Test;
 
 import java.util.function.Consumer;

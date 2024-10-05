@@ -1,6 +1,6 @@
 package dev.asdf00.jluavm.parsing.container;
 
-import dev.asdf00.jluavm.parsing.exceptions.LuaSemanticException;
+import dev.asdf00.jluavm.exceptions.loading.LuaSemanticException;
 import dev.asdf00.jluavm.parsing.ir.controlflow.GotoNode;
 import dev.asdf00.jluavm.parsing.ir.controlflow.LabelNode;
 
