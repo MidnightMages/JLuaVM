@@ -16,7 +16,13 @@ import static org.junit.jupiter.api.Assertions.*;
 public class ParserTest {
 
     static Parser parse(String code) {
-        var parser = new Parser(code);
+        var parser = new Parser(new Supplier<>() {
+            private int cid = 0;
+            @Override
+            public String get() {
+                return "$fcls_" + (cid++);
+            }
+        }, code);
         parser.parse();
         return parser;
     }

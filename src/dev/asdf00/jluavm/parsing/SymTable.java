@@ -1,11 +1,14 @@
 package dev.asdf00.jluavm.parsing;
 
+import dev.asdf00.jluavm.parsing.container.LabelInfo;
 import dev.asdf00.jluavm.parsing.container.Token;
 import dev.asdf00.jluavm.parsing.container.VarInfo;
+import dev.asdf00.jluavm.parsing.container.VarScope;
+import dev.asdf00.jluavm.parsing.ir.controlflow.GotoNode;
+import dev.asdf00.jluavm.parsing.ir.controlflow.LabelNode;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.stream.Collectors;
+import java.util.LinkedHashMap;
 
 public class SymTable {
     private int idSupplier = 0;
@@ -23,12 +26,18 @@ public class SymTable {
         }
     }
 
-    public void exitScope() {
+    public VarScope exitScope() {
+        var rVal = curScope;
         curScope = curScope.exitScope();
+        return rVal;
     }
 
-    public boolean label(Token label) {
-        return true;
+    public LabelNode addLabel(Token label, LinkedHashMap<String, ArrayList<GotoNode>> fixupList) {
+        return curScope.addLabel(label, fixupList);
+    }
+
+    public LabelInfo getLabel(String ident) {
+        return curScope.getLabel(ident);
     }
 
     public boolean add(Token ident, boolean isConst, boolean isClosable) {
@@ -39,51 +48,5 @@ public class SymTable {
         return curScope.get(ident, false);
     }
 
-    private static class VarScope {
-        private final VarScope parent;
-        public final ArrayList<VarScope> children = new ArrayList<>();
-        private final int id;
-        private final boolean isFunctionBorder;
-        private final boolean isLoop;
-        private boolean containsClosable = false;
-        private final HashMap<String, VarInfo> names = new HashMap<>();
 
-        public VarScope(VarScope parent, int id, boolean isFunctionBorder, boolean isLoop) {
-            this.parent = parent;
-            this.id = id;
-            this.isFunctionBorder = isFunctionBorder;
-            this.isLoop = isLoop;
-        }
-
-        public VarScope exitScope() {
-            return parent;
-        }
-
-        public boolean add(Token ident, boolean isConst, boolean isClosable) {
-            if (names.containsKey(ident)) {
-                return false;
-            }
-            containsClosable |= isClosable;
-            names.put(ident.stVal(), new VarInfo(ident.pos().sourcePt(), "_" + id + '$' + ident, isConst, isClosable));
-            return true;
-        }
-
-        public VarInfo get(String ident, boolean crossedFunctionBorder) {
-            var rval = names.get(ident);
-            if (rval == null) {
-                return parent == null ? null : parent.get(ident, crossedFunctionBorder || isFunctionBorder);
-            } else {
-                if (crossedFunctionBorder) {
-                    rval.setInClosure();
-                }
-                return rval;
-            }
-        }
-
-        public String toFullString() {
-            return "VarScope {parent=%s, id=%s, funcBorder=%s, closable=%s, names=%s, children=%s}".formatted(
-                    parent == null ? -1 : parent.id, id, isFunctionBorder, containsClosable, names.toString(),
-                    "[" + children.stream().map(VarScope::toFullString).collect(Collectors.joining(",\n")) + "]");
-        }
-    }
 }

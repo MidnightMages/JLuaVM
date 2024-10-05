@@ -8,15 +8,18 @@ import dev.asdf00.jluavm.parsing.exceptions.LuaLoadingException;
 import dev.asdf00.jluavm.parsing.exceptions.LuaSemanticException;
 import dev.asdf00.jluavm.parsing.ir.IRBlock;
 import dev.asdf00.jluavm.parsing.ir.IRFunction;
+import dev.asdf00.jluavm.parsing.ir.controlflow.GotoNode;
 import dev.asdf00.jluavm.utils.Tuple;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.Stack;
+import java.util.function.Supplier;
 
 import static dev.asdf00.jluavm.parsing.container.TokenType.*;
 
 public class Parser {
+    private final Supplier<String> fClassNameGenerator;
     private final SymTable symTab;
     private final Lexer lexer;
     private TokenType ltok = EOF;  // TokenType of la
@@ -24,10 +27,8 @@ public class Parser {
     private Token la;  // lookahead token
     private Token lla;  // lookahead token 2
 
-    private final Stack<IRFunction> funcStack = new Stack<>();
-    private Stack<IRBlock> blockStack;
-
-    public Parser(String input) {
+    public Parser(Supplier<String> fClassNameGenerator, String input) {
+        this.fClassNameGenerator = fClassNameGenerator;
         symTab = new SymTable();
         lexer = new Lexer(input);
     }
@@ -56,19 +57,66 @@ public class Parser {
         }
     }
 
-    public void parse() throws LuaLoadingException {
+    private void enterScope(boolean isFunctionBorder, boolean isLoop) {
+        symTab.enterScope(isFunctionBorder, isLoop);
+        if (isFunctionBorder) {
+            var f = new IRFunction(fClassNameGenerator.get());
+            funcStack.push(f);
+            funcCur = f;
+            blockStack.push(f);
+            blockCur = f;
+        } else {
+            var b = new IRBlock();
+            blockStack.push(b);
+            blockCur = b;
+        }
+    }
+
+    private void exitScope() {
+        var exited = symTab.exitScope();
+        if (exited.isFunctionBorder) {
+            if (funcCur.needFixup.size() > 0) {
+                GotoNode errGoto = funcCur.needFixup.entrySet().stream().findFirst().get().getValue().get(0);
+                throw new LuaSemanticException(errGoto.pos, "No jump target found for 'goto %s'".formatted(errGoto.stLabel));
+            }
+            if (funcStack.size() > 0) {
+                funcCur = funcStack.pop();
+            }
+        }
+        if (blockStack.size() > 0) {
+            blockCur = blockStack.pop();
+        }
+    }
+
+    // =================================================================================================================
+    //    PARSE STATE     PARSE STATE     PARSE STATE     PARSE STATE     PARSE STATE     PARSE STATE     PARSE STATE
+    // =================================================================================================================
+
+    private final Stack<IRFunction> funcStack = new Stack<>();
+    private IRFunction funcCur;
+
+    private final Stack<IRBlock> blockStack = new Stack<>();
+    private IRBlock blockCur;
+
+    // =================================================================================================================
+    //    PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING
+    // =================================================================================================================
+
+    public IRFunction parse() throws LuaLoadingException {
         cur = null;
         la = lexer.next();
         lla = lexer.next();
         ltok = la.type();
-        Chunk();
+        return Chunk();
     }
 
-    private void Chunk() {
-        symTab.enterScope(true, false);
+    private IRFunction Chunk() {
+        enterScope(true, false);
         Block();
-        symTab.exitScope();
+        var topLevelFunction = funcCur;
+        exitScope();
         check(EOF);
+        return topLevelFunction;
     }
 
     private void Block() {
@@ -104,13 +152,14 @@ public class Parser {
                 // label
                 scan();
                 check(IDENT);
+
                 check(DCOLON);
             }
             case DO -> {
                 scan();
-                symTab.enterScope(false, false);
+                enterScope(false, false);
                 Block();
-                symTab.exitScope();
+                exitScope();
                 check(END);
             }
             case WHILE -> {
@@ -122,38 +171,38 @@ public class Parser {
             }
             case REPEAT -> {
                 scan();
-                symTab.enterScope(false, true);
+                enterScope(false, true);
                 Block();
                 check(UNTIL);
                 Exp();
-                symTab.exitScope();
+                exitScope();
             }
             case IF -> {
                 scan();
                 Exp();
                 check(THEN);
-                symTab.enterScope(false, false);
+                enterScope(false, false);
                 Block();
-                symTab.exitScope();
+                exitScope();
                 while (ltok == ELSEIF) {
                     scan();
                     Exp();
                     check(THEN);
-                    symTab.enterScope(false, false);
+                    enterScope(false, false);
                     Block();
-                    symTab.exitScope();
+                    exitScope();
                 }
                 if (ltok == ELSE) {
                     scan();
-                    symTab.enterScope(false, false);
+                    enterScope(false, false);
                     Block();
-                    symTab.exitScope();
+                    exitScope();
                 }
                 check(END);
             }
             case FOR -> {
                 scan();
-                symTab.enterScope(false, true);
+                enterScope(false, true);
                 check(IDENT);
                 if (ltok == ASSIGN) {
                     scan();
@@ -179,7 +228,7 @@ public class Parser {
                 }
                 check(DO);
                 Block();
-                symTab.exitScope();
+                exitScope();
                 check(END);
             }
             case FUNCTION -> {
@@ -569,7 +618,7 @@ public class Parser {
     }
 
     private void FuncBody(boolean hasSelf) {
-        symTab.enterScope(true, false);
+        enterScope(true, false);
         check(LPAR);
         if (hasSelf) {
             define(new Token(IDENT, cur.pos(), "self"), 0);
@@ -579,7 +628,7 @@ public class Parser {
         }
         check(RPAR);
         Block();
-        symTab.exitScope();
+        exitScope();
         check(END);
     }
 
