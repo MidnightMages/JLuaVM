@@ -10,6 +10,7 @@ import dev.asdf00.jluavm.parsing.ir.IRBlock;
 import dev.asdf00.jluavm.parsing.ir.IRFunction;
 import dev.asdf00.jluavm.parsing.ir.Node;
 import dev.asdf00.jluavm.parsing.ir.controlflow.GotoNode;
+import dev.asdf00.jluavm.parsing.ir.operations.BinaryOpNode$;
 import dev.asdf00.jluavm.utils.Tuple;
 
 import java.util.ArrayList;
@@ -530,7 +531,7 @@ public class Parser {
     private void BinOp9() {
         // * / // %
         UnOp();
-        // var result = UnOp();
+        Node result = null; //UnOp();
         loop: for (;;) {
             switch (ltok) {
                 case MULT -> {
@@ -540,8 +541,9 @@ public class Parser {
                 case DIV -> {
                     scan();
                     UnOp();
-                    // var y = UnOp();
-                    // result = new DivisionNode(result, y);
+
+                    Node y = null;//UnOp();
+                    result = new BinaryOpNode$(result, y, ltok);
                 }
                 case FDIV -> {
                     scan();

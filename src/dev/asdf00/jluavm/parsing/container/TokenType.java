@@ -34,7 +34,7 @@ public enum TokenType {
     ADD("+"),
     SUB("-"),
     MULT("*"),
-    DIV("/"),
+    DIV("/", "div"),
     FDIV("//"),
     MOD("%"),
     HASH("#"),
@@ -73,8 +73,14 @@ public enum TokenType {
     ;
 
     public final String rep;
+    public final String metatableFuncName; // referenced in a fragile manner in BinaryOpProxyNode / in the emitted code
 
     TokenType(String representation) {
         rep = representation;
+        metatableFuncName = null;
+    }
+    TokenType(String representation, String metatableFuncName) {
+        rep = representation;
+        this.metatableFuncName = metatableFuncName;
     }
 }
