@@ -1,5 +1,5 @@
 package dev.asdf00.jluavm.types;
 
-public class CBox {
+public class $CBox {
 
 }

@@ -498,11 +498,11 @@ public class Lexer {
         }
 
         public Position pos() {
-            return new Position(line, col);
+            return new Position(line, col, ptr);
         }
 
         public Position prevPos() {
-            return new Position(pLine, pCol);
+            return new Position(pLine, pCol, ptr);
         }
     }
 }

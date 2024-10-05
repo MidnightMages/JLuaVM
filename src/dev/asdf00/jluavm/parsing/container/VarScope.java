@@ -78,21 +78,21 @@ public class VarScope {
         if (toFix != null) {
             // fix up forward jumps to this label
             info.isUsed = true;
-            int curDIdx = defVars.length - 1;
-            VarInfo[] curScopeVars = defVars[curDIdx];
-            for (GotoNode gt : toFix) {
-                VarInfo[] gtVarsInCurScope = gt.definedVars[curDIdx];
+            int curDepthIdx = defVars.length - 1;
+            VarInfo[] curScopeVars = defVars[curDepthIdx];
+            for (GotoNode gtn : toFix) {
+                VarInfo[] gtVarsInCurScope = gtn.definedVars[curDepthIdx];
                 if (curScopeVars.length > gtVarsInCurScope.length) {
                     // the only way this forward jump is valid is, if this label is at the end of the block,
                     // but we don't know that yet, so we mark this goto as potentially problematic
-                    lNode.setMaybeInvalid(gt, curScopeVars[gtVarsInCurScope.length]);
+                    lNode.setMaybeInvalid(gtn, curScopeVars[gtVarsInCurScope.length]);
                     // this goto needs to close all open variables from inner scopes AND THE CURRENT SCOPE
-                    gt.toClose = getClosablesForFixup(gt, curDIdx, true);
+                    gtn.toClose = getClosablesForFixup(gtn, curDepthIdx, true);
                 } else {
                     // this jump may need to close variables from inner scopes, BUT NOT THE CURRENT SCOPE
-                    gt.toClose = getClosablesForFixup(gt, curDIdx, false);
+                    gtn.toClose = getClosablesForFixup(gtn, curDepthIdx, false);
                 }
-                gt.label = lNode;
+                gtn.label = lNode;
             }
             fixupList.remove(ident.stVal());
         }
@@ -115,11 +115,11 @@ public class VarScope {
                 "[" + children.stream().map(VarScope::toFullString).collect(Collectors.joining(",\n")) + "]");
     }
 
-    private static VarInfo[] getClosablesForFixup(GotoNode gt, int curDIdx, boolean includeCurrent) {
+    private static VarInfo[] getClosablesForFixup(GotoNode gtn, int curDIdx, boolean includeCurrent) {
         var closableList = new ArrayList<VarInfo>();
-        for (int scp = gt.definedVars.length - 1; includeCurrent ? scp >= curDIdx : scp > curDIdx; scp--) {
-            for (int vIdx = gt.definedVars[scp].length - 1; vIdx >= 0; vIdx--) {
-                var cVar = gt.definedVars[scp][vIdx];
+        for (int scp = gtn.definedVars.length - 1; includeCurrent ? scp >= curDIdx : scp > curDIdx; scp--) {
+            for (int vIdx = gtn.definedVars[scp].length - 1; vIdx >= 0; vIdx--) {
+                var cVar = gtn.definedVars[scp][vIdx];
                 if (cVar.isClosable()) {
                     closableList.add(cVar);
                 }
