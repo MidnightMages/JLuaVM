@@ -10,7 +10,7 @@ public enum TokenType {
     DCOLON("::"),
     COLON(":"),
     DOT("."),
-    DDOT(".."),
+    DDOT("..", "concat"),
     TDOT("..."),
     LPAR("("),
     RPAR(")"),

@@ -3,5 +3,5 @@
 internal enum CoercionType {
     None,
     ToNum,
-    ToString,
+    ToStr,
 }

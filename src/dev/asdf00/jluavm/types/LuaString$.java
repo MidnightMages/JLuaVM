@@ -1,10 +1,14 @@
 package dev.asdf00.jluavm.types;
 
 public class LuaString$ extends LuaVariable$ {
-    private final String funcName;
+    private final String content;
 
-    public LuaString$(String funcName) {
+    public LuaString$(String content) {
         super(LuaType.STR);
-        this.funcName = funcName;
+        this.content = content;
+    }
+
+    public LuaVariable$ concat(LuaString$ y) {
+        return new LuaString$(content + y.content);
     }
 }

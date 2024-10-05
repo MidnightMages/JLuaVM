@@ -503,13 +503,15 @@ public class Parser {
         }
     }
 
-    private void BinOp7() {
+    private Node BinOp7() {
         // ..
-        BinOp8();
+        var result = BinOp8();
         while (ltok == DDOT) {
+            var op = ltok;
             scan();
-            BinOp8();
+            result = new BinaryOpNode$$(result, BinOp8(), op);
         }
+        return result;
     }
 
     private Node BinOp8() {
@@ -517,8 +519,9 @@ public class Parser {
         var result = BinOp9();
         for (;;) {
             if (ltok == ADD || ltok == SUB) {
+                var op = ltok;
                 scan();
-                result = new BinaryOpNode$$(result, BinOp9(), ltok);
+                result = new BinaryOpNode$$(result, BinOp9(), op);
             } else {
                 break;
             }
@@ -534,9 +537,10 @@ public class Parser {
         loop: for (;;) {
             switch (ltok) {
                 case MULT, DIV, FDIV, MOD -> {
+                    var op = ltok;
                     scan();
                     UnOp();
-                    result = new BinaryOpNode$$(result, null, ltok); // TODO move the UnOp down and replace null
+                    result = new BinaryOpNode$$(result, null, op); // TODO move the UnOp down and replace null
                 }
                 default -> {
                     break loop;
@@ -575,9 +579,10 @@ public class Parser {
         TermExp();
         Node result = null; //UnOp(); // TODO move the TermExp down and replace null
         while (ltok == EXPONENT) {
+            var op = ltok;
             scan();
             TermExp();
-            result = new BinaryOpNode$$(result, null, ltok); // TODO move the TermExp down and replace null
+            result = new BinaryOpNode$$(result, null, op); // TODO move the TermExp down and replace null
         }
         return result;
     }

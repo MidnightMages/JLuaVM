@@ -14,32 +14,42 @@ internal partial class Program {
 
     private static string GetBinaryOperationSnippetXY(string opName, string directCode, CoercionType coercionMethod) {
         var rv = "";
-        foreach (var varname in "xy") {
-            rv += $$"""
-        if (!{{varname}}.isNumber()) { // if arg is not a number, it has to be a table, otherwise fail
-            var tbl = ((LuaTable$) {{varname}});
-            var f = tbl.getMtFunc("{{opName}}");
-            if (f != null) {
-                return f.Invoke(x, y)[0]; // metamethods can only return one value
-            }
-        }
-
-""";
-        }
+        var requiredType = coercionMethod switch {
+            CoercionType.ToNum => "Number",
+            CoercionType.ToStr => "String",
+            _ => throw new NotImplementedException()
+        };
+        // step1: try coercion
         if (coercionMethod != CoercionType.None) {
             foreach (var varname in "xy") {
-                rv += $"""
-        {varname} = IL___COERCETo{coercionMethod switch { CoercionType.ToNum => "Num", CoercionType.ToString => "Str", _ => throw new NotImplementedException() }}({varname});
+                rv += $$"""
+        {{varname}} = IL___COERCETo{{coercionMethod switch { CoercionType.ToNum => "Num", CoercionType.ToStr => "Str", _ => throw new NotImplementedException()}}}({{varname}});
 
 """;
             }
         }
+
+        // step2: if x or y isnt of the target type, look for a metatable
+        rv += $$"""        
+        if (!x.is{{requiredType}}() || !y.is{{requiredType}}()) { // if any of the args isnt of the required type after coercion, look for a metatable
+
+""";
+        foreach (var varname in "xy") {
+            rv += $$"""
+            if ({{varname}}.isTable()){
+                var f = ((LuaTable$) {{varname}}).getMtFunc("concat");
+                if (f != null) {
+                    return f.Invoke(x, y)[0]; // metamethods can only return one value
+                }
+            }
+
+""";
+        }
         rv += $$"""
-        if (!x.isNumber() || !y.isNumber()) {
-            throw new LuaTypeError("attempted to perform operation '%s {{opName}} %s'".formatted(x.getType().fancyName, y.getType().fancyName));
-        }        
-        assert x instanceof LuaNumber$;
-        assert y instanceof LuaNumber$;
+            throw new LuaTypeError("attempted to perform operation '%s {{opName}} %s'".formatted(x.getType().fancyName, y.getType().fancyName));            
+        }
+        assert x instanceof Lua{{requiredType}}$;
+        assert y instanceof Lua{{requiredType}}$;
         return {{directCode.TrimEnd(';')}};
 """;
         return EndOfLineComments().Replace(rv, string.Empty);
@@ -49,7 +59,10 @@ internal partial class Program {
 
         // reference https://www.lua.org/manual/5.4/manual.html#2.4
         string FCallNumNum(string funcName) => $"((LuaNumber$) x).{funcName}((LuaNumber$) y)";
+        string FCallStrStr(string funcName) => $"((LuaString$) x).{funcName}((LuaString$) y)";
         var binaryOperations = new List<MethodDef>() {
+            new("concat", FCallStrStr("concat"), CoercionType.ToStr),
+
             new("add", FCallNumNum("add"), CoercionType.ToNum),
             new("sub", FCallNumNum("sub"), CoercionType.ToNum),
 
@@ -117,4 +130,4 @@ public class BinaryOpNode_RTIMPL$$ {
     private static partial Regex EndOfLineComments();
 }
 
-internal record struct MethodDef(string FuncName, string DirectSnippet, CoercionType CoercionKind) {}
+internal record struct MethodDef(string FuncName, string DirectSnippet, CoercionType CoercionKind) { }

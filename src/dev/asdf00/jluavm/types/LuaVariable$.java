@@ -24,6 +24,10 @@ public abstract class LuaVariable$ {
         return isType(LuaType.NUM);
     }
 
+    public boolean isString() {
+        return isType(LuaType.STR);
+    }
+
     public LuaType getType() {
         return varKind;
     }
