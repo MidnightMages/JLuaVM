@@ -17,13 +17,14 @@ internal partial class Program {
         var requiredType = coercionMethod switch {
             CoercionType.ToNum => "Number",
             CoercionType.ToStr => "String",
+            CoercionType.ToBitwise => "NumberBw",
             _ => throw new NotImplementedException()
         };
         // step1: try coercion
         if (coercionMethod != CoercionType.None) {
             foreach (var varname in "xy") {
                 rv += $$"""
-        {{varname}} = IL___COERCETo{{coercionMethod switch { CoercionType.ToNum => "Num", CoercionType.ToStr => "Str", _ => throw new NotImplementedException()}}}({{varname}});
+        {{varname}} = IL___COERCETo{{coercionMethod switch { CoercionType.ToNum => "Num", CoercionType.ToStr => "Str", CoercionType.ToBitwise => "Bw", _ => throw new NotImplementedException()}}}({{varname}});
 
 """;
             }
@@ -59,8 +60,18 @@ internal partial class Program {
 
         // reference https://www.lua.org/manual/5.4/manual.html#2.4
         string FCallNumNum(string funcName) => $"((LuaNumber$) x).{funcName}((LuaNumber$) y)";
+        string FCallBwBw(string funcName) => $"((LuaNumberBw$) x).{funcName}((LuaNumberBw$) y)";
         string FCallStrStr(string funcName) => $"((LuaString$) x).{funcName}((LuaString$) y)";
         var binaryOperations = new List<MethodDef>() {
+            new("bor", FCallBwBw("bor"), CoercionType.ToBitwise),
+
+            new("bxor", FCallBwBw("bxor"), CoercionType.ToBitwise),
+
+            new("band", FCallBwBw("band"), CoercionType.ToBitwise),
+
+            new("shl", FCallBwBw("shl"), CoercionType.ToBitwise),
+            new("shr", FCallBwBw("shr"), CoercionType.ToBitwise),
+
             new("concat", FCallStrStr("concat"), CoercionType.ToStr),
 
             new("add", FCallNumNum("add"), CoercionType.ToNum),
@@ -110,7 +121,9 @@ public class BinaryOpNode_RTIMPL$$ {
     public static LuaVariable$ IL___COERCEToNum(LuaVariable$ a){
         return a; // TODO return a LuaNumber$ if coercion is possible, otherwise return the argument a
     }
-
+    public static LuaVariable$ IL___COERCEToBw(LuaVariable$ a){
+        return a; // TODO return a LuaNumberBw$ if coercion is possible, otherwise return the argument a
+    }
     public static LuaVariable$ IL___COERCEToStr(LuaVariable$ a){
         return a; // TODO return a LuaString$ if coercion is possible, otherwise return the argument a
     }

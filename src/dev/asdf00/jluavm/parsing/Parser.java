@@ -412,22 +412,29 @@ public class Parser {
 
     private static final EnumSet<TokenType> EXP_START = EnumSet.of(NIL, FALSE, TRUE, NUMERAL, LITERAL_STRING, TDOT,
             FUNCTION, LPAR, IDENT, NOT, HASH, SUB, BXOR, LBRAC);
-    private void Exp() {
+    private Node Exp() {
         // or
-        BinOp1();
+        var result = BinOp1();
         while (ltok == OR) {
+            var op = ltok;
             scan();
-            BinOp1();
+            result = new BinaryOpNode$$(result, BinOp1(), op);
         }
+        return result;
     }
 
-    private void BinOp1() {
+    private Node BinOp1() {
         // and
         BinOp2();
+        Node result = null; // todo move BinOp2 down
         while (ltok == AND) {
+            var op = ltok;
             scan();
             BinOp2();
+            Node y = null; // todo move BinOp2 down
+            result = new BinaryOpNode$$(result, y, op);
         }
+        return result;
     }
 
     private void BinOp2() {
@@ -461,46 +468,48 @@ public class Parser {
         }
     }
 
-    private void BinOp3() {
+    private Node BinOp3() {
         // |
-        BinOp4();
+        var result = BinOp4();
         while (ltok == BOR) {
+            var op = ltok;
             scan();
-            BinOp4();
+            result = new BinaryOpNode$$(result, BinOp4(), op);
         }
+        return result;
     }
 
-    private void BinOp4() {
+    private Node BinOp4() {
         // ~
-        BinOp5();
+        var result = BinOp5();
         while (ltok == BXOR) {
+            var op = ltok;
             scan();
-            BinOp5();
+            result = new BinaryOpNode$$(result, BinOp5(), op);
         }
+        return result;
     }
 
-    private void BinOp5() {
+    private Node BinOp5() {
         // &
-        BinOp6();
+        var result = BinOp6();
         while (ltok == BAND) {
+            var op = ltok;
             scan();
-            BinOp6();
+            result = new BinaryOpNode$$(result, BinOp6(), op);
         }
+        return result;
     }
 
-    private void BinOp6() {
+    private Node BinOp6() {
         // << >>
-        BinOp7();
-        for (;;) {
-            if (ltok == SHL) {
-                scan();
-            } else if (ltok == SHR) {
-                scan();
-            } else {
-                break;
-            }
-            BinOp7();
+        var result = BinOp7();
+        while (ltok == SHL ||ltok == SHR) {
+            var op = ltok;
+            scan();
+            result = new BinaryOpNode$$(result, BinOp7(), op);
         }
+        return result;
     }
 
     private Node BinOp7() {

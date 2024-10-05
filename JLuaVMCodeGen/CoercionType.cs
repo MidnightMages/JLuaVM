@@ -4,4 +4,5 @@ internal enum CoercionType {
     None,
     ToNum,
     ToStr,
+    ToBitwise
 }

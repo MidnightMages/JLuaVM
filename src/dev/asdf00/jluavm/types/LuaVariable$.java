@@ -24,6 +24,10 @@ public abstract class LuaVariable$ {
         return isType(LuaType.NUM);
     }
 
+    public boolean isNumberBw() {
+        return isType(LuaType.NUM_BW); // TODO maybe also add some more conditions
+    }
+
     public boolean isString() {
         return isType(LuaType.STR);
     }
@@ -40,7 +44,8 @@ public abstract class LuaVariable$ {
         FUNC("function"),
         TABLE("table"),
         UDATA("userdata"),
-        THREAD("thread");
+        THREAD("thread"),
+        NUM_BW("number");
 
         public final String fancyName;
 
