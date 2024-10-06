@@ -20,8 +20,16 @@ public abstract class LuaVariable$ {
         return isType(LuaType.FUNC);
     }
 
+    public boolean isBoolean() {
+        return isType(LuaType.BOOL);
+    }
+
     public boolean isNumber() {
         return isType(LuaType.NUM);
+    }
+
+    public boolean isNil() {
+        return isType(LuaType.NIL);
     }
 
     public boolean isNumberBw() {

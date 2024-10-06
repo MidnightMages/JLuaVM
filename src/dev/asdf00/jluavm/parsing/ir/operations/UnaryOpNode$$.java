@@ -5,19 +5,17 @@ import dev.asdf00.jluavm.parsing.ir.Node;
 
 import java.util.Objects;
 
-public class BinaryOpNode$$ extends Node {
+public class UnaryOpNode$$ extends Node {
     protected final Node x;
-    protected final Node y;
     private final TokenType tokenType;
 
-    public BinaryOpNode$$(Node x, Node y, TokenType tokenType) {
+    public UnaryOpNode$$(Node x, TokenType tokenType) {
         this.x = x;
-        this.y = y;
         this.tokenType = tokenType;
     }
 
     @Override
     public String generate() {
-        return P("BinaryOpNode_RTIMPL$$.IL__%s(%s, %s)".formatted(Objects.requireNonNull(tokenType.metatableFuncNameBinary), x.generate(), y.generate()));
+        return P("UnaryOpNode_RTIMPL$$.IL__%s(%s)".formatted(Objects.requireNonNull(tokenType.metatableFuncNameUnary), x.generate()));
     }
 }

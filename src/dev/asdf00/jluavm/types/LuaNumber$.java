@@ -35,4 +35,8 @@ public class LuaNumber$ extends LuaVariable$ {
     public LuaNumber$ pow(LuaNumber$ y) {
         return new LuaNumber$(Math.pow(value, y.value));
     }
+
+    public LuaVariable$ unm() {
+        return new LuaNumber$(-value);
+    }
 }

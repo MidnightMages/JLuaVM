@@ -23,4 +23,8 @@ public class LuaNumberBw$ extends LuaVariable$ {
     public LuaNumberBw$ shr(LuaNumberBw$ y) {
         return new LuaNumberBw$(value >> y.value);
     }
+
+    public LuaVariable$ bnot() {
+        return new LuaNumberBw$(~value);
+    }
 }

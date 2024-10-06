@@ -19,4 +19,8 @@ public class LuaTable$ extends LuaVariable$ {
     public LuaVariable$ get(LuaVariable$ key){
         return null;
     }
+
+    public LuaVariable$ getLength() {
+        throw new UnsupportedOperationException("not implemented");
+    }
 }

@@ -11,4 +11,8 @@ public class LuaString$ extends LuaVariable$ {
     public LuaVariable$ concat(LuaString$ y) {
         return new LuaString$(content + y.content);
     }
+
+    public int getLength() {
+        return content.length();
+    }
 }

@@ -11,10 +11,15 @@ import dev.asdf00.jluavm.parsing.ir.IRFunction;
 import dev.asdf00.jluavm.parsing.ir.Node;
 import dev.asdf00.jluavm.parsing.ir.controlflow.GotoNode;
 import dev.asdf00.jluavm.parsing.ir.operations.BinaryOpNode$$;
+import dev.asdf00.jluavm.parsing.ir.operations.NullaryOpNode;
+import dev.asdf00.jluavm.parsing.ir.operations.UnaryOpNode$$;
+import dev.asdf00.jluavm.types.LuaBoolean$;
+import dev.asdf00.jluavm.types.LuaNil$;
 import dev.asdf00.jluavm.utils.Tuple;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.Objects;
 import java.util.Stack;
 import java.util.function.Supplier;
 
@@ -538,18 +543,15 @@ public class Parser {
         return result;
     }
 
-    // private Node BinOp9() {
     private Node BinOp9() {
         // * / // %
-        UnOp();
-        Node result = null; //UnOp(); // TODO move the UnOp down and replace null
+        Node result = UnOp();
         loop: for (;;) {
             switch (ltok) {
                 case MULT, DIV, FDIV, MOD -> {
                     var op = ltok;
                     scan();
-                    UnOp();
-                    result = new BinaryOpNode$$(result, null, op); // TODO move the UnOp down and replace null
+                    result = new BinaryOpNode$$(result, UnOp(), op);
                 }
                 default -> {
                     break loop;
@@ -559,54 +561,37 @@ public class Parser {
         return result;
     }
 
-    private void UnOp() {
+    private Node UnOp() {
         // not # - ~
-        loop: for (;;) {
-            switch (ltok) {
-                case NOT -> {
-                    scan();
-                }
-                case HASH -> {
-                    scan();
-                }
-                case SUB -> {
-                    scan();
-                }
-                case BXOR -> {
-                    scan();
-                }
-                default -> {
-                    break loop;
-                }
-            }
+        if (ltok == NOT || ltok == HASH || ltok == SUB || ltok == BXOR) {
+            var op = ltok;
+            scan();
+            return new UnaryOpNode$$(UnOp(), op);
         }
-        BinOp10();
+        return BinOp10();
     }
 
     private Node BinOp10() {
         // ^
-        TermExp();
-        Node result = null; //UnOp(); // TODO move the TermExp down and replace null
+        Node result = TermExp();
         while (ltok == EXPONENT) {
             var op = ltok;
             scan();
-            TermExp();
-            result = new BinaryOpNode$$(result, null, op); // TODO move the TermExp down and replace null
+            result = new BinaryOpNode$$(result, TermExp(), op);
         }
         return result;
     }
 
-    private void TermExp() {
+    private Node TermExp() {
         // constants, funcdef or ValExp
         switch (ltok) {
             case NIL -> {
                 scan();
+                return new NullaryOpNode("new LuaNil$()");
             }
-            case FALSE -> {
+            case TRUE, FALSE -> {
                 scan();
-            }
-            case TRUE -> {
-                scan();
+                return new NullaryOpNode("new LuaBoolean$(%s)".formatted(ltok == TRUE ? "true" : "false"));
             }
             case NUMERAL -> {
                 scan();
@@ -628,6 +613,7 @@ public class Parser {
                 ValExp();
             }
         }
+        throw new UnsupportedOperationException("not implemented");
     }
 
     private void FuncBody(boolean hasSelf) {

@@ -27,17 +27,17 @@ public enum TokenType {
     NE("~="),
     EQ("=="),
     BOR("|", "bor"),
-    BXOR("~", "bxor"),
+    BXOR("~", "bxor", "bnot"),
     BAND("&", "band"),
     SHL("<<", "shl"),
     SHR(">>", "shr"),
     ADD("+","add"),
-    SUB("-","sub"),
+    SUB("-","sub", "unm"),
     MULT("*","mul"),
     DIV("/", "div"),
     FDIV("//", "idiv"),
     MOD("%","mod"),
-    HASH("#"),
+    HASH("#", null, "len"),
     EXPONENT("^", "pow"),
 
 
@@ -63,7 +63,7 @@ public enum TokenType {
     TRUE("true"),
     AND("and"),
     OR("or"),
-    NOT("not"),
+    NOT("not", null, "_builtin_not"),
 
     // constants
     NUMERAL("$numeral$"),
@@ -73,14 +73,20 @@ public enum TokenType {
     ;
 
     public final String rep;
-    public final String metatableFuncName; // referenced in a fragile manner in BinaryOpProxyNode / in the emitted code
+    public final String metatableFuncNameBinary; // referenced in a fragile manner in BinaryOpProxyNode / in the emitted code
+    public final String metatableFuncNameUnary; // referenced in a fragile manner in UnaryOpProxyNode / in the emitted code
 
     TokenType(String representation) {
         rep = representation;
-        metatableFuncName = null;
+        metatableFuncNameBinary = null;
+        metatableFuncNameUnary = null;
     }
-    TokenType(String representation, String metatableFuncName) {
+    TokenType(String representation, String metatableFuncNameBinary) {
+        this(representation, metatableFuncNameBinary, null);
+    }
+    TokenType(String representation, String metatableFuncNameBinary, String metatableFuncNameUnary) {
         rep = representation;
-        this.metatableFuncName = metatableFuncName;
+        this.metatableFuncNameBinary = metatableFuncNameBinary;
+        this.metatableFuncNameUnary = metatableFuncNameUnary;
     }
 }
