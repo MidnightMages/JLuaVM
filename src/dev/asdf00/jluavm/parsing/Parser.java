@@ -1,5 +1,6 @@
 package dev.asdf00.jluavm.parsing;
 
+import dev.asdf00.jluavm.parsing.container.LabelInfo;
 import dev.asdf00.jluavm.parsing.container.Token;
 import dev.asdf00.jluavm.parsing.container.TokenType;
 import dev.asdf00.jluavm.parsing.container.VarInfo;
@@ -94,8 +95,30 @@ public class Parser {
     }
 
     private GotoNode generateGoto() {
-        var target = symTab.getLabel(cur.stVal());
-        return null;
+        LabelInfo target = symTab.getLabel(cur.stVal());
+        if (target != null) {
+            // this is a back jump
+            target.isUsed = true;
+            var closableList = new ArrayList<VarInfo>();
+            // close all defined from inner scopes
+            int lblDepth = target.definedVars.length - 1;
+            var gotoDefined = symTab.getDefinedVars();
+            for (int i = gotoDefined.length - 1; i > lblDepth; i--) {
+                for (int j = gotoDefined[i].length - 1; i > 0; i--) {
+                    closableList.add(gotoDefined[i][j]);
+                }
+            }
+            // close surplus of variables in current scope
+            for (int i = gotoDefined[lblDepth].length; i >= target.definedVars[lblDepth].length; i--) {
+                closableList.add(gotoDefined[lblDepth][i]);
+            }
+            return new GotoNode(cur.pos(), cur.stVal(), target, closableList.toArray(VarInfo[]::new));
+        } else {
+            // this is a forward jump, and we do not know where this will lead us
+            var gt = new GotoNode(cur.pos(), cur.stVal(), symTab.getDefinedVars());
+            funcCur.needFixup.computeIfAbsent(cur.stVal(), ignore -> new ArrayList<>()).add(gt);
+            return gt;
+        }
     }
 
     // =================================================================================================================
@@ -158,7 +181,16 @@ public class Parser {
                 if (ls == null) {
                     throw new LuaSemanticException(cur.pos(), "'break' is not inside a loop");
                 }
-                statement = new BreakNode(ls);
+                VarInfo[][] loopScopeVars = ls.getDefinedVars();
+                VarInfo[][] breakDefinedVars = symTab.getDefinedVars();
+                int loopScopeDepth = loopScopeVars.length - 1;
+                var closableList = new ArrayList<VarInfo>();
+                for (int i = breakDefinedVars.length - 1; i >= loopScopeDepth; i--) {
+                    for (int j = breakDefinedVars[i].length - 1; i > 0; i--) {
+                        closableList.add(breakDefinedVars[i][j]);
+                    }
+                }
+                statement = new BreakNode(ls, closableList.toArray(VarInfo[]::new));
             }
             case GOTO -> {
                 scan();
@@ -355,7 +387,7 @@ public class Parser {
                 var packedInfo = ValExp();
                 qLocals.add(packedInfo);
                 if (!isAssignable()) {
-                    throw new LuaParserException(la.pos(), "(At %s) Expected <%s>, got <%s>".formatted(la.pos(), DOT.rep, ltok.rep));
+                    throw new LuaParserException(la.pos(), "Expected <%s>, got <%s>".formatted(DOT.rep, ltok.rep));
                 }
             }
             check(ASSIGN);

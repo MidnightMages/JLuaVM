@@ -92,7 +92,7 @@ public class VarScope {
                     // this jump may need to close variables from inner scopes, BUT NOT THE CURRENT SCOPE
                     gtn.toClose = getClosablesForFixup(gtn, curDepthIdx, false);
                 }
-                gtn.label = lNode;
+                gtn.label = info;
             }
             fixupList.remove(ident.stVal());
         }
@@ -105,7 +105,9 @@ public class VarScope {
         if (rVal == null && !isFunctionBorder && parent != null) {
             rVal = parent.getLabel(ident);
         }
-        rVal.isUsed = true;
+        if (rVal != null) {
+            rVal.isUsed = true;
+        }
         return rVal;
     }
 

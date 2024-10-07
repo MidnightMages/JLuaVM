@@ -1,11 +1,11 @@
 package dev.asdf00.jluavm.types;
 
-import dev.asdf00.jluavm.LuaVM;
+import dev.asdf00.jluavm.internals.LuaVM_RT$;
 
 public abstract class LuaFunction$ extends LuaVariable$ {
-    protected final LuaVM $vm;
+    public final LuaVM_RT$ $vm;
 
-    public LuaFunction$(LuaVM vm) {
+    public LuaFunction$(LuaVM_RT$ vm) {
         super(LuaType.FUNC);
         this.$vm = vm;
     }

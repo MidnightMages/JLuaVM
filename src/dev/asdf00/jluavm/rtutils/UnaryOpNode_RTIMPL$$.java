@@ -29,7 +29,7 @@ public class UnaryOpNode_RTIMPL$$ {
             var f = tbl.getMtFunc("__len");
             return f != null ? f.Invoke(x)[0] : tbl.getLength();
         } else {
-            throw new LuaTypeError("attempted to perform operation 'len %s'".formatted(x.getType().fancyName));
+            throw new LuaTypeError$("attempted to perform operation 'len %s'".formatted(x.getType().fancyName));
         }
     }
 
@@ -42,7 +42,7 @@ public class UnaryOpNode_RTIMPL$$ {
                     return f.Invoke(x)[0]; // metamethods can only return one value
                 }
             }
-            throw new LuaTypeError("attempted to perform operation 'unm %s'".formatted(x.getType().fancyName));            
+            throw new LuaTypeError$("attempted to perform operation 'unm %s'".formatted(x.getType().fancyName));
         }
         assert x instanceof LuaNumber$;
         return ((LuaNumber$) x).unm();
@@ -57,7 +57,7 @@ public class UnaryOpNode_RTIMPL$$ {
                     return f.Invoke(x)[0]; // metamethods can only return one value
                 }
             }
-            throw new LuaTypeError("attempted to perform operation 'bnot %s'".formatted(x.getType().fancyName));            
+            throw new LuaTypeError$("attempted to perform operation 'bnot %s'".formatted(x.getType().fancyName));
         }
         assert x instanceof LuaNumberBw$;
         return ((LuaNumberBw$) x).bnot();

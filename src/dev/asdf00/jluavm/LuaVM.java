@@ -1,6 +1,13 @@
 package dev.asdf00.jluavm;
 
-public class LuaVM {
+import dev.asdf00.jluavm.internals.LuaVM_RT$;
+
+public abstract class LuaVM {
+
+    public static LuaVM create() {
+        return new LuaVM_RT$();
+    }
+
     public void load(String code) {
 
     }

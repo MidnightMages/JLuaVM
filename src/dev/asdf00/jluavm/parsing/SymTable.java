@@ -44,6 +44,10 @@ public class SymTable {
         return curScope.getLabel(ident);
     }
 
+    public VarInfo[][] getDefinedVars() {
+        return curScope.getDefinedVars();
+    }
+
     public boolean add(Token ident, boolean isConst, boolean isClosable) {
         return curScope.add(ident, isConst, isClosable);
     }

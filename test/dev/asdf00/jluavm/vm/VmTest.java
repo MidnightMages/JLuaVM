@@ -12,7 +12,7 @@ public class VmTest {
     void simpleSnippet() {
         for (int b = -10; b < 10; b++) {
             for (var src : expandOptions("return 4+%s-(§1+0 * %s|%s * 0+1|1+0*%s|%s*0+1|1 + 0*%s|%s*0 + 1§)".formatted(b, b, b, b, b, b, b))) {
-                var vm = new LuaVM();
+                var vm = LuaVM.create();
                 vm.load(src);
                 var res = vm.run();
                 Assertions.assertEquals(LuaVM.VmRunState.SUCCESS, res.state());
@@ -23,7 +23,7 @@ public class VmTest {
 
     private static void loadAssertSuccessAndRv(String code, Object[] expectedRets) {
         for (var expanded : expandOptions(code)) {
-            var vm = new LuaVM();
+            var vm = LuaVM.create();
             vm.load(expanded);
             var res = vm.run();
             Assertions.assertEquals(LuaVM.VmRunState.SUCCESS, res.state());
@@ -33,7 +33,7 @@ public class VmTest {
 
     private static void loadAssertException(String s, Class<? extends LuaParserException> exc) {
         for (var expanded : expandOptions(s)) {
-            var vm = new LuaVM();
+            var vm = LuaVM.create();
             Assertions.assertThrows(exc, () -> vm.load(expanded));
             //vm.run();
         }
@@ -41,7 +41,7 @@ public class VmTest {
 
     private static void loadAssertSuccess(String s) {
         for (var expanded : expandOptions(s)) {
-            var vm = new LuaVM();
+            var vm = LuaVM.create();
             Assertions.assertDoesNotThrow(() -> vm.load(expanded));
             Assertions.assertDoesNotThrow(vm::run);
         }
@@ -318,7 +318,7 @@ public class VmTest {
                     continue;
 
                 var expected = Math.floor((float) a / (float) b);
-                var vm = new LuaVM();
+                var vm = LuaVM.create();
                 vm.load("return %s//%s".formatted((float) a, (float) b));
                 var res = vm.run();
                 Assertions.assertEquals(LuaVM.VmRunState.SUCCESS, res.state());

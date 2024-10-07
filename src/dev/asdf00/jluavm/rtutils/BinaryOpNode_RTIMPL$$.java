@@ -33,7 +33,7 @@ public class BinaryOpNode_RTIMPL$$ {
         if(mtf == null)
             mtf = y.isTable() ? ((LuaTable$) y).getMtFunc("__lt") : null;
         if(mtf == null)
-            throw new LuaTypeError("attempted to perform operation '%s lt %s' and could not find any metatable".formatted(x.getType().fancyName, y.getType().fancyName));
+            throw new LuaTypeError$("attempted to perform operation '%s lt %s' and could not find any metatable".formatted(x.getType().fancyName, y.getType().fancyName));
 
         return UnaryOpNode_RTIMPL$$.IL___builtin_IS_TRUTHY(mtf.Invoke(x,y)[0]);
     }
@@ -50,7 +50,7 @@ public class BinaryOpNode_RTIMPL$$ {
         if(mtf == null)
             mtf = y.isTable() ? ((LuaTable$) y).getMtFunc("__le") : null;
         if(mtf == null)
-            throw new LuaTypeError("attempted to perform operation '%s le %s' and could not find any metatable".formatted(x.getType().fancyName, y.getType().fancyName));
+            throw new LuaTypeError$("attempted to perform operation '%s le %s' and could not find any metatable".formatted(x.getType().fancyName, y.getType().fancyName));
 
         return UnaryOpNode_RTIMPL$$.IL___builtin_IS_TRUTHY(mtf.Invoke(x,y)[0]);
     }
@@ -92,7 +92,7 @@ public class BinaryOpNode_RTIMPL$$ {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
-            throw new LuaTypeError("attempted to perform operation '%s bor %s'".formatted(x.getType().fancyName, y.getType().fancyName));            
+            throw new LuaTypeError$("attempted to perform operation '%s bor %s'".formatted(x.getType().fancyName, y.getType().fancyName));
         }
         assert x instanceof LuaNumberBw$;
         assert y instanceof LuaNumberBw$;
@@ -115,7 +115,7 @@ public class BinaryOpNode_RTIMPL$$ {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
-            throw new LuaTypeError("attempted to perform operation '%s bxor %s'".formatted(x.getType().fancyName, y.getType().fancyName));            
+            throw new LuaTypeError$("attempted to perform operation '%s bxor %s'".formatted(x.getType().fancyName, y.getType().fancyName));
         }
         assert x instanceof LuaNumberBw$;
         assert y instanceof LuaNumberBw$;
@@ -138,7 +138,7 @@ public class BinaryOpNode_RTIMPL$$ {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
-            throw new LuaTypeError("attempted to perform operation '%s band %s'".formatted(x.getType().fancyName, y.getType().fancyName));            
+            throw new LuaTypeError$("attempted to perform operation '%s band %s'".formatted(x.getType().fancyName, y.getType().fancyName));
         }
         assert x instanceof LuaNumberBw$;
         assert y instanceof LuaNumberBw$;
@@ -161,7 +161,7 @@ public class BinaryOpNode_RTIMPL$$ {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
-            throw new LuaTypeError("attempted to perform operation '%s shl %s'".formatted(x.getType().fancyName, y.getType().fancyName));            
+            throw new LuaTypeError$("attempted to perform operation '%s shl %s'".formatted(x.getType().fancyName, y.getType().fancyName));
         }
         assert x instanceof LuaNumberBw$;
         assert y instanceof LuaNumberBw$;
@@ -184,7 +184,7 @@ public class BinaryOpNode_RTIMPL$$ {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
-            throw new LuaTypeError("attempted to perform operation '%s shr %s'".formatted(x.getType().fancyName, y.getType().fancyName));            
+            throw new LuaTypeError$("attempted to perform operation '%s shr %s'".formatted(x.getType().fancyName, y.getType().fancyName));
         }
         assert x instanceof LuaNumberBw$;
         assert y instanceof LuaNumberBw$;
@@ -207,7 +207,7 @@ public class BinaryOpNode_RTIMPL$$ {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
-            throw new LuaTypeError("attempted to perform operation '%s concat %s'".formatted(x.getType().fancyName, y.getType().fancyName));            
+            throw new LuaTypeError$("attempted to perform operation '%s concat %s'".formatted(x.getType().fancyName, y.getType().fancyName));
         }
         assert x instanceof LuaString$;
         assert y instanceof LuaString$;
@@ -230,7 +230,7 @@ public class BinaryOpNode_RTIMPL$$ {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
-            throw new LuaTypeError("attempted to perform operation '%s add %s'".formatted(x.getType().fancyName, y.getType().fancyName));            
+            throw new LuaTypeError$("attempted to perform operation '%s add %s'".formatted(x.getType().fancyName, y.getType().fancyName));
         }
         assert x instanceof LuaNumber$;
         assert y instanceof LuaNumber$;
@@ -253,7 +253,7 @@ public class BinaryOpNode_RTIMPL$$ {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
-            throw new LuaTypeError("attempted to perform operation '%s sub %s'".formatted(x.getType().fancyName, y.getType().fancyName));            
+            throw new LuaTypeError$("attempted to perform operation '%s sub %s'".formatted(x.getType().fancyName, y.getType().fancyName));
         }
         assert x instanceof LuaNumber$;
         assert y instanceof LuaNumber$;
@@ -276,7 +276,7 @@ public class BinaryOpNode_RTIMPL$$ {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
-            throw new LuaTypeError("attempted to perform operation '%s mul %s'".formatted(x.getType().fancyName, y.getType().fancyName));            
+            throw new LuaTypeError$("attempted to perform operation '%s mul %s'".formatted(x.getType().fancyName, y.getType().fancyName));
         }
         assert x instanceof LuaNumber$;
         assert y instanceof LuaNumber$;
@@ -299,7 +299,7 @@ public class BinaryOpNode_RTIMPL$$ {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
-            throw new LuaTypeError("attempted to perform operation '%s div %s'".formatted(x.getType().fancyName, y.getType().fancyName));            
+            throw new LuaTypeError$("attempted to perform operation '%s div %s'".formatted(x.getType().fancyName, y.getType().fancyName));
         }
         assert x instanceof LuaNumber$;
         assert y instanceof LuaNumber$;
@@ -322,7 +322,7 @@ public class BinaryOpNode_RTIMPL$$ {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
-            throw new LuaTypeError("attempted to perform operation '%s idiv %s'".formatted(x.getType().fancyName, y.getType().fancyName));            
+            throw new LuaTypeError$("attempted to perform operation '%s idiv %s'".formatted(x.getType().fancyName, y.getType().fancyName));
         }
         assert x instanceof LuaNumber$;
         assert y instanceof LuaNumber$;
@@ -345,7 +345,7 @@ public class BinaryOpNode_RTIMPL$$ {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
-            throw new LuaTypeError("attempted to perform operation '%s mod %s'".formatted(x.getType().fancyName, y.getType().fancyName));            
+            throw new LuaTypeError$("attempted to perform operation '%s mod %s'".formatted(x.getType().fancyName, y.getType().fancyName));
         }
         assert x instanceof LuaNumber$;
         assert y instanceof LuaNumber$;
@@ -368,7 +368,7 @@ public class BinaryOpNode_RTIMPL$$ {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
-            throw new LuaTypeError("attempted to perform operation '%s pow %s'".formatted(x.getType().fancyName, y.getType().fancyName));            
+            throw new LuaTypeError$("attempted to perform operation '%s pow %s'".formatted(x.getType().fancyName, y.getType().fancyName));
         }
         assert x instanceof LuaNumber$;
         assert y instanceof LuaNumber$;
