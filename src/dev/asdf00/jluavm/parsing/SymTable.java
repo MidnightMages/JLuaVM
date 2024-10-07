@@ -32,6 +32,10 @@ public class SymTable {
         return rVal;
     }
 
+    public VarScope getNextLoop() {
+        return curScope.getNextLoopScope();
+    }
+
     public LabelNode addLabel(Token label, LinkedHashMap<String, ArrayList<GotoNode>> fixupList) {
         return curScope.addLabel(label, fixupList);
     }

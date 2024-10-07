@@ -109,6 +109,15 @@ public class VarScope {
         return rVal;
     }
 
+    public VarScope getNextLoopScope() {
+        if (isLoop) {
+            return this;
+        } else if (!isFunctionBorder && parent != null) {
+            return parent.getNextLoopScope();
+        }
+        return null;
+    }
+
     public String toFullString() {
         return "VarScope {parent=%s, id=%s, funcBorder=%s, closable=%s, names=%s, children=%s}".formatted(
                 parent == null ? -1 : parent.id, id, isFunctionBorder, containsClosable, names.toString(),

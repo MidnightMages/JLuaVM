@@ -9,6 +9,7 @@ import dev.asdf00.jluavm.exceptions.loading.LuaSemanticException;
 import dev.asdf00.jluavm.parsing.ir.IRBlock;
 import dev.asdf00.jluavm.parsing.ir.IRFunction;
 import dev.asdf00.jluavm.parsing.ir.Node;
+import dev.asdf00.jluavm.parsing.ir.controlflow.BreakNode;
 import dev.asdf00.jluavm.parsing.ir.controlflow.GotoNode;
 import dev.asdf00.jluavm.parsing.ir.operations.BinaryOpNode;
 import dev.asdf00.jluavm.parsing.ir.operations.ConstantNode;
@@ -92,6 +93,11 @@ public class Parser {
         }
     }
 
+    private GotoNode generateGoto() {
+        var target = symTab.getLabel(cur.stVal());
+        return null;
+    }
+
     // =================================================================================================================
     //    PARSE STATE     PARSE STATE     PARSE STATE     PARSE STATE     PARSE STATE     PARSE STATE     PARSE STATE
     // =================================================================================================================
@@ -139,7 +145,8 @@ public class Parser {
     }
 
     private static final EnumSet<TokenType> STAT_START = EnumSet.of(SEMICOLON, IDENT, LPAR, DCOLON, BREAK, GOTO, DO, WHILE, REPEAT, IF, FOR, FUNCTION, LOCAL);
-    private void Stat() {
+    private Node Stat() {
+        Node statement = null;
         switch (ltok) {
             case SEMICOLON -> {
                 // nop
@@ -147,16 +154,22 @@ public class Parser {
             }
             case BREAK -> {
                 scan();
+                var ls = symTab.getNextLoop();
+                if (ls == null) {
+                    throw new LuaSemanticException(cur.pos(), "'break' is not inside a loop");
+                }
+                statement = new BreakNode(ls);
             }
             case GOTO -> {
                 scan();
                 check(IDENT);
+                statement = generateGoto();
             }
             case DCOLON -> {
                 // label
                 scan();
                 check(IDENT);
-
+                statement = symTab.addLabel(cur, funcCur.needFixup);
                 check(DCOLON);
             }
             case DO -> {
@@ -280,6 +293,7 @@ public class Parser {
                 StatExp();
             }
         }
+        return statement;
     }
 
     private int Attrib() {
