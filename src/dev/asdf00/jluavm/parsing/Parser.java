@@ -10,16 +10,13 @@ import dev.asdf00.jluavm.parsing.ir.IRBlock;
 import dev.asdf00.jluavm.parsing.ir.IRFunction;
 import dev.asdf00.jluavm.parsing.ir.Node;
 import dev.asdf00.jluavm.parsing.ir.controlflow.GotoNode;
-import dev.asdf00.jluavm.parsing.ir.operations.BinaryOpNode$$;
-import dev.asdf00.jluavm.parsing.ir.operations.NullaryOpNode;
-import dev.asdf00.jluavm.parsing.ir.operations.UnaryOpNode$$;
-import dev.asdf00.jluavm.types.LuaBoolean$;
-import dev.asdf00.jluavm.types.LuaNil$;
+import dev.asdf00.jluavm.parsing.ir.operations.BinaryOpNode;
+import dev.asdf00.jluavm.parsing.ir.operations.ConstantNode;
+import dev.asdf00.jluavm.parsing.ir.operations.UnaryOpNode;
 import dev.asdf00.jluavm.utils.Tuple;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.Objects;
 import java.util.Stack;
 import java.util.function.Supplier;
 
@@ -423,7 +420,7 @@ public class Parser {
         while (ltok == OR) {
             var op = ltok;
             scan();
-            result = new BinaryOpNode$$(result, BinOp1(), op);
+            result = new BinaryOpNode(result, BinOp1(), op);
         }
         return result;
     }
@@ -434,7 +431,7 @@ public class Parser {
         while (ltok == AND) {
             var op = ltok;
             scan();
-            result = new BinaryOpNode$$(result, BinOp2(), op);
+            result = new BinaryOpNode(result, BinOp2(), op);
         }
         return result;
     }
@@ -448,20 +445,20 @@ public class Parser {
                     var op = ltok;
                     scan();
                     var bo3 = BinOp3();
-                    result = new BinaryOpNode$$(op == LT ? result : bo3, op == LT ? bo3 : result, op);
+                    result = new BinaryOpNode(op == LT ? result : bo3, op == LT ? bo3 : result, op);
                 }
                 case LE, GE -> {
                     var op = ltok;
                     scan();
                     var bo3 = BinOp3();
-                    result = new BinaryOpNode$$(op == LE ? result : bo3, op == LE ? bo3 : result, op);
+                    result = new BinaryOpNode(op == LE ? result : bo3, op == LE ? bo3 : result, op);
                 }
                 case EQ, NE -> {
                     var op = ltok;
                     scan();
-                    result = new BinaryOpNode$$(result, BinOp3(), EQ);
+                    result = new BinaryOpNode(result, BinOp3(), EQ);
                     if (op == NE)
-                        result = new UnaryOpNode$$(result, NOT);
+                        result = new UnaryOpNode(result, NOT);
                 }
                 default -> {
                     break loop;
@@ -477,7 +474,7 @@ public class Parser {
         while (ltok == BOR) {
             var op = ltok;
             scan();
-            result = new BinaryOpNode$$(result, BinOp4(), op);
+            result = new BinaryOpNode(result, BinOp4(), op);
         }
         return result;
     }
@@ -488,7 +485,7 @@ public class Parser {
         while (ltok == BXOR) {
             var op = ltok;
             scan();
-            result = new BinaryOpNode$$(result, BinOp5(), op);
+            result = new BinaryOpNode(result, BinOp5(), op);
         }
         return result;
     }
@@ -499,7 +496,7 @@ public class Parser {
         while (ltok == BAND) {
             var op = ltok;
             scan();
-            result = new BinaryOpNode$$(result, BinOp6(), op);
+            result = new BinaryOpNode(result, BinOp6(), op);
         }
         return result;
     }
@@ -510,7 +507,7 @@ public class Parser {
         while (ltok == SHL || ltok == SHR) {
             var op = ltok;
             scan();
-            result = new BinaryOpNode$$(result, BinOp7(), op);
+            result = new BinaryOpNode(result, BinOp7(), op);
         }
         return result;
     }
@@ -521,7 +518,7 @@ public class Parser {
         while (ltok == DDOT) {
             var op = ltok;
             scan();
-            result = new BinaryOpNode$$(result, BinOp8(), op);
+            result = new BinaryOpNode(result, BinOp8(), op);
         }
         return result;
     }
@@ -533,7 +530,7 @@ public class Parser {
             if (ltok == ADD || ltok == SUB) {
                 var op = ltok;
                 scan();
-                result = new BinaryOpNode$$(result, BinOp9(), op);
+                result = new BinaryOpNode(result, BinOp9(), op);
             } else {
                 break;
             }
@@ -549,7 +546,7 @@ public class Parser {
                 case MULT, DIV, FDIV, MOD -> {
                     var op = ltok;
                     scan();
-                    result = new BinaryOpNode$$(result, UnOp(), op);
+                    result = new BinaryOpNode(result, UnOp(), op);
                 }
                 default -> {
                     break loop;
@@ -564,7 +561,7 @@ public class Parser {
         if (ltok == NOT || ltok == HASH || ltok == SUB || ltok == BXOR) {
             var op = ltok;
             scan();
-            return new UnaryOpNode$$(UnOp(), op);
+            return new UnaryOpNode(UnOp(), op);
         }
         return BinOp10();
     }
@@ -575,7 +572,7 @@ public class Parser {
         while (ltok == EXPONENT) {
             var op = ltok;
             scan();
-            result = new BinaryOpNode$$(result, TermExp(), op);
+            result = new BinaryOpNode(result, TermExp(), op);
         }
         return result;
     }
@@ -585,11 +582,11 @@ public class Parser {
         switch (ltok) {
             case NIL -> {
                 scan();
-                return new NullaryOpNode("new LuaNil$()");
+                return new ConstantNode("new LuaNil$()");
             }
             case TRUE, FALSE -> {
                 scan();
-                return new NullaryOpNode("new LuaBoolean$(%s)".formatted(ltok == TRUE ? "true" : "false"));
+                return new ConstantNode("new LuaBoolean$(%s)".formatted(ltok == TRUE ? "true" : "false"));
             }
             case NUMERAL -> {
                 scan();

@@ -2,10 +2,10 @@ package dev.asdf00.jluavm.parsing.ir.operations;
 
 import dev.asdf00.jluavm.parsing.ir.Node;
 
-public class NullaryOpNode extends Node {
+public class ConstantNode extends Node {
     private final String codeRepr;
 
-    public NullaryOpNode(String codeRepr) {
+    public ConstantNode(String codeRepr) {
         this.codeRepr = codeRepr;
     }
 

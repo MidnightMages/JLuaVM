@@ -5,11 +5,11 @@ import dev.asdf00.jluavm.parsing.ir.Node;
 
 import java.util.Objects;
 
-public class UnaryOpNode$$ extends Node {
+public class UnaryOpNode extends Node {
     protected final Node x;
     private final TokenType tokenType;
 
-    public UnaryOpNode$$(Node x, TokenType tokenType) {
+    public UnaryOpNode(Node x, TokenType tokenType) {
         this.x = x;
         this.tokenType = tokenType;
     }

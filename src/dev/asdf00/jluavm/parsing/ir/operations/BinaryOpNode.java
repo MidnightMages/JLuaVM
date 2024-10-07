@@ -5,12 +5,12 @@ import dev.asdf00.jluavm.parsing.ir.Node;
 
 import java.util.Objects;
 
-public class BinaryOpNode$$ extends Node {
+public class BinaryOpNode extends Node {
     protected final Node x;
     protected final Node y;
     private final TokenType tokenType;
 
-    public BinaryOpNode$$(Node x, Node y, TokenType tokenType) {
+    public BinaryOpNode(Node x, Node y, TokenType tokenType) {
         this.x = x;
         this.y = y;
         this.tokenType = tokenType;
