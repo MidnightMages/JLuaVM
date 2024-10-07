@@ -15,4 +15,16 @@ public class LuaString$ extends LuaVariable$ {
     public int getLength() {
         return content.length();
     }
+
+    public boolean strEquals(LuaString$ y) {
+        return content.equals(y.content);
+    }
+
+    public boolean lt(LuaString$ y) {
+        throw new UnsupportedOperationException("not implemented");
+    }
+
+    public boolean le(LuaString$ y) {
+        throw new UnsupportedOperationException("not implemented");
+    }
 }

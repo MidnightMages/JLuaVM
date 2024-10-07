@@ -430,47 +430,45 @@ public class Parser {
 
     private Node BinOp1() {
         // and
-        BinOp2();
-        Node result = null; // todo move BinOp2 down
+        Node result = BinOp2();
         while (ltok == AND) {
             var op = ltok;
             scan();
-            BinOp2();
-            Node y = null; // todo move BinOp2 down
-            result = new BinaryOpNode$$(result, y, op);
+            result = new BinaryOpNode$$(result, BinOp2(), op);
         }
         return result;
     }
 
-    private void BinOp2() {
+    private Node BinOp2() {
         // < > <= >= ~= ==
-        BinOp3();
+        Node result = BinOp3();
         loop: for (;;) {
             switch (ltok) {
-                case LT -> {
+                case LT, GT -> {
+                    var op = ltok;
                     scan();
+                    var bo3 = BinOp3();
+                    result = new BinaryOpNode$$(op == LT ? result : bo3, op == LT ? bo3 : result, op);
                 }
-                case GT -> {
+                case LE, GE -> {
+                    var op = ltok;
                     scan();
+                    var bo3 = BinOp3();
+                    result = new BinaryOpNode$$(op == LE ? result : bo3, op == LE ? bo3 : result, op);
                 }
-                case LE -> {
+                case EQ, NE -> {
+                    var op = ltok;
                     scan();
-                }
-                case GE -> {
-                    scan();
-                }
-                case NE -> {
-                    scan();
-                }
-                case EQ -> {
-                    scan();
+                    result = new BinaryOpNode$$(result, BinOp3(), EQ);
+                    if (op == NE)
+                        result = new UnaryOpNode$$(result, NOT);
                 }
                 default -> {
                     break loop;
                 }
             }
-            BinOp3();
         }
+        return result;
     }
 
     private Node BinOp3() {
@@ -509,7 +507,7 @@ public class Parser {
     private Node BinOp6() {
         // << >>
         var result = BinOp7();
-        while (ltok == SHL ||ltok == SHR) {
+        while (ltok == SHL || ltok == SHR) {
             var op = ltok;
             scan();
             result = new BinaryOpNode$$(result, BinOp7(), op);

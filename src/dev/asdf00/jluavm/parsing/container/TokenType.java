@@ -20,12 +20,12 @@ public enum TokenType {
     RBRAC("}"),
 
     // arithmetic
-    LT("<"),
+    LT("<", "lt"),
     GT(">"),
-    LE("<="),
+    LE("<=", "le"),
     GE(">="),
     NE("~="),
-    EQ("=="),
+    EQ("==", "eq"),
     BOR("|", "bor"),
     BXOR("~", "bxor", "bnot"),
     BAND("&", "band"),
@@ -61,8 +61,8 @@ public enum TokenType {
     NIL("nil"),
     FALSE("false"),
     TRUE("true"),
-    AND("and"),
-    OR("or"),
+    AND("and",null,"_builtin_and"),
+    OR("or",null, "_builtin_or"),
     NOT("not", null, "_builtin_not"),
 
     // constants

@@ -39,4 +39,16 @@ public class LuaNumber$ extends LuaVariable$ {
     public LuaVariable$ unm() {
         return new LuaNumber$(-value);
     }
+
+    public boolean numEquals(LuaNumber$ y) {
+        return value == y.value;
+    }
+
+    public boolean lt(LuaNumber$ y) {
+        return value < y.value;
+    }
+
+    public boolean le(LuaNumber$ y) {
+        return value <= y.value;
+    }
 }

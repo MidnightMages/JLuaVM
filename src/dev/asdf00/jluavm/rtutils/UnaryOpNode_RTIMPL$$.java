@@ -13,9 +13,12 @@ public class UnaryOpNode_RTIMPL$$ {
     public static LuaVariable$ IL___COERCEToStr(LuaVariable$ a){
         return BinaryOpNode_RTIMPL$$.IL___COERCEToStr(a);
     }
+    public static LuaBoolean$ IL___builtin_IS_TRUTHY(LuaVariable$ x) {
+        return (x.isNil() || x.isBoolean() && !((LuaBoolean$)x).getValue()) ? LuaBoolean$.FALSE : LuaBoolean$.TRUE;
+    }
 
     public static LuaVariable$ IL___builtin_not(LuaVariable$ x) {
-        return new LuaBoolean$(x.isNil() || x.isBoolean() && !((LuaBoolean$)x).getValue());
+        return IL___builtin_IS_TRUTHY(x).negated();
     }
 
     public static LuaVariable$ IL__len(LuaVariable$ x) {

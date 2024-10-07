@@ -27,4 +27,8 @@ public class LuaNumberBw$ extends LuaVariable$ {
     public LuaVariable$ bnot() {
         return new LuaNumberBw$(~value);
     }
+
+    public boolean numBwEquals(LuaNumberBw$ y) {
+        return value == y.value;
+    }
 }

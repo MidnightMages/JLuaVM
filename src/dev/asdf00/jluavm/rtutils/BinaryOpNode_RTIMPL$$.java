@@ -13,6 +13,69 @@ public class BinaryOpNode_RTIMPL$$ {
         return a; // TODO return a LuaString$ if coercion is possible, otherwise return the argument a
     }
 
+    public static LuaVariable$ IL___builtin_or(LuaVariable$ x, LuaVariable$ y) {
+        return UnaryOpNode_RTIMPL$$.IL___builtin_IS_TRUTHY(x).getValue() ? x : y;
+    }
+
+    public static LuaVariable$ IL___builtin_and(LuaVariable$ x, LuaVariable$ y) {
+        return UnaryOpNode_RTIMPL$$.IL___builtin_IS_TRUTHY(x).getValue() ? y : x;
+    }
+
+    public static LuaVariable$ IL__lt(LuaVariable$ x, LuaVariable$ y) {
+        if (x.getType() == y.getType()){
+            if (x.isString())
+                return LuaBoolean$.fromState(((LuaString$) x).lt(((LuaString$) y)));
+            if (x.isNumber()) { // TODO make work for NumberBw
+                return LuaBoolean$.fromState(((LuaNumber$) x).lt(((LuaNumber$) y)));
+            }
+        }
+        var mtf = x.isTable() ? ((LuaTable$) x).getMtFunc("__lt") : null;
+        if(mtf == null)
+            mtf = y.isTable() ? ((LuaTable$) y).getMtFunc("__lt") : null;
+        if(mtf == null)
+            throw new LuaTypeError("attempted to perform operation '%s lt %s' and could not find any metatable".formatted(x.getType().fancyName, y.getType().fancyName));
+
+        return UnaryOpNode_RTIMPL$$.IL___builtin_IS_TRUTHY(mtf.Invoke(x,y)[0]);
+    }
+
+    public static LuaVariable$ IL__le(LuaVariable$ x, LuaVariable$ y) {
+        if (x.getType() == y.getType()){
+            if (x.isString())
+                return LuaBoolean$.fromState(((LuaString$) x).le(((LuaString$) y)));
+            if (x.isNumber()) { // TODO make work for NumberBw
+                return LuaBoolean$.fromState(((LuaNumber$) x).le(((LuaNumber$) y)));
+            }
+        }
+        var mtf = x.isTable() ? ((LuaTable$) x).getMtFunc("__le") : null;
+        if(mtf == null)
+            mtf = y.isTable() ? ((LuaTable$) y).getMtFunc("__le") : null;
+        if(mtf == null)
+            throw new LuaTypeError("attempted to perform operation '%s le %s' and could not find any metatable".formatted(x.getType().fancyName, y.getType().fancyName));
+
+        return UnaryOpNode_RTIMPL$$.IL___builtin_IS_TRUTHY(mtf.Invoke(x,y)[0]);
+    }
+
+    public static LuaVariable$ IL__eq(LuaVariable$ x, LuaVariable$ y) {
+        if (x.getType() == y.getType()) {
+            if (x == y)
+                return LuaBoolean$.TRUE;
+            if (x.isString()) { // y is also a string
+                return LuaBoolean$.fromState(((LuaString$) x).strEquals((LuaString$) y));
+            } else if (x.isNumber()) {
+                return LuaBoolean$.fromState(((LuaNumber$) x).numEquals((LuaNumber$) y));
+            } else if (x.isNumberBw()) {
+                return LuaBoolean$.fromState(((LuaNumberBw$) x).numBwEquals((LuaNumberBw$) y));
+            } else if (x.isTable()) {
+                var mtf = ((LuaTable$) x).getMtFunc("__eq");
+                if (mtf == null)
+                    mtf = ((LuaTable$) y).getMtFunc("__eq");
+                return mtf == null ? LuaBoolean$.FALSE : UnaryOpNode_RTIMPL$$.IL___builtin_IS_TRUTHY(mtf.Invoke(x, y)[0]);
+            }
+            // remaining types are ref compares and would be handled by the ref equals check above
+        }
+        return LuaBoolean$.FALSE;
+    }
+
     public static LuaVariable$ IL__bor(LuaVariable$ x, LuaVariable$ y) {
         x = IL___COERCEToBw(x);
         y = IL___COERCEToBw(y);

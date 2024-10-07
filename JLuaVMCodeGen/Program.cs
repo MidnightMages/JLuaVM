@@ -14,6 +14,56 @@ internal partial class Program {
 
     private static string GetBinaryOperationSnippetXY(string opName, string directCode, CoercionType coercionMethod) {
         var rv = "";
+
+        switch (opName) {
+            case "_builtin_and":
+                return "        return UnaryOpNode_RTIMPL$$.IL___builtin_IS_TRUTHY(x).getValue() ? y : x;";
+            case "_builtin_or":
+                return "        return UnaryOpNode_RTIMPL$$.IL___builtin_IS_TRUTHY(x).getValue() ? x : y;";
+            case "lt":
+            case "le":
+                return $$"""
+        if (x.getType() == y.getType()){
+            if (x.isString())
+                return LuaBoolean$.fromState(((LuaString$) x).{{opName}}(((LuaString$) y)));
+            if (x.isNumber()) { // TODO make work for NumberBw
+                return LuaBoolean$.fromState(((LuaNumber$) x).{{opName}}(((LuaNumber$) y)));
+            }
+        }
+        var mtf = x.isTable() ? ((LuaTable$) x).getMtFunc("__{{opName}}") : null;
+        if(mtf == null)
+            mtf = y.isTable() ? ((LuaTable$) y).getMtFunc("__{{opName}}") : null;
+        if(mtf == null)
+            throw new LuaTypeError("attempted to perform operation '%s {{opName}} %s' and could not find any metatable".formatted(x.getType().fancyName, y.getType().fancyName));
+
+        return UnaryOpNode_RTIMPL$$.IL___builtin_IS_TRUTHY(mtf.Invoke(x,y)[0]);
+""";
+            case "eq":
+                return """
+        if (x.getType() == y.getType()) {
+            if (x == y)
+                return LuaBoolean$.TRUE;
+            if (x.isString()) { // y is also a string
+                return LuaBoolean$.fromState(((LuaString$) x).strEquals((LuaString$) y));
+            } else if (x.isNumber()) {
+                return LuaBoolean$.fromState(((LuaNumber$) x).numEquals((LuaNumber$) y));
+            } else if (x.isNumberBw()) {
+                return LuaBoolean$.fromState(((LuaNumberBw$) x).numBwEquals((LuaNumberBw$) y));
+            } else if (x.isTable()) {
+                var mtf = ((LuaTable$) x).getMtFunc("__eq");
+                if (mtf == null)
+                    mtf = ((LuaTable$) y).getMtFunc("__eq");
+                return mtf == null ? LuaBoolean$.FALSE : UnaryOpNode_RTIMPL$$.IL___builtin_IS_TRUTHY(mtf.Invoke(x, y)[0]);
+            }
+            // remaining types are ref compares and would be handled by the ref equals check above
+        }
+        return LuaBoolean$.FALSE;
+""";
+            default:
+                break;
+        }
+
+
         var requiredType = coercionMethod switch {
             CoercionType.ToNum => "Number",
             CoercionType.ToStr => "String",
@@ -72,7 +122,7 @@ internal partial class Program {
         }
 """;
             case "_builtin_not":
-                return "        return new LuaBoolean$(x.isNil() || x.isBoolean() && !((LuaBoolean$)x).getValue());";
+                return "        return IL___builtin_IS_TRUTHY(x).negated();";
             default:
                 break;
         }
@@ -121,6 +171,13 @@ internal partial class Program {
         string FCallBwBw(string funcName) => $"((LuaNumberBw$) x).{funcName}((LuaNumberBw$) y)";
         string FCallStrStr(string funcName) => $"((LuaString$) x).{funcName}((LuaString$) y)";
         var binaryOperations = new List<MethodDef>() {
+            new("_builtin_or", FCallNumNum(""), CoercionType.None),
+            new("_builtin_and", FCallNumNum(""), CoercionType.None),
+
+            new("lt", FCallNumNum(""), CoercionType.None),
+            new("le", FCallNumNum(""), CoercionType.None),
+            new("eq", FCallNumNum(""), CoercionType.None),
+
             new("bor", FCallBwBw("bor"), CoercionType.ToBitwise),
 
             new("bxor", FCallBwBw("bxor"), CoercionType.ToBitwise),
@@ -245,6 +302,9 @@ public class UnaryOpNode_RTIMPL$$ {
     }
     public static LuaVariable$ IL___COERCEToStr(LuaVariable$ a){
         return BinaryOpNode_RTIMPL$$.IL___COERCEToStr(a);
+    }
+    public static LuaBoolean$ IL___builtin_IS_TRUTHY(LuaVariable$ x) {
+        return (x.isNil() || x.isBoolean() && !((LuaBoolean$)x).getValue()) ? LuaBoolean$.FALSE : LuaBoolean$.TRUE;
     }
 {{GetGeneratedUnaryBodies()}}
 }
