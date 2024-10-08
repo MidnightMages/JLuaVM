@@ -15,6 +15,8 @@ import dev.asdf00.jluavm.parsing.ir.controlflow.GotoNode;
 import dev.asdf00.jluavm.parsing.ir.operations.BinaryOpNode;
 import dev.asdf00.jluavm.parsing.ir.operations.ConstantNode;
 import dev.asdf00.jluavm.parsing.ir.operations.UnaryOpNode;
+import dev.asdf00.jluavm.types.LuaBoolean$;
+import dev.asdf00.jluavm.types.LuaNil$;
 import dev.asdf00.jluavm.utils.Tuple;
 
 import java.util.ArrayList;
@@ -628,11 +630,11 @@ public class Parser {
         switch (ltok) {
             case NIL -> {
                 scan();
-                return new ConstantNode("new LuaNil$()");
+                return new ConstantNode("LuaNil$.singleton");
             }
             case TRUE, FALSE -> {
                 scan();
-                return new ConstantNode("new LuaBoolean$(%s)".formatted(ltok == TRUE ? "true" : "false"));
+                return new ConstantNode("LuaBoolean$.fromState(%s)".formatted(ltok == TRUE ? "true" : "false"));
             }
             case NUMERAL -> {
                 scan();
