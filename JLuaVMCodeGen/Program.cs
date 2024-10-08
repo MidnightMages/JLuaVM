@@ -35,7 +35,7 @@ internal partial class Program {
         if(mtf == null)
             mtf = y.isTable() ? ((LuaTable$) y).getMtFunc("__{{opName}}") : null;
         if(mtf == null)
-            throw new LuaTypeError("attempted to perform operation '%s {{opName}} %s' and could not find any metatable".formatted(x.getType().fancyName, y.getType().fancyName));
+            vm.yeet(new LuaTypeError$("attempted to perform operation '%s {{opName}} %s' and could not find any metatable".formatted(x.getType().fancyName, y.getType().fancyName)));
 
         return UnaryOpNode_RTIMPL$$.IL___builtin_IS_TRUTHY(mtf.Invoke(x,y)[0]);
 """;
@@ -97,7 +97,7 @@ internal partial class Program {
 """;
         }
         rv += $$"""
-            throw new LuaTypeError("attempted to perform operation '%s {{opName}} %s'".formatted(x.getType().fancyName, y.getType().fancyName));            
+            vm.yeet(new LuaTypeError$("attempted to perform operation '%s {{opName}} %s'".formatted(x.getType().fancyName, y.getType().fancyName)));            
         }
         assert x instanceof Lua{{requiredType}}$;
         assert y instanceof Lua{{requiredType}}$;
@@ -119,7 +119,8 @@ internal partial class Program {
             var f = tbl.getMtFunc("__len");
             return f != null ? f.Invoke(x)[0] : tbl.getLength();
         } else {
-            throw new LuaTypeError("attempted to perform operation 'len %s'".formatted(x.getType().fancyName));
+            vm.yeet(new LuaTypeError$("attempted to perform operation 'len %s'".formatted(x.getType().fancyName)));
+            throw new RuntimeException("should not be reached");
         }
 """;
             case "_builtin_not":
@@ -157,7 +158,7 @@ internal partial class Program {
 """;
         rv += $$"""
 
-            throw new LuaTypeError("attempted to perform operation '{{opName}} %s'".formatted(x.getType().fancyName));            
+            vm.yeet(new LuaTypeError$("attempted to perform operation '{{opName}} %s'".formatted(x.getType().fancyName)));            
         }
         assert x instanceof Lua{{requiredType}}$;
         return {{directCode.TrimEnd(';')}};
@@ -235,12 +236,14 @@ public class BinaryOpNode extends Node {
 
     @Override
     public String generate() {
-        return P("BinaryOpNode_RTIMPL$$.IL__%s(%s, %s)".formatted(Objects.requireNonNull(tokenType.metatableFuncNameBinary), x.generate(), y.generate()));
+        return P("BinaryOpNode_RTIMPL$$.IL__%s($vm, %s, %s)".formatted(Objects.requireNonNull(tokenType.metatableFuncNameBinary), x.generate(), y.generate()));
     }
 }
 """;
         });
         GenFileRT("dev.asdf00.jluavm.rtutils.BinaryOpNode_RTIMPL", () => $$"""
+
+import dev.asdf00.jluavm.internals.LuaVM_RT$;
 import dev.asdf00.jluavm.types.*;
 import dev.asdf00.jluavm.exceptions.runtime.*;
 
@@ -260,7 +263,7 @@ public class BinaryOpNode_RTIMPL$$ {
 
         string GetGeneratedBinaryBodies() => binaryOperations.Select((kv) => $$"""
 
-    public static LuaVariable$ IL__{{kv.FuncName}}(LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariable$ IL__{{kv.FuncName}}(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
 {{GetBinaryOperationSnippetXY(kv.FuncName, kv.DirectSnippet, kv.CoercionKind)}}
     }
 """).Aggregate((a, b) => a + "\n" + b);
@@ -286,13 +289,14 @@ public class UnaryOpNode extends Node {
 
     @Override
     public String generate() {
-        return P("UnaryOpNode_RTIMPL$$.IL__%s(%s)".formatted(Objects.requireNonNull(tokenType.metatableFuncNameUnary), x.generate()));
+        return P("UnaryOpNode_RTIMPL$$.IL__%s($vm, %s)".formatted(Objects.requireNonNull(tokenType.metatableFuncNameUnary), x.generate()));
     }
 }
 """;
         });
         GenFileRT("dev.asdf00.jluavm.rtutils.UnaryOpNode_RTIMPL", () => $$"""
 
+import dev.asdf00.jluavm.internals.LuaVM_RT$;
 import dev.asdf00.jluavm.types.*;
 import dev.asdf00.jluavm.exceptions.runtime.*;
 
@@ -315,7 +319,7 @@ public class UnaryOpNode_RTIMPL$$ {
 
         string GetGeneratedUnaryBodies() => unaryOperations.Select((kv) => $$"""
 
-    public static LuaVariable$ IL__{{kv.FuncName}}(LuaVariable$ x) {
+    public static LuaVariable$ IL__{{kv.FuncName}}(LuaVM_RT$ vm, LuaVariable$ x) {
 {{GetUnaryOperationSnippet(kv.FuncName, kv.DirectSnippet, kv.CoercionKind)}}
     }
 """).Aggregate((a, b) => a + "\n" + b);

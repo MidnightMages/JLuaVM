@@ -17,6 +17,6 @@ public class UnaryOpNode extends Node {
 
     @Override
     public String generate() {
-        return P("UnaryOpNode_RTIMPL$$.IL__%s(%s)".formatted(Objects.requireNonNull(tokenType.metatableFuncNameUnary), x.generate()));
+        return P("UnaryOpNode_RTIMPL$$.IL__%s($vm, %s)".formatted(Objects.requireNonNull(tokenType.metatableFuncNameUnary), x.generate()));
     }
 }

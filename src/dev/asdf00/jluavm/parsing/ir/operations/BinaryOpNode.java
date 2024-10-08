@@ -19,6 +19,6 @@ public class BinaryOpNode extends Node {
 
     @Override
     public String generate() {
-        return P("BinaryOpNode_RTIMPL$$.IL__%s(%s, %s)".formatted(Objects.requireNonNull(tokenType.metatableFuncNameBinary), x.generate(), y.generate()));
+        return P("BinaryOpNode_RTIMPL$$.IL__%s($vm, %s, %s)".formatted(Objects.requireNonNull(tokenType.metatableFuncNameBinary), x.generate(), y.generate()));
     }
 }

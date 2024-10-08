@@ -1,4 +1,6 @@
 package dev.asdf00.jluavm.rtutils;
+
+import dev.asdf00.jluavm.internals.LuaVM_RT$;
 import dev.asdf00.jluavm.types.*;
 import dev.asdf00.jluavm.exceptions.runtime.*;
 
@@ -13,15 +15,15 @@ public class BinaryOpNode_RTIMPL$$ {
         return a; // TODO return a LuaString$ if coercion is possible, otherwise return the argument a
     }
 
-    public static LuaVariable$ IL___builtin_or(LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariable$ IL___builtin_or(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
         return UnaryOpNode_RTIMPL$$.IL___builtin_IS_TRUTHY(x).getValue() ? x : y;
     }
 
-    public static LuaVariable$ IL___builtin_and(LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariable$ IL___builtin_and(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
         return UnaryOpNode_RTIMPL$$.IL___builtin_IS_TRUTHY(x).getValue() ? y : x;
     }
 
-    public static LuaVariable$ IL__lt(LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariable$ IL__lt(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
         if (x.getType() == y.getType()){
             if (x.isString())
                 return LuaBoolean$.fromState(((LuaString$) x).lt(((LuaString$) y)));
@@ -33,12 +35,12 @@ public class BinaryOpNode_RTIMPL$$ {
         if(mtf == null)
             mtf = y.isTable() ? ((LuaTable$) y).getMtFunc("__lt") : null;
         if(mtf == null)
-            throw new LuaTypeError$("attempted to perform operation '%s lt %s' and could not find any metatable".formatted(x.getType().fancyName, y.getType().fancyName));
+            vm.yeet(new LuaTypeError$("attempted to perform operation '%s lt %s' and could not find any metatable".formatted(x.getType().fancyName, y.getType().fancyName)));
 
         return UnaryOpNode_RTIMPL$$.IL___builtin_IS_TRUTHY(mtf.Invoke(x,y)[0]);
     }
 
-    public static LuaVariable$ IL__le(LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariable$ IL__le(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
         if (x.getType() == y.getType()){
             if (x.isString())
                 return LuaBoolean$.fromState(((LuaString$) x).le(((LuaString$) y)));
@@ -50,12 +52,12 @@ public class BinaryOpNode_RTIMPL$$ {
         if(mtf == null)
             mtf = y.isTable() ? ((LuaTable$) y).getMtFunc("__le") : null;
         if(mtf == null)
-            throw new LuaTypeError$("attempted to perform operation '%s le %s' and could not find any metatable".formatted(x.getType().fancyName, y.getType().fancyName));
+            vm.yeet(new LuaTypeError$("attempted to perform operation '%s le %s' and could not find any metatable".formatted(x.getType().fancyName, y.getType().fancyName)));
 
         return UnaryOpNode_RTIMPL$$.IL___builtin_IS_TRUTHY(mtf.Invoke(x,y)[0]);
     }
 
-    public static LuaVariable$ IL__eq(LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariable$ IL__eq(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
         if (x.getType() == y.getType()) {
             if (x == y)
                 return LuaBoolean$.TRUE;
@@ -76,7 +78,7 @@ public class BinaryOpNode_RTIMPL$$ {
         return LuaBoolean$.FALSE;
     }
 
-    public static LuaVariable$ IL__bor(LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariable$ IL__bor(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
         x = IL___COERCEToBw(x);
         y = IL___COERCEToBw(y);
         if (!x.isNumberBw() || !y.isNumberBw()) { // if any of the args isnt of the required type after coercion, look for a metatable
@@ -92,14 +94,14 @@ public class BinaryOpNode_RTIMPL$$ {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
-            throw new LuaTypeError$("attempted to perform operation '%s bor %s'".formatted(x.getType().fancyName, y.getType().fancyName));
+            vm.yeet(new LuaTypeError$("attempted to perform operation '%s bor %s'".formatted(x.getType().fancyName, y.getType().fancyName)));            
         }
         assert x instanceof LuaNumberBw$;
         assert y instanceof LuaNumberBw$;
         return ((LuaNumberBw$) x).bor((LuaNumberBw$) y);
     }
 
-    public static LuaVariable$ IL__bxor(LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariable$ IL__bxor(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
         x = IL___COERCEToBw(x);
         y = IL___COERCEToBw(y);
         if (!x.isNumberBw() || !y.isNumberBw()) { // if any of the args isnt of the required type after coercion, look for a metatable
@@ -115,14 +117,14 @@ public class BinaryOpNode_RTIMPL$$ {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
-            throw new LuaTypeError$("attempted to perform operation '%s bxor %s'".formatted(x.getType().fancyName, y.getType().fancyName));
+            vm.yeet(new LuaTypeError$("attempted to perform operation '%s bxor %s'".formatted(x.getType().fancyName, y.getType().fancyName)));            
         }
         assert x instanceof LuaNumberBw$;
         assert y instanceof LuaNumberBw$;
         return ((LuaNumberBw$) x).bxor((LuaNumberBw$) y);
     }
 
-    public static LuaVariable$ IL__band(LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariable$ IL__band(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
         x = IL___COERCEToBw(x);
         y = IL___COERCEToBw(y);
         if (!x.isNumberBw() || !y.isNumberBw()) { // if any of the args isnt of the required type after coercion, look for a metatable
@@ -138,14 +140,14 @@ public class BinaryOpNode_RTIMPL$$ {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
-            throw new LuaTypeError$("attempted to perform operation '%s band %s'".formatted(x.getType().fancyName, y.getType().fancyName));
+            vm.yeet(new LuaTypeError$("attempted to perform operation '%s band %s'".formatted(x.getType().fancyName, y.getType().fancyName)));            
         }
         assert x instanceof LuaNumberBw$;
         assert y instanceof LuaNumberBw$;
         return ((LuaNumberBw$) x).band((LuaNumberBw$) y);
     }
 
-    public static LuaVariable$ IL__shl(LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariable$ IL__shl(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
         x = IL___COERCEToBw(x);
         y = IL___COERCEToBw(y);
         if (!x.isNumberBw() || !y.isNumberBw()) { // if any of the args isnt of the required type after coercion, look for a metatable
@@ -161,14 +163,14 @@ public class BinaryOpNode_RTIMPL$$ {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
-            throw new LuaTypeError$("attempted to perform operation '%s shl %s'".formatted(x.getType().fancyName, y.getType().fancyName));
+            vm.yeet(new LuaTypeError$("attempted to perform operation '%s shl %s'".formatted(x.getType().fancyName, y.getType().fancyName)));            
         }
         assert x instanceof LuaNumberBw$;
         assert y instanceof LuaNumberBw$;
         return ((LuaNumberBw$) x).shl((LuaNumberBw$) y);
     }
 
-    public static LuaVariable$ IL__shr(LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariable$ IL__shr(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
         x = IL___COERCEToBw(x);
         y = IL___COERCEToBw(y);
         if (!x.isNumberBw() || !y.isNumberBw()) { // if any of the args isnt of the required type after coercion, look for a metatable
@@ -184,14 +186,14 @@ public class BinaryOpNode_RTIMPL$$ {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
-            throw new LuaTypeError$("attempted to perform operation '%s shr %s'".formatted(x.getType().fancyName, y.getType().fancyName));
+            vm.yeet(new LuaTypeError$("attempted to perform operation '%s shr %s'".formatted(x.getType().fancyName, y.getType().fancyName)));            
         }
         assert x instanceof LuaNumberBw$;
         assert y instanceof LuaNumberBw$;
         return ((LuaNumberBw$) x).shr((LuaNumberBw$) y);
     }
 
-    public static LuaVariable$ IL__concat(LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariable$ IL__concat(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
         x = IL___COERCEToStr(x);
         y = IL___COERCEToStr(y);
         if (!x.isString() || !y.isString()) { // if any of the args isnt of the required type after coercion, look for a metatable
@@ -207,14 +209,14 @@ public class BinaryOpNode_RTIMPL$$ {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
-            throw new LuaTypeError$("attempted to perform operation '%s concat %s'".formatted(x.getType().fancyName, y.getType().fancyName));
+            vm.yeet(new LuaTypeError$("attempted to perform operation '%s concat %s'".formatted(x.getType().fancyName, y.getType().fancyName)));            
         }
         assert x instanceof LuaString$;
         assert y instanceof LuaString$;
         return ((LuaString$) x).concat((LuaString$) y);
     }
 
-    public static LuaVariable$ IL__add(LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariable$ IL__add(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
         x = IL___COERCEToNum(x);
         y = IL___COERCEToNum(y);
         if (!x.isNumber() || !y.isNumber()) { // if any of the args isnt of the required type after coercion, look for a metatable
@@ -230,14 +232,14 @@ public class BinaryOpNode_RTIMPL$$ {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
-            throw new LuaTypeError$("attempted to perform operation '%s add %s'".formatted(x.getType().fancyName, y.getType().fancyName));
+            vm.yeet(new LuaTypeError$("attempted to perform operation '%s add %s'".formatted(x.getType().fancyName, y.getType().fancyName)));            
         }
         assert x instanceof LuaNumber$;
         assert y instanceof LuaNumber$;
         return ((LuaNumber$) x).add((LuaNumber$) y);
     }
 
-    public static LuaVariable$ IL__sub(LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariable$ IL__sub(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
         x = IL___COERCEToNum(x);
         y = IL___COERCEToNum(y);
         if (!x.isNumber() || !y.isNumber()) { // if any of the args isnt of the required type after coercion, look for a metatable
@@ -253,14 +255,14 @@ public class BinaryOpNode_RTIMPL$$ {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
-            throw new LuaTypeError$("attempted to perform operation '%s sub %s'".formatted(x.getType().fancyName, y.getType().fancyName));
+            vm.yeet(new LuaTypeError$("attempted to perform operation '%s sub %s'".formatted(x.getType().fancyName, y.getType().fancyName)));            
         }
         assert x instanceof LuaNumber$;
         assert y instanceof LuaNumber$;
         return ((LuaNumber$) x).sub((LuaNumber$) y);
     }
 
-    public static LuaVariable$ IL__mul(LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariable$ IL__mul(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
         x = IL___COERCEToNum(x);
         y = IL___COERCEToNum(y);
         if (!x.isNumber() || !y.isNumber()) { // if any of the args isnt of the required type after coercion, look for a metatable
@@ -276,14 +278,14 @@ public class BinaryOpNode_RTIMPL$$ {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
-            throw new LuaTypeError$("attempted to perform operation '%s mul %s'".formatted(x.getType().fancyName, y.getType().fancyName));
+            vm.yeet(new LuaTypeError$("attempted to perform operation '%s mul %s'".formatted(x.getType().fancyName, y.getType().fancyName)));            
         }
         assert x instanceof LuaNumber$;
         assert y instanceof LuaNumber$;
         return ((LuaNumber$) x).mul((LuaNumber$) y);
     }
 
-    public static LuaVariable$ IL__div(LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariable$ IL__div(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
         x = IL___COERCEToNum(x);
         y = IL___COERCEToNum(y);
         if (!x.isNumber() || !y.isNumber()) { // if any of the args isnt of the required type after coercion, look for a metatable
@@ -299,14 +301,14 @@ public class BinaryOpNode_RTIMPL$$ {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
-            throw new LuaTypeError$("attempted to perform operation '%s div %s'".formatted(x.getType().fancyName, y.getType().fancyName));
+            vm.yeet(new LuaTypeError$("attempted to perform operation '%s div %s'".formatted(x.getType().fancyName, y.getType().fancyName)));            
         }
         assert x instanceof LuaNumber$;
         assert y instanceof LuaNumber$;
         return ((LuaNumber$) x).div((LuaNumber$) y);
     }
 
-    public static LuaVariable$ IL__idiv(LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariable$ IL__idiv(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
         x = IL___COERCEToNum(x);
         y = IL___COERCEToNum(y);
         if (!x.isNumber() || !y.isNumber()) { // if any of the args isnt of the required type after coercion, look for a metatable
@@ -322,14 +324,14 @@ public class BinaryOpNode_RTIMPL$$ {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
-            throw new LuaTypeError$("attempted to perform operation '%s idiv %s'".formatted(x.getType().fancyName, y.getType().fancyName));
+            vm.yeet(new LuaTypeError$("attempted to perform operation '%s idiv %s'".formatted(x.getType().fancyName, y.getType().fancyName)));            
         }
         assert x instanceof LuaNumber$;
         assert y instanceof LuaNumber$;
         return ((LuaNumber$) x).idiv((LuaNumber$) y);
     }
 
-    public static LuaVariable$ IL__mod(LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariable$ IL__mod(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
         x = IL___COERCEToNum(x);
         y = IL___COERCEToNum(y);
         if (!x.isNumber() || !y.isNumber()) { // if any of the args isnt of the required type after coercion, look for a metatable
@@ -345,14 +347,14 @@ public class BinaryOpNode_RTIMPL$$ {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
-            throw new LuaTypeError$("attempted to perform operation '%s mod %s'".formatted(x.getType().fancyName, y.getType().fancyName));
+            vm.yeet(new LuaTypeError$("attempted to perform operation '%s mod %s'".formatted(x.getType().fancyName, y.getType().fancyName)));            
         }
         assert x instanceof LuaNumber$;
         assert y instanceof LuaNumber$;
         return ((LuaNumber$) x).mod((LuaNumber$) y);
     }
 
-    public static LuaVariable$ IL__pow(LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariable$ IL__pow(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
         x = IL___COERCEToNum(x);
         y = IL___COERCEToNum(y);
         if (!x.isNumber() || !y.isNumber()) { // if any of the args isnt of the required type after coercion, look for a metatable
@@ -368,7 +370,7 @@ public class BinaryOpNode_RTIMPL$$ {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
-            throw new LuaTypeError$("attempted to perform operation '%s pow %s'".formatted(x.getType().fancyName, y.getType().fancyName));
+            vm.yeet(new LuaTypeError$("attempted to perform operation '%s pow %s'".formatted(x.getType().fancyName, y.getType().fancyName)));            
         }
         assert x instanceof LuaNumber$;
         assert y instanceof LuaNumber$;

@@ -1,5 +1,6 @@
 package dev.asdf00.jluavm.rtutils;
 
+import dev.asdf00.jluavm.internals.LuaVM_RT$;
 import dev.asdf00.jluavm.types.*;
 import dev.asdf00.jluavm.exceptions.runtime.*;
 
@@ -17,11 +18,11 @@ public class UnaryOpNode_RTIMPL$$ {
         return (x.isNil() || x.isBoolean() && !((LuaBoolean$)x).getValue()) ? LuaBoolean$.FALSE : LuaBoolean$.TRUE;
     }
 
-    public static LuaVariable$ IL___builtin_not(LuaVariable$ x) {
+    public static LuaVariable$ IL___builtin_not(LuaVM_RT$ vm, LuaVariable$ x) {
         return IL___builtin_IS_TRUTHY(x).negated();
     }
 
-    public static LuaVariable$ IL__len(LuaVariable$ x) {
+    public static LuaVariable$ IL__len(LuaVM_RT$ vm, LuaVariable$ x) {
         if (x.isString()){
             return new LuaNumber$(((LuaString$)x).getLength());
         } else if (x.isTable()) {
@@ -29,11 +30,12 @@ public class UnaryOpNode_RTIMPL$$ {
             var f = tbl.getMtFunc("__len");
             return f != null ? f.Invoke(x)[0] : tbl.getLength();
         } else {
-            throw new LuaTypeError$("attempted to perform operation 'len %s'".formatted(x.getType().fancyName));
+            vm.yeet(new LuaTypeError$("attempted to perform operation 'len %s'".formatted(x.getType().fancyName)));
+            throw new RuntimeException("should not be reached");
         }
     }
 
-    public static LuaVariable$ IL__unm(LuaVariable$ x) {
+    public static LuaVariable$ IL__unm(LuaVM_RT$ vm, LuaVariable$ x) {
         x = IL___COERCEToNum(x);
         if (!x.isNumber()) { // if the arg isnt of the required type after coercion, look for a metatable
             if (x.isTable()){
@@ -42,13 +44,13 @@ public class UnaryOpNode_RTIMPL$$ {
                     return f.Invoke(x)[0]; // metamethods can only return one value
                 }
             }
-            throw new LuaTypeError$("attempted to perform operation 'unm %s'".formatted(x.getType().fancyName));
+            vm.yeet(new LuaTypeError$("attempted to perform operation 'unm %s'".formatted(x.getType().fancyName)));            
         }
         assert x instanceof LuaNumber$;
         return ((LuaNumber$) x).unm();
     }
 
-    public static LuaVariable$ IL__bnot(LuaVariable$ x) {
+    public static LuaVariable$ IL__bnot(LuaVM_RT$ vm, LuaVariable$ x) {
         x = IL___COERCEToBw(x);
         if (!x.isNumberBw()) { // if the arg isnt of the required type after coercion, look for a metatable
             if (x.isTable()){
@@ -57,7 +59,7 @@ public class UnaryOpNode_RTIMPL$$ {
                     return f.Invoke(x)[0]; // metamethods can only return one value
                 }
             }
-            throw new LuaTypeError$("attempted to perform operation 'bnot %s'".formatted(x.getType().fancyName));
+            vm.yeet(new LuaTypeError$("attempted to perform operation 'bnot %s'".formatted(x.getType().fancyName)));            
         }
         assert x instanceof LuaNumberBw$;
         return ((LuaNumberBw$) x).bnot();
