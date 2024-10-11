@@ -12,6 +12,10 @@ public class LuaNumber$ extends LuaVariable$ {
         return new LuaNumber$(value);
     }
 
+    public double getValue(){
+        return value;
+    }
+
     public LuaNumber$ add(LuaNumber$ y) {
         return new LuaNumber$(value + y.value);
     }
