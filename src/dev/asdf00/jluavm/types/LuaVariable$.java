@@ -1,5 +1,9 @@
 package dev.asdf00.jluavm.types;
 
+import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
+
+import java.util.Map;
+
 public abstract class LuaVariable$ {
 
     private final LuaType varKind;
@@ -59,6 +63,23 @@ public abstract class LuaVariable$ {
 
         LuaType(String fancyName) {
             this.fancyName = fancyName;
+        }
+
+        private static final Map<Class<? extends LuaVariable$>, LuaType> clazzMap = Map.of(
+                LuaBoolean$.class, LuaVariable$.LuaType.BOOL,
+                LuaFunction$.class, LuaVariable$.LuaType.FUNC,
+                LuaNil$.class, LuaVariable$.LuaType.NIL,
+                LuaNumber$.class, LuaVariable$.LuaType.NUM,
+                LuaNumberBw$.class, LuaVariable$.LuaType.NUM_BW,
+                LuaString$.class, LuaVariable$.LuaType.STR,
+                LuaTable$.class, LuaVariable$.LuaType.TABLE);
+
+        public static LuaType fromClass(Class<? extends LuaVariable$> type) {
+            var res = clazzMap.get(type);
+            if (res == null) {
+                throw new InternalLuaRuntimeError("no type for unknown lua type class " + type.getName());
+            }
+            return res;
         }
     }
 }

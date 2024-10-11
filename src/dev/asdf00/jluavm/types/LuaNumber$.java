@@ -8,6 +8,10 @@ public class LuaNumber$ extends LuaVariable$ {
         this.value = value;
     }
 
+    public static LuaNumber$ of(double value) {
+        return new LuaNumber$(value);
+    }
+
     public LuaNumber$ add(LuaNumber$ y) {
         return new LuaNumber$(value + y.value);
     }

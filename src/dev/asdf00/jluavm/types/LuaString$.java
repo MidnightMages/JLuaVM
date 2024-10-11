@@ -8,6 +8,10 @@ public class LuaString$ extends LuaVariable$ {
         this.content = content;
     }
 
+    public static LuaString$ of(String content) {
+        return new LuaString$(content);
+    }
+
     public LuaVariable$ concat(LuaString$ y) {
         return new LuaString$(content + y.content);
     }

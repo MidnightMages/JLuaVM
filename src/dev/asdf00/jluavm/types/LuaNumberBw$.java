@@ -1,11 +1,15 @@
 package dev.asdf00.jluavm.types;
 
 public class LuaNumberBw$ extends LuaVariable$ {
-    int value = 1;
+    long value = 1;
 
-    public LuaNumberBw$(int value) {
+    public LuaNumberBw$(long value) {
         super(LuaType.NUM_BW);
         this.value = value;
+    }
+
+    public LuaNumberBw$ of(long value) {
+        return new LuaNumberBw$(value);
     }
 
     public LuaNumberBw$ bor(LuaNumberBw$ y) {

@@ -64,7 +64,7 @@ public class LuaVM_RT$ extends LuaVM {
      * Exceptions should only be thrown via a LuaVM_RT$#yeet method to ensure closable variables are closed properly.
      * This method is also available via static access (see {@link LuaVM_RT$#yeet(LuaVM_RT$, LuaRuntimeError$)})
      */
-    public void yeet(LuaRuntimeError$ error) {
+    public RuntimeException yeet(LuaRuntimeError$ error) {
         var curCloseList = closeOnErrorStackStack.peek();
         while (!curCloseList.isEmpty()) {
             close(curCloseList.pop(), error);
@@ -80,8 +80,8 @@ public class LuaVM_RT$ extends LuaVM {
      * Exceptions should only be thrown via a LuaVM_RT$#yeet method to ensure closable variables are closed properly.
      * This method is also available via dynamic access (see {@link LuaVM_RT$#yeet(LuaRuntimeError$)})
      */
-    public static void yeet(LuaVM_RT$ vmHandle, LuaRuntimeError$ error) {
-        vmHandle.yeet(error);
+    public static RuntimeException yeet(LuaVM_RT$ vmHandle, LuaRuntimeError$ error) {
+        return vmHandle.yeet(error);
     }
 
     protected static void close(LuaVM_RT$ vmHandle, LuaVariable$ value, LuaRuntimeError$ error) {

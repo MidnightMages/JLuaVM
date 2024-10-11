@@ -15,13 +15,18 @@ import dev.asdf00.jluavm.parsing.ir.controlflow.GotoNode;
 import dev.asdf00.jluavm.parsing.ir.operations.BinaryOpNode;
 import dev.asdf00.jluavm.parsing.ir.operations.ConstantNode;
 import dev.asdf00.jluavm.parsing.ir.operations.UnaryOpNode;
+import dev.asdf00.jluavm.parsing.ir.variables.DeRefNode;
+import dev.asdf00.jluavm.parsing.ir.variables.EnvAccessNode;
+import dev.asdf00.jluavm.parsing.ir.variables.LocalAccessNode;
 import dev.asdf00.jluavm.types.LuaBoolean$;
 import dev.asdf00.jluavm.types.LuaNil$;
+import dev.asdf00.jluavm.types.LuaNumber$;
+import dev.asdf00.jluavm.types.LuaString$;
+import dev.asdf00.jluavm.utils.Triple;
 import dev.asdf00.jluavm.utils.Tuple;
 
-import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.Stack;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 import java.util.function.Supplier;
 
 import static dev.asdf00.jluavm.parsing.container.TokenType.*;
@@ -348,12 +353,13 @@ public class Parser {
     }
 
     private static final EnumSet<TokenType> DEREF_OR_FUNCCALL_START = EnumSet.of(LBRAK, DOT, COLON, LPAR, LITERAL_STRING, LBRAC);
-    private void StatExp() {
+    private Node StatExp() {
         VarInfo info;
         boolean onlyIdent;
+        Node result;
         if (ltok == LPAR) {
             scan();
-            Exp();
+            result = Exp();
             check(RPAR);
             info = null;
             onlyIdent = false;
@@ -365,12 +371,14 @@ public class Parser {
         } else {
             check(IDENT);
             info = symTab.get(cur.stVal());
+            result = info == null ? new EnvAccessNode(cur.stVal()) : new LocalAccessNode(info);
             onlyIdent = true;
         }
         loop: for (;;) {
             switch (ltok) {
                 case LBRAK, DOT -> {
-                    DeRef();
+                    Node index = DeRef();
+                    result = new DeRefNode(result, index);
                 }
                 case COLON, LPAR, LITERAL_STRING, LBRAC -> {
                     FuncCall();
@@ -387,7 +395,7 @@ public class Parser {
             while (ltok == COMMA) {
                 scan();
                 var packedInfo = ValExp();
-                qLocals.add(packedInfo);
+                qLocals.add(new Tuple<>(packedInfo.y(), packedInfo.z()));
                 if (!isAssignable()) {
                     throw new LuaParserException(la.pos(), "Expected <%s>, got <%s>".formatted(DOT.rep, ltok.rep));
                 }
@@ -400,26 +408,30 @@ public class Parser {
             });
             ExpList();
         }
+        return result;
     }
 
-    private Tuple<VarInfo, Boolean> ValExp() {
+    private Triple<Node, VarInfo, Boolean> ValExp() {
         VarInfo info;
         boolean onlyIdent;
+        Node result;
         if (ltok == LPAR) {
             scan();
-            Exp();
+            result = Exp();
             check(RPAR);
             info = null;
             onlyIdent = false;
         } else {
             check(IDENT);
             info = symTab.get(cur.stVal());
+            result = info == null ? new EnvAccessNode(cur.stVal()) : new LocalAccessNode(info);
             onlyIdent = true;
         }
         loop: for (;;) {
             switch (ltok) {
                 case LBRAK, DOT -> {
-                    DeRef();
+                    Node index = DeRef();
+                    result = new DeRefNode(result, index);
                 }
                 case COLON, LPAR, LITERAL_STRING, LBRAC -> {
                     FuncCall();
@@ -430,18 +442,21 @@ public class Parser {
             }
             onlyIdent = false;
         }
-        return new Tuple<>(info, onlyIdent);
+        return new Triple<>(result, info, onlyIdent);
     }
 
-    private void DeRef() {
+    private Node DeRef() {
+        Node index;
         if (ltok == LBRAK) {
             scan();
-            Exp();
+            index = Exp();
             check(RBRAK);
         } else {
             check(DOT);
             check(IDENT);
+            index = new ConstantNode("LuaString$.of(\"%s\")".formatted(cur.stVal()));
         }
+        return index;
     }
 
     private void FuncCall() {
@@ -638,9 +653,13 @@ public class Parser {
             }
             case NUMERAL -> {
                 scan();
+                return new ConstantNode(cur.nVal() == (double) ((long) cur.nVal())
+                        ? String.format("LuaNumberBw$.of(%d)", (long) cur.nVal())
+                        : String.format(Locale.US, "LuaNumber$.of(%f)", cur.nVal()));
             }
             case LITERAL_STRING -> {
                 scan();
+                return new ConstantNode("literalString$(%s)".formatted(Base64.getEncoder().encode(cur.stVal().getBytes(StandardCharsets.UTF_8))));
             }
             case TDOT -> {
                 scan();

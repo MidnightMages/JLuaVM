@@ -51,6 +51,10 @@ public class VarInfo {
         flags |= WRITTEN;
     }
 
+    public boolean sitsInBox() {
+        return isInClosure() && isWritten();
+    }
+
     @Override
     public String toString() {
         return "VarInfo{" +

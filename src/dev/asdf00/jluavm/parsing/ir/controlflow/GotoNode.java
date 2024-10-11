@@ -3,8 +3,6 @@ package dev.asdf00.jluavm.parsing.ir.controlflow;
 import dev.asdf00.jluavm.parsing.container.LabelInfo;
 import dev.asdf00.jluavm.parsing.container.Position;
 import dev.asdf00.jluavm.parsing.container.VarInfo;
-import dev.asdf00.jluavm.parsing.ir.CodeGenUtils;
-import dev.asdf00.jluavm.parsing.ir.Node;
 
 public class GotoNode extends ClosingNode {
     public final Position pos;
