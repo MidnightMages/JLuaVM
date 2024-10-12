@@ -88,7 +88,7 @@ public class Lexer {
         }
 
         // read number
-        if (isDecDigit(cur)) {
+        if (isDecDigit(cur) || (cur == '.' && isDecDigit(input.peek()))) {
             boolean isInteger = true;
             boolean isHex = false;
             boolean isExp = false;
@@ -104,7 +104,7 @@ public class Lexer {
                     nb.append(cur);
                     advance();
                 }
-            } else {
+            } else if (cur != '.') {
                 advance();
             }
 
@@ -143,6 +143,7 @@ public class Lexer {
                         throw new LuaLexerException(pos, "'%s' is not a valid number".formatted(nb.toString()));
                     }
                     if (cur == 'p' || cur == 'P' || cur == 'e' || cur == 'E') {
+                        isInteger = false;
                         isHex = false;
                         allowPM = true;
                         isValid = false;
@@ -157,41 +158,62 @@ public class Lexer {
                 throw new LuaLexerException(pos, "'%s' is not a valid number".formatted(number));
             }
             try {
-                double val;
+                double nVal = -1;
+                long lVal = -1;
                 if (number.startsWith("0x")) {
                     if (isInteger) {
-                        val = Long.parseLong(number.substring(2), 16);
+                        nVal = parseHexDouble(number.substring(2));
+                        if (nVal <= Long.MAX_VALUE) {
+                            nVal = -1;
+                            lVal = Long.parseLong(number.substring(2), 16);
+                        }
                     } else {
                         int point = number.indexOf('.');
                         int ppos = number.indexOf('p');
                         if (ppos < 0) {
                             ppos = number.indexOf('P');
                         }
-                        if (ppos < 0) {
-                            val = Double.parseDouble(String.valueOf(Long.parseLong(number.substring(2, point), 16)) + number.substring(point));
+                        int epos = number.indexOf('e');
+                        if (epos < 0) {
+                            epos = number.indexOf('E');
+                        }
+                        if (ppos < 0 && epos < 0) {
+                            nVal = parseHexDouble(number.substring(2, point)) + Double.parseDouble(number.substring(point));
                         } else {
-                            val = Double.parseDouble(String.valueOf(Long.parseLong(number.substring(2, point), 16)) + number.substring(point, ppos))
-                                    * Math.pow(2, Long.parseLong(number.substring(ppos + 1)));
+                            double a = epos < 0 ? 2 : 10;
+                            int splitter = epos < 0 ? ppos : epos;
+                            nVal = parseHexDouble(number.substring(2, point)) + Double.parseDouble(number.substring(point, splitter))
+                                    * Math.pow(a, Double.parseDouble(number.substring(splitter + 1)));
                         }
                     }
                 } else {
                     if (isInteger) {
-                        val = Long.parseLong(number);
+                        nVal = Double.parseDouble(number);
+                        if (nVal <= Long.MAX_VALUE) {
+                            nVal = -1;
+                            lVal = Long.parseLong(number);
+                        }
                     } else {
                         int ppos = number.indexOf('p');
                         if (ppos < 0) {
                             ppos = number.indexOf('P');
                         }
-                        if (ppos < 0) {
-                            val = Double.parseDouble(number);
+                        int epos = number.indexOf('e');
+                        if (epos < 0) {
+                            epos = number.indexOf('E');
+                        }
+                        if (ppos < 0 && epos < 0) {
+                            nVal = Double.parseDouble(number);
                         } else {
-                            val = Double.parseDouble(number.substring(0, ppos)) * Math.pow(2, Long.parseLong(number.substring(ppos + 1)));
+                            double a = epos < 0 ? 2 : 10;
+                            int splitter = epos < 0 ? ppos : epos;
+                            nVal = Double.parseDouble(number.substring(0, splitter)) * Math.pow(a, Double.parseDouble(number.substring(splitter + 1)));
                         }
                     }
                 }
-                return new Token(NUMERAL, pos, number, val);
+                return new Token(NUMERAL, pos, number, nVal, lVal);
             } catch (NumberFormatException e) {
-                throw new InternalLuaLexerError("Unexpected failure while reading number '%s'".formatted(number));
+                throw new InternalLuaLexerError("Unexpected failure while reading number '%s'".formatted(number), e);
             }
         }
 
@@ -443,6 +465,24 @@ public class Lexer {
 
     private static boolean isDecDigit(char c) {
         return '0' <= c && c <= '9';
+    }
+
+    private static double parseHexDouble(String num) {
+        double d = 0;
+        for (int i = num.length() - 1; i >= 0; i--) {
+            d *= 16;
+            char c = num.charAt(i);
+            if (isDecDigit(c)) {
+                d += c - '0';
+            } else {
+                char cl = Character.toLowerCase(c);
+                if (cl < 'a' || cl > 'f') {
+                    throw new NumberFormatException("non hex digit character '%s' in '%s'".formatted(c, num));
+                }
+                d += cl - 'a';
+            }
+        }
+        return d;
     }
 
     private static class CharStream {

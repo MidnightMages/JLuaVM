@@ -17,18 +17,20 @@ public class ConstantNode extends Node {
         return new ConstantNode("literalStringB64$(\"%s\")".formatted(Base64.getEncoder().encode(transformToB64.getBytes(StandardCharsets.UTF_8))));
     }
 
-    public static ConstantNode ofVal(String str) {
+    public static ConstantNode ofString(String str) {
         return new ConstantNode("LuaString$.of(\"%s\")".formatted(str));
     }
 
-    public static ConstantNode ofVal(boolean bool) {
+    public static ConstantNode ofBool(boolean bool) {
         return new ConstantNode("LuaBoolean$.fromState(%s)".formatted(bool ? "true" : "false"));
     }
 
-    public static ConstantNode ofVal(double val) {
-        return new ConstantNode(val == (double) ((long) val)
-                ? String.format("LuaNumberBw$.of(%d)", (long) val)
-                : String.format(Locale.US, "LuaNumber$.of(%f)", val));
+    public static ConstantNode ofDouble(double val) {
+        return new ConstantNode(String.format(Locale.US, "LuaNumber$.of(%f)", val));
+    }
+
+    public static ConstantNode ofLong(long val) {
+        return new ConstantNode("LuaNumberBw$.of(%d)".formatted(val));
     }
 
     public static ConstantNode nil() {

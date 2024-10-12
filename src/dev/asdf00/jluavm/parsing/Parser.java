@@ -366,7 +366,7 @@ public class Parser {
         } else {
             check(IDENT);
             info = symTab.get(cur.stVal());
-            result = info == null ? new DeRefNode(new ConstantNode("_ENV"), ConstantNode.ofVal(cur.stVal())) : new LocalAccessNode(info);
+            result = info == null ? new DeRefNode(new ConstantNode("_ENV"), ConstantNode.ofString(cur.stVal())) : new LocalAccessNode(info);
             onlyIdent = true;
         }
         loop: for (;;) {
@@ -420,7 +420,7 @@ public class Parser {
         } else {
             check(IDENT);
             info = symTab.get(cur.stVal());
-            result = info == null ? new DeRefNode(new ConstantNode("_ENV"), ConstantNode.ofVal(cur.stVal())) : new LocalAccessNode(info);
+            result = info == null ? new DeRefNode(new ConstantNode("_ENV"), ConstantNode.ofString(cur.stVal())) : new LocalAccessNode(info);
             onlyIdent = true;
         }
         loop: for (;;) {
@@ -451,7 +451,7 @@ public class Parser {
         } else {
             check(DOT);
             check(IDENT);
-            index = ConstantNode.ofVal(cur.stVal());
+            index = ConstantNode.ofString(cur.stVal());
         }
         return index;
     }
@@ -649,11 +649,11 @@ public class Parser {
             }
             case TRUE, FALSE -> {
                 scan();
-                return ConstantNode.ofVal(cur.type() == TRUE);
+                return ConstantNode.ofBool(cur.type() == TRUE);
             }
             case NUMERAL -> {
                 scan();
-                return ConstantNode.ofVal(cur.nVal());
+                return cur.nVal() < 0 ? ConstantNode.ofLong(cur.lVal()) : ConstantNode.ofDouble(cur.nVal());
             }
             case LITERAL_STRING -> {
                 scan();
@@ -773,7 +773,7 @@ public class Parser {
             fieldList.add(Exp());
         } else if (ltok == IDENT && lla.type() == ASSIGN) {
             scan();
-            fieldList.add(ConstantNode.ofVal(cur.stVal()));
+            fieldList.add(ConstantNode.ofString(cur.stVal()));
             scan();  // ASSIGN
             fieldList.add(Exp());
         } else {
