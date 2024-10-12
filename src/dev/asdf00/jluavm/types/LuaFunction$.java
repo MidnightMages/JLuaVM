@@ -14,9 +14,9 @@ public abstract class LuaFunction$ extends LuaVariable$ {
         this.$vm = vm;
     }
 
-    public abstract LuaVariable$[] Invoke(LuaVariable$ ...arg);
+    public abstract LuaVariable$[] Invoke(LuaVariable$... arg);
 
-    protected static LuaString$ literalString$(String literal) {
+    protected static LuaString$ literalStringB64$(String literal) {
         return new LuaString$(new String(Base64.getDecoder().decode(literal), StandardCharsets.UTF_8));
     }
 }

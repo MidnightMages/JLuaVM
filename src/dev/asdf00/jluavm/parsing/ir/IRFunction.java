@@ -8,9 +8,11 @@ import java.util.LinkedHashMap;
 public class IRFunction extends IRBlock {
     public final LinkedHashMap<String, ArrayList<GotoNode>> needFixup = new LinkedHashMap<>();
     public final String jClassName;
+    public boolean hasParams;
 
     public IRFunction(String jClassName) {
         this.jClassName = jClassName;
+        this.hasParams = false;
     }
 
     public String toJavaClass() {

@@ -16,12 +16,7 @@ import dev.asdf00.jluavm.parsing.ir.operations.BinaryOpNode;
 import dev.asdf00.jluavm.parsing.ir.operations.ConstantNode;
 import dev.asdf00.jluavm.parsing.ir.operations.UnaryOpNode;
 import dev.asdf00.jluavm.parsing.ir.variables.DeRefNode;
-import dev.asdf00.jluavm.parsing.ir.variables.EnvAccessNode;
 import dev.asdf00.jluavm.parsing.ir.variables.LocalAccessNode;
-import dev.asdf00.jluavm.types.LuaBoolean$;
-import dev.asdf00.jluavm.types.LuaNil$;
-import dev.asdf00.jluavm.types.LuaNumber$;
-import dev.asdf00.jluavm.types.LuaString$;
 import dev.asdf00.jluavm.utils.Triple;
 import dev.asdf00.jluavm.utils.Tuple;
 
@@ -371,7 +366,7 @@ public class Parser {
         } else {
             check(IDENT);
             info = symTab.get(cur.stVal());
-            result = info == null ? new EnvAccessNode(cur.stVal()) : new LocalAccessNode(info);
+            result = info == null ? new DeRefNode(new ConstantNode("_ENV"), ConstantNode.ofVal(cur.stVal())) : new LocalAccessNode(info);
             onlyIdent = true;
         }
         loop: for (;;) {
@@ -424,7 +419,7 @@ public class Parser {
         } else {
             check(IDENT);
             info = symTab.get(cur.stVal());
-            result = info == null ? new EnvAccessNode(cur.stVal()) : new LocalAccessNode(info);
+            result = info == null ? new DeRefNode(new ConstantNode("_ENV"), ConstantNode.ofVal(cur.stVal())) : new LocalAccessNode(info);
             onlyIdent = true;
         }
         loop: for (;;) {
@@ -454,7 +449,7 @@ public class Parser {
         } else {
             check(DOT);
             check(IDENT);
-            index = new ConstantNode("LuaString$.of(\"%s\")".formatted(cur.stVal()));
+            index = ConstantNode.ofVal(cur.stVal());
         }
         return index;
     }
@@ -467,12 +462,14 @@ public class Parser {
         Args();
     }
 
-    private void ExpList() {
-        Exp();
+    private Node[] ExpList() {
+        var es = new ArrayList<Node>();
+        es.add(Exp());
         while (ltok == COMMA) {
             scan();
-            Exp();
+            es.add(Exp());
         }
+        return es.toArray(Node[]::new);
     }
 
     private static final EnumSet<TokenType> EXP_START = EnumSet.of(NIL, FALSE, TRUE, NUMERAL, LITERAL_STRING, TDOT,
@@ -645,34 +642,37 @@ public class Parser {
         switch (ltok) {
             case NIL -> {
                 scan();
-                return new ConstantNode("LuaNil$.singleton");
+                return ConstantNode.nil();
             }
             case TRUE, FALSE -> {
                 scan();
-                return new ConstantNode("LuaBoolean$.fromState(%s)".formatted(ltok == TRUE ? "true" : "false"));
+                return ConstantNode.ofVal(cur.type() == TRUE);
             }
             case NUMERAL -> {
                 scan();
-                return new ConstantNode(cur.nVal() == (double) ((long) cur.nVal())
-                        ? String.format("LuaNumberBw$.of(%d)", (long) cur.nVal())
-                        : String.format(Locale.US, "LuaNumber$.of(%f)", cur.nVal()));
+                return ConstantNode.ofVal(cur.nVal());
             }
             case LITERAL_STRING -> {
                 scan();
-                return new ConstantNode("literalString$(%s)".formatted(Base64.getEncoder().encode(cur.stVal().getBytes(StandardCharsets.UTF_8))));
+                return ConstantNode.ofB64(cur.stVal());
             }
             case TDOT -> {
                 scan();
+                if (!funcCur.hasParams) {
+                    throw new LuaSemanticException(cur.pos(), "cannot use '...' outside a vararg function");
+                }
+                return new ConstantNode("$params");
             }
             case FUNCTION -> {
                 scan();
+                // TODO
                 FuncBody(false);
             }
             case LBRAC -> {
-                TableConstructor();
+                return TableConstructor();
             }
             default -> {
-                ValExp();
+                return ValExp().x();
             }
         }
         throw new UnsupportedOperationException("not implemented");
@@ -696,6 +696,7 @@ public class Parser {
     private void ParList() {
         if (ltok == TDOT) {
             scan();
+            funcCur.hasParams = true;
         } else {
             check(IDENT);
             define(cur, 0);
@@ -707,32 +708,39 @@ public class Parser {
             if (ltok == COMMA) {
                 scan();
                 check(TDOT);
+                funcCur.hasParams = true;
             }
         }
     }
 
     private static final EnumSet<TokenType> ARGS_START = EnumSet.of(LPAR, LITERAL_STRING, LBRAC);
-    private void Args() {
+    private Node[] Args() {
+        Node[] result;
         if (ltok == LPAR) {
             scan();
             if (EXP_START.contains(ltok)) {
-                ExpList();
+                result = ExpList();
+            } else {
+                result = new Node[0];
             }
             check(RPAR);
         } else if (ltok == LITERAL_STRING) {
             scan();
+            result = new Node[]{ConstantNode.ofB64(cur.stVal())};
         } else {
-            TableConstructor();
+            result = new Node[]{TableConstructor()};
         }
+        return result;
     }
 
-    private void TableConstructor() {
+    private Node TableConstructor() {
         check(LBRAC);
         if (ltok == RBRAC) {
             scan();
         } else {
             FieldList();
         }
+        return null;
     }
 
     private void FieldList() {
