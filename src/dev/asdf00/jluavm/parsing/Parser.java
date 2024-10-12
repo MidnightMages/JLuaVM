@@ -13,14 +13,14 @@ import dev.asdf00.jluavm.parsing.ir.Node;
 import dev.asdf00.jluavm.parsing.ir.controlflow.BreakNode;
 import dev.asdf00.jluavm.parsing.ir.controlflow.GotoNode;
 import dev.asdf00.jluavm.parsing.ir.operations.BinaryOpNode;
-import dev.asdf00.jluavm.parsing.ir.operations.ConstantNode;
+import dev.asdf00.jluavm.parsing.ir.values.ConstantNode;
 import dev.asdf00.jluavm.parsing.ir.operations.UnaryOpNode;
-import dev.asdf00.jluavm.parsing.ir.variables.DeRefNode;
-import dev.asdf00.jluavm.parsing.ir.variables.LocalAccessNode;
+import dev.asdf00.jluavm.parsing.ir.values.ConstructedTableNode;
+import dev.asdf00.jluavm.parsing.ir.values.DeRefNode;
+import dev.asdf00.jluavm.parsing.ir.values.LocalAccessNode;
 import dev.asdf00.jluavm.utils.Triple;
 import dev.asdf00.jluavm.utils.Tuple;
 
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.function.Supplier;
 
@@ -376,6 +376,7 @@ public class Parser {
                     result = new DeRefNode(result, index);
                 }
                 case COLON, LPAR, LITERAL_STRING, LBRAC -> {
+                    // TODO: function call
                     FuncCall();
                 }
                 default -> {
@@ -429,6 +430,7 @@ public class Parser {
                     result = new DeRefNode(result, index);
                 }
                 case COLON, LPAR, LITERAL_STRING, LBRAC -> {
+                    // TODO: function call
                     FuncCall();
                 }
                 default -> {
@@ -455,6 +457,7 @@ public class Parser {
     }
 
     private void FuncCall() {
+        // TODO: function call
         if (ltok == COLON) {
             scan();
             check(IDENT);
@@ -665,7 +668,7 @@ public class Parser {
             }
             case FUNCTION -> {
                 scan();
-                // TODO
+                // TODO definition
                 FuncBody(false);
             }
             case LBRAC -> {
@@ -679,6 +682,7 @@ public class Parser {
     }
 
     private void FuncBody(boolean hasSelf) {
+        // TODO definition
         enterScope(true, false);
         check(LPAR);
         if (hasSelf) {
@@ -694,6 +698,7 @@ public class Parser {
     }
 
     private void ParList() {
+        // TODO definition
         if (ltok == TDOT) {
             scan();
             funcCur.hasParams = true;
@@ -735,39 +740,45 @@ public class Parser {
 
     private Node TableConstructor() {
         check(LBRAC);
+        Node[] keyVals;
         if (ltok == RBRAC) {
             scan();
+            keyVals = new Node[0];
         } else {
-            FieldList();
+            keyVals = FieldList();
         }
-        return null;
+        return new ConstructedTableNode(keyVals);
     }
 
-    private void FieldList() {
-        Field();
+    private Node[] FieldList() {
+        var fieldList = new ArrayList<Node>();
+        Field(fieldList);
         while ((ltok == COMMA || ltok == SEMICOLON) && lla.type() != RBRAC) {
             FieldSep();
-            Field();
+            Field(fieldList);
         }
         if (ltok == COMMA || ltok == SEMICOLON) {
             FieldSep();
         }
         check(RBRAC);
+        return fieldList.toArray(Node[]::new);
     }
 
-    private void Field() {
+    private void Field(ArrayList<Node> fieldList) {
         if (ltok == LBRAK) {
             scan();
-            Exp();
+            fieldList.add(Exp());
             check(RBRAK);
             check(ASSIGN);
-            Exp();
+            fieldList.add(Exp());
         } else if (ltok == IDENT && lla.type() == ASSIGN) {
             scan();
+            fieldList.add(ConstantNode.ofVal(cur.stVal()));
             scan();  // ASSIGN
-            Exp();
+            fieldList.add(Exp());
         } else {
-            Exp();
+            fieldList.add(new ConstantNode("null")); // placeholder value for replacement in LuaTable$.of
+            fieldList.add(Exp());
         }
     }
 

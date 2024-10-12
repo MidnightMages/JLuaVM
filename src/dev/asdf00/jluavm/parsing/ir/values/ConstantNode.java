@@ -1,4 +1,4 @@
-package dev.asdf00.jluavm.parsing.ir.operations;
+package dev.asdf00.jluavm.parsing.ir.values;
 
 import dev.asdf00.jluavm.parsing.ir.Node;
 
