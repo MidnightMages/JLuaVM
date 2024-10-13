@@ -27,7 +27,7 @@ public class UnaryOpNode_RTIMPL$$ {
             return new LuaNumber$(((LuaString$)x).getLength());
         } else if (x.isTable()) {
             var tbl = ((LuaTable$) x);
-            var f = tbl.getMtFunc("__len");
+            var f = tbl._luaGetMtFunc("__len");
             return f != null ? f.Invoke(x)[0] : tbl.getLength();
         } else {
             vm.yeet(new LuaTypeError$("attempted to perform operation 'len %s'".formatted(x.getType().fancyName)));
@@ -39,7 +39,7 @@ public class UnaryOpNode_RTIMPL$$ {
         x = IL___COERCEToNum(x);
         if (!x.isNumber()) { // if the arg isnt of the required type after coercion, look for a metatable
             if (x.isTable()){
-                var f = ((LuaTable$) x).getMtFunc("concat");
+                var f = ((LuaTable$) x)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x)[0]; // metamethods can only return one value
                 }
@@ -54,7 +54,7 @@ public class UnaryOpNode_RTIMPL$$ {
         x = IL___COERCEToBw(x);
         if (!x.isNumberBw()) { // if the arg isnt of the required type after coercion, look for a metatable
             if (x.isTable()){
-                var f = ((LuaTable$) x).getMtFunc("concat");
+                var f = ((LuaTable$) x)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x)[0]; // metamethods can only return one value
                 }

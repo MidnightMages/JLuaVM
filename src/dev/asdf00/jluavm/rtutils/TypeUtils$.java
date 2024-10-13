@@ -11,4 +11,18 @@ public class TypeUtils$ {
         }
         throw vmHandle.yeet(new LuaTypeError$("expected '%s', got '%s'".formatted(LuaVariable$.LuaType.fromClass(type).fancyName, value.getType().fancyName)));
     }
+
+    public static LuaVariable$ resolveResult(LuaVariable$[] result) {
+        if (result.length < 1) {
+            return LuaNil$.singleton;
+        }
+        return result[1];
+    }
+
+    public static ILuaIndexable$ asIndexable(LuaVM_RT$ vmHandle, LuaVariable$ value) {
+        if (value instanceof LuaTable$ tbl) {
+            return tbl;
+        }
+        throw vmHandle.yeet(new LuaTypeError$("expected '%s' to be an indexable value".formatted(value.getType().fancyName)));
+    }
 }

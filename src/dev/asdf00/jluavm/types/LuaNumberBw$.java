@@ -8,7 +8,7 @@ public class LuaNumberBw$ extends LuaVariable$ {
         this.value = value;
     }
 
-    public LuaNumberBw$ of(long value) {
+    public static LuaNumberBw$ of(long value) {
         return new LuaNumberBw$(value);
     }
 

@@ -31,9 +31,9 @@ public class BinaryOpNode_RTIMPL$$ {
                 return LuaBoolean$.fromState(((LuaNumber$) x).lt(((LuaNumber$) y)));
             }
         }
-        var mtf = x.isTable() ? ((LuaTable$) x).getMtFunc("__lt") : null;
+        var mtf = x.isTable() ? ((LuaTable$) x)._luaGetMtFunc("__lt") : null;
         if(mtf == null)
-            mtf = y.isTable() ? ((LuaTable$) y).getMtFunc("__lt") : null;
+            mtf = y.isTable() ? ((LuaTable$) y)._luaGetMtFunc("__lt") : null;
         if(mtf == null)
             vm.yeet(new LuaTypeError$("attempted to perform operation '%s lt %s' and could not find any metatable".formatted(x.getType().fancyName, y.getType().fancyName)));
 
@@ -48,9 +48,9 @@ public class BinaryOpNode_RTIMPL$$ {
                 return LuaBoolean$.fromState(((LuaNumber$) x).le(((LuaNumber$) y)));
             }
         }
-        var mtf = x.isTable() ? ((LuaTable$) x).getMtFunc("__le") : null;
+        var mtf = x.isTable() ? ((LuaTable$) x)._luaGetMtFunc("__le") : null;
         if(mtf == null)
-            mtf = y.isTable() ? ((LuaTable$) y).getMtFunc("__le") : null;
+            mtf = y.isTable() ? ((LuaTable$) y)._luaGetMtFunc("__le") : null;
         if(mtf == null)
             vm.yeet(new LuaTypeError$("attempted to perform operation '%s le %s' and could not find any metatable".formatted(x.getType().fancyName, y.getType().fancyName)));
 
@@ -68,9 +68,9 @@ public class BinaryOpNode_RTIMPL$$ {
             } else if (x.isNumberBw()) {
                 return LuaBoolean$.fromState(((LuaNumberBw$) x).numBwEquals((LuaNumberBw$) y));
             } else if (x.isTable()) {
-                var mtf = ((LuaTable$) x).getMtFunc("__eq");
+                var mtf = ((LuaTable$) x)._luaGetMtFunc("__eq");
                 if (mtf == null)
-                    mtf = ((LuaTable$) y).getMtFunc("__eq");
+                    mtf = ((LuaTable$) y)._luaGetMtFunc("__eq");
                 return mtf == null ? LuaBoolean$.FALSE : UnaryOpNode_RTIMPL$$.IL___builtin_IS_TRUTHY(mtf.Invoke(x, y)[0]);
             }
             // remaining types are ref compares and would be handled by the ref equals check above
@@ -83,13 +83,13 @@ public class BinaryOpNode_RTIMPL$$ {
         y = IL___COERCEToBw(y);
         if (!x.isNumberBw() || !y.isNumberBw()) { // if any of the args isnt of the required type after coercion, look for a metatable
             if (x.isTable()){
-                var f = ((LuaTable$) x).getMtFunc("concat");
+                var f = ((LuaTable$) x)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             if (y.isTable()){
-                var f = ((LuaTable$) y).getMtFunc("concat");
+                var f = ((LuaTable$) y)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
@@ -106,13 +106,13 @@ public class BinaryOpNode_RTIMPL$$ {
         y = IL___COERCEToBw(y);
         if (!x.isNumberBw() || !y.isNumberBw()) { // if any of the args isnt of the required type after coercion, look for a metatable
             if (x.isTable()){
-                var f = ((LuaTable$) x).getMtFunc("concat");
+                var f = ((LuaTable$) x)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             if (y.isTable()){
-                var f = ((LuaTable$) y).getMtFunc("concat");
+                var f = ((LuaTable$) y)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
@@ -129,13 +129,13 @@ public class BinaryOpNode_RTIMPL$$ {
         y = IL___COERCEToBw(y);
         if (!x.isNumberBw() || !y.isNumberBw()) { // if any of the args isnt of the required type after coercion, look for a metatable
             if (x.isTable()){
-                var f = ((LuaTable$) x).getMtFunc("concat");
+                var f = ((LuaTable$) x)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             if (y.isTable()){
-                var f = ((LuaTable$) y).getMtFunc("concat");
+                var f = ((LuaTable$) y)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
@@ -152,13 +152,13 @@ public class BinaryOpNode_RTIMPL$$ {
         y = IL___COERCEToBw(y);
         if (!x.isNumberBw() || !y.isNumberBw()) { // if any of the args isnt of the required type after coercion, look for a metatable
             if (x.isTable()){
-                var f = ((LuaTable$) x).getMtFunc("concat");
+                var f = ((LuaTable$) x)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             if (y.isTable()){
-                var f = ((LuaTable$) y).getMtFunc("concat");
+                var f = ((LuaTable$) y)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
@@ -175,13 +175,13 @@ public class BinaryOpNode_RTIMPL$$ {
         y = IL___COERCEToBw(y);
         if (!x.isNumberBw() || !y.isNumberBw()) { // if any of the args isnt of the required type after coercion, look for a metatable
             if (x.isTable()){
-                var f = ((LuaTable$) x).getMtFunc("concat");
+                var f = ((LuaTable$) x)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             if (y.isTable()){
-                var f = ((LuaTable$) y).getMtFunc("concat");
+                var f = ((LuaTable$) y)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
@@ -198,13 +198,13 @@ public class BinaryOpNode_RTIMPL$$ {
         y = IL___COERCEToStr(y);
         if (!x.isString() || !y.isString()) { // if any of the args isnt of the required type after coercion, look for a metatable
             if (x.isTable()){
-                var f = ((LuaTable$) x).getMtFunc("concat");
+                var f = ((LuaTable$) x)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             if (y.isTable()){
-                var f = ((LuaTable$) y).getMtFunc("concat");
+                var f = ((LuaTable$) y)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
@@ -221,13 +221,13 @@ public class BinaryOpNode_RTIMPL$$ {
         y = IL___COERCEToNum(y);
         if (!x.isNumber() || !y.isNumber()) { // if any of the args isnt of the required type after coercion, look for a metatable
             if (x.isTable()){
-                var f = ((LuaTable$) x).getMtFunc("concat");
+                var f = ((LuaTable$) x)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             if (y.isTable()){
-                var f = ((LuaTable$) y).getMtFunc("concat");
+                var f = ((LuaTable$) y)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
@@ -244,13 +244,13 @@ public class BinaryOpNode_RTIMPL$$ {
         y = IL___COERCEToNum(y);
         if (!x.isNumber() || !y.isNumber()) { // if any of the args isnt of the required type after coercion, look for a metatable
             if (x.isTable()){
-                var f = ((LuaTable$) x).getMtFunc("concat");
+                var f = ((LuaTable$) x)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             if (y.isTable()){
-                var f = ((LuaTable$) y).getMtFunc("concat");
+                var f = ((LuaTable$) y)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
@@ -267,13 +267,13 @@ public class BinaryOpNode_RTIMPL$$ {
         y = IL___COERCEToNum(y);
         if (!x.isNumber() || !y.isNumber()) { // if any of the args isnt of the required type after coercion, look for a metatable
             if (x.isTable()){
-                var f = ((LuaTable$) x).getMtFunc("concat");
+                var f = ((LuaTable$) x)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             if (y.isTable()){
-                var f = ((LuaTable$) y).getMtFunc("concat");
+                var f = ((LuaTable$) y)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
@@ -290,13 +290,13 @@ public class BinaryOpNode_RTIMPL$$ {
         y = IL___COERCEToNum(y);
         if (!x.isNumber() || !y.isNumber()) { // if any of the args isnt of the required type after coercion, look for a metatable
             if (x.isTable()){
-                var f = ((LuaTable$) x).getMtFunc("concat");
+                var f = ((LuaTable$) x)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             if (y.isTable()){
-                var f = ((LuaTable$) y).getMtFunc("concat");
+                var f = ((LuaTable$) y)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
@@ -313,13 +313,13 @@ public class BinaryOpNode_RTIMPL$$ {
         y = IL___COERCEToNum(y);
         if (!x.isNumber() || !y.isNumber()) { // if any of the args isnt of the required type after coercion, look for a metatable
             if (x.isTable()){
-                var f = ((LuaTable$) x).getMtFunc("concat");
+                var f = ((LuaTable$) x)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             if (y.isTable()){
-                var f = ((LuaTable$) y).getMtFunc("concat");
+                var f = ((LuaTable$) y)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
@@ -336,13 +336,13 @@ public class BinaryOpNode_RTIMPL$$ {
         y = IL___COERCEToNum(y);
         if (!x.isNumber() || !y.isNumber()) { // if any of the args isnt of the required type after coercion, look for a metatable
             if (x.isTable()){
-                var f = ((LuaTable$) x).getMtFunc("concat");
+                var f = ((LuaTable$) x)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             if (y.isTable()){
-                var f = ((LuaTable$) y).getMtFunc("concat");
+                var f = ((LuaTable$) y)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
@@ -359,13 +359,13 @@ public class BinaryOpNode_RTIMPL$$ {
         y = IL___COERCEToNum(y);
         if (!x.isNumber() || !y.isNumber()) { // if any of the args isnt of the required type after coercion, look for a metatable
             if (x.isTable()){
-                var f = ((LuaTable$) x).getMtFunc("concat");
+                var f = ((LuaTable$) x)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             if (y.isTable()){
-                var f = ((LuaTable$) y).getMtFunc("concat");
+                var f = ((LuaTable$) y)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }

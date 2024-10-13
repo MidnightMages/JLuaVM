@@ -29,7 +29,7 @@ import static dev.asdf00.jluavm.parsing.container.TokenType.*;
 
 public class Parser {
     private final Supplier<String> fClassNameGenerator;
-    private final Supplier<String> tempValGen;
+    private final Supplier<String> tempVarNameGen;
     private final SymTable symTab;
     private final Lexer lexer;
     private TokenType ltok = EOF;  // TokenType of la
@@ -42,11 +42,11 @@ public class Parser {
         symTab = new SymTable();
         lexer = new Lexer(input);
 
-        tempValGen = new Supplier<>() {
+        tempVarNameGen = new Supplier<>() {
             long id = 0;
             @Override
             public String get() {
-                return "_tempVal$" + (id++);
+                return "_tempVar$" + (id++);
             }
         };
     }
@@ -416,7 +416,7 @@ public class Parser {
                 }
             });
             Node[] expressions = ExpList();
-            result = new AssignmentNode(tempValGen, assignTargets.toArray(Node[]::new), expressions);
+            result = new AssignmentNode(tempVarNameGen, assignTargets.toArray(Node[]::new), expressions);
         }
         return result;
     }

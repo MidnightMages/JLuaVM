@@ -1,22 +1,19 @@
 package dev.asdf00.jluavm.types;
 
 import dev.asdf00.jluavm.exceptions.runtime.LuaArgumentError$;
+import dev.asdf00.jluavm.exceptions.runtime.LuaNilError$;
 import dev.asdf00.jluavm.internals.LuaVM_RT$;
 
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 
-public class LuaTable$ extends LuaVariable$ {
+public final class LuaTable$ extends LuaVariable$ implements ILuaIndexable$ {
     private LuaTable$ metatable = null;
     private Map<LuaVariable$, LuaVariable$> table;
 
-    public LuaTable$() {
-        super(LuaType.TABLE);
-    }
-
     protected LuaTable$(Map<LuaVariable$, LuaVariable$> innerTable) {
-        this();
+        super(LuaType.TABLE);
         table = innerTable;
     }
 
@@ -47,29 +44,77 @@ public class LuaTable$ extends LuaVariable$ {
         return new LuaTable$(tbl);
     }
 
-    public LuaFunction$ getMtFunc(String funcName){ // TODO for __index this may be a table too --> maybe for other funcs thats allowed too?; see https://www.lua.org/manual/5.4/manual.html#2.4
+    public LuaFunction$ _luaGetMtFunc(LuaVM_RT$ vmHandle, String funcName) { // TODO for __index this may be a table too --> maybe for other funcs thats allowed too?; see https://www.lua.org/manual/5.4/manual.html#2.4
         if(metatable != null){
-            var mv = metatable.get(new LuaString$(funcName));
-            if (mv.isFunction())
+            var mv = metatable._luaGet(vmHandle, new LuaString$(funcName));
+            if (mv.isFunction()) {
                 return ((LuaFunction$) mv);
+            }
         }
         return null;
     }
 
-    public LuaVariable$ get(LuaVariable$ key){
-        // TODO: check for possible meta table entry
-        // TODO: coerce LuaNumber to LuaNumberBw for key if possible
-        throw new UnsupportedOperationException("not implemented");
+    @SuppressWarnings("unused")
+    public LuaVariable$ rawget(LuaVM_RT$ vmHandle, LuaVariable$ key) {
+        key = tryCoerceFloat(key);
+        LuaVariable$ result = table.get(key);
+        return result == null ? LuaNil$.singleton : result;
     }
 
-    public LuaVariable$ set(LuaVM_RT$ vmHandle, LuaVariable$ key, LuaVariable$ value){
+    public LuaVariable$ _luaGet(LuaVM_RT$ vmHandle, LuaVariable$ key) {
         // TODO: check for possible meta table entry
         // TODO: coerce LuaNumber to LuaNumberBw for key if possible
-        // TODO: throw if key == nil
-        throw new UnsupportedOperationException("not implemented");
+        key = tryCoerceFloat(key);
+        if (!table.containsKey(key)) {
+            var mtf = _luaGetMtFunc(vmHandle, "__index");
+            if (mtf != null) {
+
+            }
+        }
+        return null;
+    }
+
+    public LuaTable$ rawset(LuaVM_RT$ vmHandle, LuaVariable$ key, LuaVariable$ value) {
+        key = tryCoerceFloat(key);
+        if (key.isNil()) {
+            vmHandle.yeet(new LuaNilError$("can not set table field 'nil'"));
+        } else if (key instanceof LuaNumber$ ln && Double.isNaN(ln.getValue())) {
+            vmHandle.yeet(new LuaNilError$("can not set table field 'NaN'"));
+        }
+        if (value.isNil()) {
+            table.remove(key);
+        } else {
+            table.put(key, value);
+        }
+        return this;
+    }
+
+    public void _luaGet(LuaVM_RT$ vmHandle, LuaVariable$ key, LuaVariable$ value){
+        // coerce LuaNumber to LuaNumberBw for key if possible
+        key = tryCoerceFloat(key);
+        // check for possible meta table entry
+        if (!table.containsKey(key)) {
+            var mtf = _luaGetMtFunc(vmHandle, "__newindex");
+            if (mtf != null) {
+                // if there is a meta function, we execute it instead
+                mtf.invoke(vmHandle, key, value);
+                return;
+            }
+        }
+        rawset(vmHandle, key, value);
     }
 
     public LuaVariable$ getLength() {
         throw new UnsupportedOperationException("not implemented");
+    }
+
+    private static LuaVariable$ tryCoerceFloat(LuaVariable$ key) {
+        if (key instanceof LuaNumber$ ln) {
+            double dn = ln.getValue();
+            if ((double) ((long) dn) == dn) {
+                key = LuaNumberBw$.of((long) dn);
+            }
+        }
+        return key;
     }
 }

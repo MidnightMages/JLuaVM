@@ -31,11 +31,11 @@ public class LuaVM_RT$ extends LuaVM {
             yeet(new LuaTypeError$("%s is not a closable type".formatted(value.getType())));
         }
         var tbl = (LuaTable$) value;
-        var mtf = tbl.getMtFunc("__close");
+        var mtf = tbl._luaGetMtFunc("__close");
         if (mtf == null) {
             yeet(new LuaMetaTableError$("metamethod '__close' not found"));
         }
-        mtf.Invoke(value, error == null ? LuaNil$.singleton : error.getErrorString());
+        mtf.invoke(this, value, error == null ? LuaNil$.singleton : error.getErrorString());
     }
 
     /**
@@ -53,7 +53,7 @@ public class LuaVM_RT$ extends LuaVM {
             yeet(new LuaTypeError$("%s is not a table type".formatted(value.getType())));
         }
         var tbl = (LuaTable$) value;
-        var mtf = tbl.getMtFunc("__close");
+        var mtf = tbl._luaGetMtFunc("__close");
         if (mtf == null) {
             yeet(new LuaMetaTableError$("metamethod '__close' not found"));
         }

@@ -13,6 +13,6 @@ public class DeRefNode extends Node {
 
     @Override
     public String generate() {
-        return "TypeUtils$.asType($vm, LuaTable$.class, %s).get(%s)".formatted(value.generate());
+        return "TypeUtils$.asIndexable($vm, %s)._luaGet(%s)".formatted(value.generate());
     }
 }

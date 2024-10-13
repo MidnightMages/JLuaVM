@@ -4,6 +4,9 @@ import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
 
 import java.util.Map;
 
+/**
+ * TODO: make this class an interface, start all functions with "_lua" since they might leak out of this package via userdata.
+ */
 public abstract class LuaVariable$ {
 
     private final LuaType varKind;
@@ -57,7 +60,8 @@ public abstract class LuaVariable$ {
         TABLE("table"),
         UDATA("userdata"),
         THREAD("thread"),
-        NUM_BW("number");
+        NUM_BW("number"),
+        FUNCTION_RESULT("no-type");
 
         public final String fancyName;
 
