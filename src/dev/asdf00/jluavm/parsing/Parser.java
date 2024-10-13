@@ -12,6 +12,7 @@ import dev.asdf00.jluavm.parsing.ir.IRFunction;
 import dev.asdf00.jluavm.parsing.ir.Node;
 import dev.asdf00.jluavm.parsing.ir.controlflow.BreakNode;
 import dev.asdf00.jluavm.parsing.ir.controlflow.GotoNode;
+import dev.asdf00.jluavm.parsing.ir.operations.AssignmentNode;
 import dev.asdf00.jluavm.parsing.ir.operations.BinaryOpNode;
 import dev.asdf00.jluavm.parsing.ir.values.ConstantNode;
 import dev.asdf00.jluavm.parsing.ir.operations.UnaryOpNode;
@@ -28,6 +29,7 @@ import static dev.asdf00.jluavm.parsing.container.TokenType.*;
 
 public class Parser {
     private final Supplier<String> fClassNameGenerator;
+    private final Supplier<String> tempValGen;
     private final SymTable symTab;
     private final Lexer lexer;
     private TokenType ltok = EOF;  // TokenType of la
@@ -39,6 +41,14 @@ public class Parser {
         this.fClassNameGenerator = fClassNameGenerator;
         symTab = new SymTable();
         lexer = new Lexer(input);
+
+        tempValGen = new Supplier<>() {
+            long id = 0;
+            @Override
+            public String get() {
+                return "_tempVal$" + id;
+            }
+        };
     }
 
     private void check(TokenType type) {
@@ -359,8 +369,9 @@ public class Parser {
             info = null;
             onlyIdent = false;
             if (ltok == LBRAK || ltok == DOT) {
-                DeRef();
+                result = DeRef(result);
             } else {
+                // TODO: function call
                 FuncCall();
             }
         } else {
@@ -372,8 +383,7 @@ public class Parser {
         loop: for (;;) {
             switch (ltok) {
                 case LBRAK, DOT -> {
-                    Node index = DeRef();
-                    result = new DeRefNode(result, index);
+                    result = DeRef(result);
                 }
                 case COLON, LPAR, LITERAL_STRING, LBRAC -> {
                     // TODO: function call
@@ -386,11 +396,14 @@ public class Parser {
             onlyIdent = false;
         }
         if (isAssignable()) {
+            var assignTargets = new ArrayList<Node>();
+            assignTargets.add(result);
             var qLocals = new ArrayList<Tuple<VarInfo, Boolean>>();
             qLocals.add(new Tuple<>(info, onlyIdent));
             while (ltok == COMMA) {
                 scan();
                 var packedInfo = ValExp();
+                assignTargets.add(packedInfo.x());
                 qLocals.add(new Tuple<>(packedInfo.y(), packedInfo.z()));
                 if (!isAssignable()) {
                     throw new LuaParserException(la.pos(), "Expected <%s>, got <%s>".formatted(DOT.rep, ltok.rep));
@@ -402,7 +415,8 @@ public class Parser {
                     p.x().setWritten();
                 }
             });
-            ExpList();
+            Node[] expressions = ExpList();
+            result = new AssignmentNode(tempValGen, assignTargets.toArray(Node[]::new), expressions);
         }
         return result;
     }
@@ -426,8 +440,7 @@ public class Parser {
         loop: for (;;) {
             switch (ltok) {
                 case LBRAK, DOT -> {
-                    Node index = DeRef();
-                    result = new DeRefNode(result, index);
+                    result = DeRef(result);
                 }
                 case COLON, LPAR, LITERAL_STRING, LBRAC -> {
                     // TODO: function call
@@ -442,7 +455,7 @@ public class Parser {
         return new Triple<>(result, info, onlyIdent);
     }
 
-    private Node DeRef() {
+    private Node DeRef(Node target) {
         Node index;
         if (ltok == LBRAK) {
             scan();
@@ -453,7 +466,7 @@ public class Parser {
             check(IDENT);
             index = ConstantNode.ofString(cur.stVal());
         }
-        return index;
+        return new DeRefNode(target, index);
     }
 
     private void FuncCall() {
