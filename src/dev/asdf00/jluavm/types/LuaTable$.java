@@ -58,13 +58,14 @@ public class LuaTable$ extends LuaVariable$ {
 
     public LuaVariable$ get(LuaVariable$ key){
         // TODO: check for possible meta table entry
-        // TODO: coerce LuaNumberBw to normal LuaNumber
+        // TODO: coerce LuaNumber to LuaNumberBw for key if possible
         throw new UnsupportedOperationException("not implemented");
     }
 
-    public LuaVariable$ set(LuaVariable$ key, LuaVariable$ value){
+    public LuaVariable$ set(LuaVM_RT$ vmHandle, LuaVariable$ key, LuaVariable$ value){
         // TODO: check for possible meta table entry
-        // TODO: coerce LuaNumberBw to normal LuaNumber for key
+        // TODO: coerce LuaNumber to LuaNumberBw for key if possible
+        // TODO: throw if key == nil
         throw new UnsupportedOperationException("not implemented");
     }
 
