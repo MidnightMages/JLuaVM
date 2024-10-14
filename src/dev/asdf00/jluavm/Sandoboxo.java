@@ -82,8 +82,8 @@ public class Sandoboxo extends LuaFunction {
                 // load local
                 t3 = stackFrame[1];
                 // add
-                if (t2 instanceof ILuaNumber addX && t3 instanceof ILuaNumber addY) {
-                    t2 = addX.rawAdd(addY);
+                if (t2 instanceof ILuaSupportsArithmetic addX && t3 instanceof ILuaSupportsArithmetic addY) {
+                    t2 = addX.add(addY);
                     t3 = null;
                 } else {
                     return LuaReturnValue.callInternal(1, RTUtils.pack(t0, t1), Sandoboxo::addWithMeta, RTUtils.pack(t2, t3));
@@ -108,7 +108,7 @@ public class Sandoboxo extends LuaFunction {
                             t1 = null;
                             t0 = null;
                         } else {
-                            return LuaReturnValue.callInternal(2, RTUtils.pack(), Sandoboxo::setWithMeta, RTUtils.pack(tbl, key, t2));
+                            return LuaReturnValue.callInternal(2, RTUtils.pack(), Sandoboxo::setWithMeta, RTUtils.pack(tbl, key, t2, mtbl));
                         }
                     }
                 } else if (t0 instanceof ILuaUserData uData) {
@@ -129,12 +129,12 @@ public class Sandoboxo extends LuaFunction {
                 // return
                 return LuaReturnValue.returnValue(t0);
             default:
-                throw new InternalLuaRuntimeError("should not reach");
+                throw new InternalLuaRuntimeError("unknown resume point " + resume);
         }
     }
 
     public static LuaReturnValue getWithMeta(LuaVM_RT vm, ILuaVariable[] stackFrame, ILuaVariable[] args, int resume, ILuaVariable[] expressionStack, ILuaVariable[] returned) {
-        ILuaVariable t0 = null, t1 = null, t2 = null, t3 = null, t4 = null, t5 = null;
+        ILuaVariable t0 = null;
         // on resume
         switch (resume) {
             case 0 -> {
@@ -174,31 +174,99 @@ public class Sandoboxo extends LuaFunction {
             case 1:
                 return LuaReturnValue.returnValue(t0);
             default:
-                throw new InternalLuaRuntimeError("should not reach");
+                throw new InternalLuaRuntimeError("unknown resume point " + resume);
         }
     }
 
-    // TODO
     public static LuaReturnValue setWithMeta(LuaVM_RT vm, ILuaVariable[] stackFrame, ILuaVariable[] args, int resume, ILuaVariable[] expressionStack, ILuaVariable[] returned) {
-        ILuaVariable t0 = null, t1 = null, t2 = null, t3 = null;
+        ILuaVariable t0 = null, t1 = null, t2 = null, t3 = null, t4 = null, t5 = null, t6 = null, t7 = null;
         switch (resume) {
-
+            case -1 -> {
+                t0 = args.length > 0 ? args[0] : Singletons.NIL; // table
+                t1 = args.length > 1 ? args[1] : Singletons.NIL; // key
+                t2 = args.length > 2 ? args[2] : Singletons.NIL; // value
+                t3 = args.length > 3 ? args[3] : Singletons.NIL; // meta-value
+            }
         }
         switch (resume) {
             case -1:
-
+                // load constant
+                t4 = Singletons.Meta.__newindex;
+                // get index
+                if (t3 instanceof LuaTable tbl) {
+                    ILuaVariable key = RTUtils.tryCoerceFloatToInt(t4);
+                    if (tbl.hasKey(key)) {
+                        t3 = tbl.get(key);
+                        t4 = null;
+                    } else {
+                        LuaTable mtbl = tbl.getMetaTable();
+                        if (mtbl == null) {
+                            t3 = Singletons.NIL;
+                            t4 = null;
+                        } else {
+                            // return value of getFromMetaTable lands in t3
+                            return LuaReturnValue.callInternal(0, RTUtils.pack(t0, t1, t2), Sandoboxo::getWithMeta, RTUtils.pack(mtbl, Singletons.Meta.__newindex));
+                        }
+                    }
+                } else if (t0 instanceof ILuaUserData uData) {
+                    try {
+                        t0 = uData._luaGet(t1);
+                        t1 = null;
+                    } catch (LuaRuntimeError$ ex) {
+                        return LuaReturnValue.error(new LuaForeignCallError());
+                    }
+                } else {
+                    throw new InternalLuaRuntimeError("should not reach");
+                }
+            case 0:
+                if (t3 instanceof LuaFunction func) {
+                    return LuaReturnValue.callExternal(1, RTUtils.pack(), func, RTUtils.pack(t0, t1, t2));
+                } else {
+                    return LuaReturnValue.callInternal(1, RTUtils.pack(), Sandoboxo::setWithMeta, RTUtils.pack(t0, t1, t2, t3));
+                }
+            case 1:
+                return LuaReturnValue.returnValue();
+            default:
+                throw new InternalLuaRuntimeError("unknown resume point " + resume);
         }
     }
 
-    // TODO
     public static LuaReturnValue addWithMeta(LuaVM_RT vm, ILuaVariable[] stackFrame, ILuaVariable[] args, int resume, ILuaVariable[] expressionStack, ILuaVariable[] returned) {
         ILuaVariable t0 = null, t1 = null, t2 = null, t3 = null;
         switch (resume) {
-
+            case -1 -> {
+                t0 = args.length > 0 ? args[0] : Singletons.NIL; // x
+                t1 = args.length > 1 ? args[1] : Singletons.NIL; // y
+            }
+            case 0 -> {
+               t0 = expressionStack[0];
+               t1 = expressionStack[1];
+               t2 = returned.length > 0 ? returned[0] : Singletons.NIL; // meta-value
+            }
+            case 1 -> {
+                t0 = returned.length > 0 ? returned[0] : Singletons.NIL; // meta call result
+            }
         }
         switch (resume) {
             case -1:
-
+                t2 = t0.getMetaTable();
+                if (t2 == null) {
+                    t2 = t1.getMetaTable();
+                }
+                if (t2 == null) {
+                    return LuaReturnValue.error(new LuaMetaTableError());
+                }
+                return LuaReturnValue.callInternal(0, RTUtils.pack(t0, t1), Sandoboxo::getWithMeta, RTUtils.pack(t2, Singletons.Meta.__add));
+            case 0:
+                if (t2 instanceof LuaFunction mfunc) {
+                    return LuaReturnValue.callExternal(1, RTUtils.pack(), mfunc, RTUtils.pack(t0, t1));
+                } else {
+                    return LuaReturnValue.error(new LuaMetaTableError());
+                }
+            case 1:
+                return LuaReturnValue.returnValue(t0);
+            default:
+                throw new InternalLuaRuntimeError("unknown resume point " + resume);
         }
     }
 }
