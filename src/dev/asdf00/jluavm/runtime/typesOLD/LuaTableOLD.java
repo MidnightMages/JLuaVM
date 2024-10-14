@@ -1,67 +1,67 @@
-package dev.asdf00.jluavm.types;
+package dev.asdf00.jluavm.runtime.typesOLD;
 
 import dev.asdf00.jluavm.exceptions.runtime.LuaArgumentError$;
 import dev.asdf00.jluavm.exceptions.runtime.LuaNilError$;
-import dev.asdf00.jluavm.internals.LuaVM_RT$;
+import dev.asdf00.jluavm.internals.LuaVM_RT;
 
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 
-public final class LuaTable$ extends LuaVariable$ implements ILuaIndexable$ {
-    private LuaTable$ metatable = null;
-    private Map<LuaVariable$, LuaVariable$> table;
+public final class LuaTableOLD extends LuaVariableOLD implements ILuaIndexableOLD {
+    private LuaTableOLD metatable = null;
+    private Map<LuaVariableOLD, LuaVariableOLD> table;
 
-    protected LuaTable$(Map<LuaVariable$, LuaVariable$> innerTable) {
+    protected LuaTableOLD(Map<LuaVariableOLD, LuaVariableOLD> innerTable) {
         super(LuaType.TABLE);
         table = innerTable;
     }
 
-    public static LuaTable$ of(LuaVM_RT$ vmHandle, LuaVariable$... keyVals) {
+    public static LuaTableOLD of(LuaVM_RT vmHandle, LuaVariableOLD... keyVals) {
         if ((keyVals.length & 1) == 1) {
             vmHandle.yeet(new LuaArgumentError$("got more keys than values"));
         }
         var forbiddenIndexes = new HashSet<Double>();
         for (int i = 0; i < keyVals.length - 1; i += 2) {
             if (keyVals[i] != null) {
-                if (keyVals[i] instanceof LuaNumber$ dn) {
+                if (keyVals[i] instanceof LuaNumberOLD dn) {
                     forbiddenIndexes.add(dn.value);
-                } else if (keyVals[i] instanceof LuaNumberBw$ in) {
+                } else if (keyVals[i] instanceof LuaNumberBwOLD in) {
                     forbiddenIndexes.add((double) in.value);
                 }
             }
         }
-        var tbl = new HashMap<LuaVariable$, LuaVariable$>();
+        var tbl = new HashMap<LuaVariableOLD, LuaVariableOLD>();
         double lIdx = 1.0;
         for (int i = 0; i < keyVals.length - 1;) {
             var key = keyVals[i++];
             var val = keyVals[i++];
             if (key == null) {
-                key = LuaNumber$.of(lIdx++);
+                key = LuaNumberOLD.of(lIdx++);
             }
             tbl.put(key, val);
         }
-        return new LuaTable$(tbl);
+        return new LuaTableOLD(tbl);
     }
 
-    public LuaFunction$ _luaGetMtFunc(LuaVM_RT$ vmHandle, String funcName) { // TODO for __index this may be a table too --> maybe for other funcs thats allowed too?; see https://www.lua.org/manual/5.4/manual.html#2.4
+    public LuaFunctionOLD _luaGetMtFunc(LuaVM_RT vmHandle, String funcName) { // TODO for __index this may be a table too --> maybe for other funcs thats allowed too?; see https://www.lua.org/manual/5.4/manual.html#2.4
         if(metatable != null){
-            var mv = metatable._luaGet(vmHandle, new LuaString$(funcName));
+            var mv = metatable._luaGet(vmHandle, new LuaStringOLD(funcName));
             if (mv.isFunction()) {
-                return ((LuaFunction$) mv);
+                return ((LuaFunctionOLD) mv);
             }
         }
         return null;
     }
 
     @SuppressWarnings("unused")
-    public LuaVariable$ rawget(LuaVM_RT$ vmHandle, LuaVariable$ key) {
+    public LuaVariableOLD rawget(LuaVM_RT vmHandle, LuaVariableOLD key) {
         key = tryCoerceFloat(key);
-        LuaVariable$ result = table.get(key);
-        return result == null ? LuaNil$.singleton : result;
+        LuaVariableOLD result = table.get(key);
+        return result == null ? LuaNilOLD.singleton : result;
     }
 
-    public LuaVariable$ _luaGet(LuaVM_RT$ vmHandle, LuaVariable$ key) {
+    public LuaVariableOLD _luaGet(LuaVM_RT vmHandle, LuaVariableOLD key) {
         // TODO: check for possible meta table entry
         // TODO: coerce LuaNumber to LuaNumberBw for key if possible
         key = tryCoerceFloat(key);
@@ -74,11 +74,11 @@ public final class LuaTable$ extends LuaVariable$ implements ILuaIndexable$ {
         return null;
     }
 
-    public LuaTable$ rawset(LuaVM_RT$ vmHandle, LuaVariable$ key, LuaVariable$ value) {
+    public LuaTableOLD rawset(LuaVM_RT vmHandle, LuaVariableOLD key, LuaVariableOLD value) {
         key = tryCoerceFloat(key);
         if (key.isNil()) {
             vmHandle.yeet(new LuaNilError$("can not set table field 'nil'"));
-        } else if (key instanceof LuaNumber$ ln && Double.isNaN(ln.getValue())) {
+        } else if (key instanceof LuaNumberOLD ln && Double.isNaN(ln.getValue())) {
             vmHandle.yeet(new LuaNilError$("can not set table field 'NaN'"));
         }
         if (value.isNil()) {
@@ -89,7 +89,7 @@ public final class LuaTable$ extends LuaVariable$ implements ILuaIndexable$ {
         return this;
     }
 
-    public void _luaGet(LuaVM_RT$ vmHandle, LuaVariable$ key, LuaVariable$ value){
+    public void _luaGet(LuaVM_RT vmHandle, LuaVariableOLD key, LuaVariableOLD value){
         // coerce LuaNumber to LuaNumberBw for key if possible
         key = tryCoerceFloat(key);
         // check for possible meta table entry
@@ -104,15 +104,15 @@ public final class LuaTable$ extends LuaVariable$ implements ILuaIndexable$ {
         rawset(vmHandle, key, value);
     }
 
-    public LuaVariable$ getLength() {
+    public LuaVariableOLD getLength() {
         throw new UnsupportedOperationException("not implemented");
     }
 
-    private static LuaVariable$ tryCoerceFloat(LuaVariable$ key) {
-        if (key instanceof LuaNumber$ ln) {
+    private static LuaVariableOLD tryCoerceFloat(LuaVariableOLD key) {
+        if (key instanceof LuaNumberOLD ln) {
             double dn = ln.getValue();
             if ((double) ((long) dn) == dn) {
-                key = LuaNumberBw$.of((long) dn);
+                key = LuaNumberBwOLD.of((long) dn);
             }
         }
         return key;

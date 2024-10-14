@@ -1,11 +1,11 @@
 package dev.asdf00.jluavm;
 
-import dev.asdf00.jluavm.internals.LuaVM_RT$;
+import dev.asdf00.jluavm.internals.LuaVM_RT;
 
 public abstract class LuaVM {
 
     public static LuaVM create() {
-        return new LuaVM_RT$();
+        return new LuaVM_RT();
     }
 
     public void load(String code) {

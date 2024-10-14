@@ -7,12 +7,13 @@ public class DeRefNode extends Node {
     public Node idx;
 
     public DeRefNode(Node value, Node idx) {
+        maxDepth = Math.max(value.getMaxDepth(), idx.getMaxDepth()) + 1;
         this.value = value;
         this.idx = idx;
     }
 
     @Override
     public String generate() {
-        return "TypeUtils$.asIndexable($vm, %s)._luaGet(%s)".formatted(value.generate());
+        return "".formatted(value.generate());
     }
 }

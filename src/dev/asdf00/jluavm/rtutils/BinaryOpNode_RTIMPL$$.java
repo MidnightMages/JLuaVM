@@ -1,379 +1,380 @@
 package dev.asdf00.jluavm.rtutils;
 
-import dev.asdf00.jluavm.internals.LuaVM_RT$;
+import dev.asdf00.jluavm.internals.LuaVM_RT;
+import dev.asdf00.jluavm.runtime.typesOLD.*;
 import dev.asdf00.jluavm.types.*;
 import dev.asdf00.jluavm.exceptions.runtime.*;
 
 public class BinaryOpNode_RTIMPL$$ {
-    public static LuaVariable$ IL___COERCEToNum(LuaVariable$ a){
+    public static LuaVariableOLD IL___COERCEToNum(LuaVariableOLD a){
         return a; // TODO return a LuaNumber$ if coercion is possible, otherwise return the argument a
     }
-    public static LuaVariable$ IL___COERCEToBw(LuaVariable$ a){
+    public static LuaVariableOLD IL___COERCEToBw(LuaVariableOLD a){
         return a; // TODO return a LuaNumberBw$ if coercion is possible, otherwise return the argument a
     }
-    public static LuaVariable$ IL___COERCEToStr(LuaVariable$ a){
+    public static LuaVariableOLD IL___COERCEToStr(LuaVariableOLD a){
         return a; // TODO return a LuaString$ if coercion is possible, otherwise return the argument a
     }
 
-    public static LuaVariable$ IL___builtin_or(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariableOLD IL___builtin_or(LuaVM_RT vm, LuaVariableOLD x, LuaVariableOLD y) {
         return UnaryOpNode_RTIMPL$$.IL___builtin_IS_TRUTHY(x).getValue() ? x : y;
     }
 
-    public static LuaVariable$ IL___builtin_and(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariableOLD IL___builtin_and(LuaVM_RT vm, LuaVariableOLD x, LuaVariableOLD y) {
         return UnaryOpNode_RTIMPL$$.IL___builtin_IS_TRUTHY(x).getValue() ? y : x;
     }
 
-    public static LuaVariable$ IL__lt(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariableOLD IL__lt(LuaVM_RT vm, LuaVariableOLD x, LuaVariableOLD y) {
         if (x.getType() == y.getType()){
             if (x.isString())
-                return LuaBoolean$.fromState(((LuaString$) x).lt(((LuaString$) y)));
+                return LuaBooleanOLD.fromState(((LuaStringOLD) x).lt(((LuaStringOLD) y)));
             if (x.isNumber()) { // TODO make work for NumberBw
-                return LuaBoolean$.fromState(((LuaNumber$) x).lt(((LuaNumber$) y)));
+                return LuaBooleanOLD.fromState(((LuaNumberOLD) x).lt(((LuaNumberOLD) y)));
             }
         }
-        var mtf = x.isTable() ? ((LuaTable$) x)._luaGetMtFunc("__lt") : null;
+        var mtf = x.isTable() ? ((LuaTableOLD) x)._luaGetMtFunc("__lt") : null;
         if(mtf == null)
-            mtf = y.isTable() ? ((LuaTable$) y)._luaGetMtFunc("__lt") : null;
+            mtf = y.isTable() ? ((LuaTableOLD) y)._luaGetMtFunc("__lt") : null;
         if(mtf == null)
             vm.yeet(new LuaTypeError$("attempted to perform operation '%s lt %s' and could not find any metatable".formatted(x.getType().fancyName, y.getType().fancyName)));
 
         return UnaryOpNode_RTIMPL$$.IL___builtin_IS_TRUTHY(mtf.Invoke(x,y)[0]);
     }
 
-    public static LuaVariable$ IL__le(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariableOLD IL__le(LuaVM_RT vm, LuaVariableOLD x, LuaVariableOLD y) {
         if (x.getType() == y.getType()){
             if (x.isString())
-                return LuaBoolean$.fromState(((LuaString$) x).le(((LuaString$) y)));
+                return LuaBooleanOLD.fromState(((LuaStringOLD) x).le(((LuaStringOLD) y)));
             if (x.isNumber()) { // TODO make work for NumberBw
-                return LuaBoolean$.fromState(((LuaNumber$) x).le(((LuaNumber$) y)));
+                return LuaBooleanOLD.fromState(((LuaNumberOLD) x).le(((LuaNumberOLD) y)));
             }
         }
-        var mtf = x.isTable() ? ((LuaTable$) x)._luaGetMtFunc("__le") : null;
+        var mtf = x.isTable() ? ((LuaTableOLD) x)._luaGetMtFunc("__le") : null;
         if(mtf == null)
-            mtf = y.isTable() ? ((LuaTable$) y)._luaGetMtFunc("__le") : null;
+            mtf = y.isTable() ? ((LuaTableOLD) y)._luaGetMtFunc("__le") : null;
         if(mtf == null)
             vm.yeet(new LuaTypeError$("attempted to perform operation '%s le %s' and could not find any metatable".formatted(x.getType().fancyName, y.getType().fancyName)));
 
         return UnaryOpNode_RTIMPL$$.IL___builtin_IS_TRUTHY(mtf.Invoke(x,y)[0]);
     }
 
-    public static LuaVariable$ IL__eq(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariableOLD IL__eq(LuaVM_RT vm, LuaVariableOLD x, LuaVariableOLD y) {
         if (x.getType() == y.getType()) {
             if (x == y)
-                return LuaBoolean$.TRUE;
+                return LuaBooleanOLD.TRUE;
             if (x.isString()) { // y is also a string
-                return LuaBoolean$.fromState(((LuaString$) x).strEquals((LuaString$) y));
+                return LuaBooleanOLD.fromState(((LuaStringOLD) x).strEquals((LuaStringOLD) y));
             } else if (x.isNumber()) {
-                return LuaBoolean$.fromState(((LuaNumber$) x).numEquals((LuaNumber$) y));
+                return LuaBooleanOLD.fromState(((LuaNumberOLD) x).numEquals((LuaNumberOLD) y));
             } else if (x.isNumberBw()) {
-                return LuaBoolean$.fromState(((LuaNumberBw$) x).numBwEquals((LuaNumberBw$) y));
+                return LuaBooleanOLD.fromState(((LuaNumberBwOLD) x).numBwEquals((LuaNumberBwOLD) y));
             } else if (x.isTable()) {
-                var mtf = ((LuaTable$) x)._luaGetMtFunc("__eq");
+                var mtf = ((LuaTableOLD) x)._luaGetMtFunc("__eq");
                 if (mtf == null)
-                    mtf = ((LuaTable$) y)._luaGetMtFunc("__eq");
-                return mtf == null ? LuaBoolean$.FALSE : UnaryOpNode_RTIMPL$$.IL___builtin_IS_TRUTHY(mtf.Invoke(x, y)[0]);
+                    mtf = ((LuaTableOLD) y)._luaGetMtFunc("__eq");
+                return mtf == null ? LuaBooleanOLD.FALSE : UnaryOpNode_RTIMPL$$.IL___builtin_IS_TRUTHY(mtf.Invoke(x, y)[0]);
             }
             // remaining types are ref compares and would be handled by the ref equals check above
         }
-        return LuaBoolean$.FALSE;
+        return LuaBooleanOLD.FALSE;
     }
 
-    public static LuaVariable$ IL__bor(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariableOLD IL__bor(LuaVM_RT vm, LuaVariableOLD x, LuaVariableOLD y) {
         x = IL___COERCEToBw(x);
         y = IL___COERCEToBw(y);
         if (!x.isNumberBw() || !y.isNumberBw()) { // if any of the args isnt of the required type after coercion, look for a metatable
             if (x.isTable()){
-                var f = ((LuaTable$) x)._luaGetMtFunc("concat");
+                var f = ((LuaTableOLD) x)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             if (y.isTable()){
-                var f = ((LuaTable$) y)._luaGetMtFunc("concat");
+                var f = ((LuaTableOLD) y)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             vm.yeet(new LuaTypeError$("attempted to perform operation '%s bor %s'".formatted(x.getType().fancyName, y.getType().fancyName)));            
         }
-        assert x instanceof LuaNumberBw$;
-        assert y instanceof LuaNumberBw$;
-        return ((LuaNumberBw$) x).bor((LuaNumberBw$) y);
+        assert x instanceof LuaNumberBwOLD;
+        assert y instanceof LuaNumberBwOLD;
+        return ((LuaNumberBwOLD) x).bor((LuaNumberBwOLD) y);
     }
 
-    public static LuaVariable$ IL__bxor(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariableOLD IL__bxor(LuaVM_RT vm, LuaVariableOLD x, LuaVariableOLD y) {
         x = IL___COERCEToBw(x);
         y = IL___COERCEToBw(y);
         if (!x.isNumberBw() || !y.isNumberBw()) { // if any of the args isnt of the required type after coercion, look for a metatable
             if (x.isTable()){
-                var f = ((LuaTable$) x)._luaGetMtFunc("concat");
+                var f = ((LuaTableOLD) x)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             if (y.isTable()){
-                var f = ((LuaTable$) y)._luaGetMtFunc("concat");
+                var f = ((LuaTableOLD) y)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             vm.yeet(new LuaTypeError$("attempted to perform operation '%s bxor %s'".formatted(x.getType().fancyName, y.getType().fancyName)));            
         }
-        assert x instanceof LuaNumberBw$;
-        assert y instanceof LuaNumberBw$;
-        return ((LuaNumberBw$) x).bxor((LuaNumberBw$) y);
+        assert x instanceof LuaNumberBwOLD;
+        assert y instanceof LuaNumberBwOLD;
+        return ((LuaNumberBwOLD) x).bxor((LuaNumberBwOLD) y);
     }
 
-    public static LuaVariable$ IL__band(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariableOLD IL__band(LuaVM_RT vm, LuaVariableOLD x, LuaVariableOLD y) {
         x = IL___COERCEToBw(x);
         y = IL___COERCEToBw(y);
         if (!x.isNumberBw() || !y.isNumberBw()) { // if any of the args isnt of the required type after coercion, look for a metatable
             if (x.isTable()){
-                var f = ((LuaTable$) x)._luaGetMtFunc("concat");
+                var f = ((LuaTableOLD) x)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             if (y.isTable()){
-                var f = ((LuaTable$) y)._luaGetMtFunc("concat");
+                var f = ((LuaTableOLD) y)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             vm.yeet(new LuaTypeError$("attempted to perform operation '%s band %s'".formatted(x.getType().fancyName, y.getType().fancyName)));            
         }
-        assert x instanceof LuaNumberBw$;
-        assert y instanceof LuaNumberBw$;
-        return ((LuaNumberBw$) x).band((LuaNumberBw$) y);
+        assert x instanceof LuaNumberBwOLD;
+        assert y instanceof LuaNumberBwOLD;
+        return ((LuaNumberBwOLD) x).band((LuaNumberBwOLD) y);
     }
 
-    public static LuaVariable$ IL__shl(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariableOLD IL__shl(LuaVM_RT vm, LuaVariableOLD x, LuaVariableOLD y) {
         x = IL___COERCEToBw(x);
         y = IL___COERCEToBw(y);
         if (!x.isNumberBw() || !y.isNumberBw()) { // if any of the args isnt of the required type after coercion, look for a metatable
             if (x.isTable()){
-                var f = ((LuaTable$) x)._luaGetMtFunc("concat");
+                var f = ((LuaTableOLD) x)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             if (y.isTable()){
-                var f = ((LuaTable$) y)._luaGetMtFunc("concat");
+                var f = ((LuaTableOLD) y)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             vm.yeet(new LuaTypeError$("attempted to perform operation '%s shl %s'".formatted(x.getType().fancyName, y.getType().fancyName)));            
         }
-        assert x instanceof LuaNumberBw$;
-        assert y instanceof LuaNumberBw$;
-        return ((LuaNumberBw$) x).shl((LuaNumberBw$) y);
+        assert x instanceof LuaNumberBwOLD;
+        assert y instanceof LuaNumberBwOLD;
+        return ((LuaNumberBwOLD) x).shl((LuaNumberBwOLD) y);
     }
 
-    public static LuaVariable$ IL__shr(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariableOLD IL__shr(LuaVM_RT vm, LuaVariableOLD x, LuaVariableOLD y) {
         x = IL___COERCEToBw(x);
         y = IL___COERCEToBw(y);
         if (!x.isNumberBw() || !y.isNumberBw()) { // if any of the args isnt of the required type after coercion, look for a metatable
             if (x.isTable()){
-                var f = ((LuaTable$) x)._luaGetMtFunc("concat");
+                var f = ((LuaTableOLD) x)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             if (y.isTable()){
-                var f = ((LuaTable$) y)._luaGetMtFunc("concat");
+                var f = ((LuaTableOLD) y)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             vm.yeet(new LuaTypeError$("attempted to perform operation '%s shr %s'".formatted(x.getType().fancyName, y.getType().fancyName)));            
         }
-        assert x instanceof LuaNumberBw$;
-        assert y instanceof LuaNumberBw$;
-        return ((LuaNumberBw$) x).shr((LuaNumberBw$) y);
+        assert x instanceof LuaNumberBwOLD;
+        assert y instanceof LuaNumberBwOLD;
+        return ((LuaNumberBwOLD) x).shr((LuaNumberBwOLD) y);
     }
 
-    public static LuaVariable$ IL__concat(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariableOLD IL__concat(LuaVM_RT vm, LuaVariableOLD x, LuaVariableOLD y) {
         x = IL___COERCEToStr(x);
         y = IL___COERCEToStr(y);
         if (!x.isString() || !y.isString()) { // if any of the args isnt of the required type after coercion, look for a metatable
             if (x.isTable()){
-                var f = ((LuaTable$) x)._luaGetMtFunc("concat");
+                var f = ((LuaTableOLD) x)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             if (y.isTable()){
-                var f = ((LuaTable$) y)._luaGetMtFunc("concat");
+                var f = ((LuaTableOLD) y)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             vm.yeet(new LuaTypeError$("attempted to perform operation '%s concat %s'".formatted(x.getType().fancyName, y.getType().fancyName)));            
         }
-        assert x instanceof LuaString$;
-        assert y instanceof LuaString$;
-        return ((LuaString$) x).concat((LuaString$) y);
+        assert x instanceof LuaStringOLD;
+        assert y instanceof LuaStringOLD;
+        return ((LuaStringOLD) x).concat((LuaStringOLD) y);
     }
 
-    public static LuaVariable$ IL__add(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariableOLD IL__add(LuaVM_RT vm, LuaVariableOLD x, LuaVariableOLD y) {
         x = IL___COERCEToNum(x);
         y = IL___COERCEToNum(y);
         if (!x.isNumber() || !y.isNumber()) { // if any of the args isnt of the required type after coercion, look for a metatable
             if (x.isTable()){
-                var f = ((LuaTable$) x)._luaGetMtFunc("concat");
+                var f = ((LuaTableOLD) x)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             if (y.isTable()){
-                var f = ((LuaTable$) y)._luaGetMtFunc("concat");
+                var f = ((LuaTableOLD) y)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             vm.yeet(new LuaTypeError$("attempted to perform operation '%s add %s'".formatted(x.getType().fancyName, y.getType().fancyName)));            
         }
-        assert x instanceof LuaNumber$;
-        assert y instanceof LuaNumber$;
-        return ((LuaNumber$) x).add((LuaNumber$) y);
+        assert x instanceof LuaNumberOLD;
+        assert y instanceof LuaNumberOLD;
+        return ((LuaNumberOLD) x).add((LuaNumberOLD) y);
     }
 
-    public static LuaVariable$ IL__sub(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariableOLD IL__sub(LuaVM_RT vm, LuaVariableOLD x, LuaVariableOLD y) {
         x = IL___COERCEToNum(x);
         y = IL___COERCEToNum(y);
         if (!x.isNumber() || !y.isNumber()) { // if any of the args isnt of the required type after coercion, look for a metatable
             if (x.isTable()){
-                var f = ((LuaTable$) x)._luaGetMtFunc("concat");
+                var f = ((LuaTableOLD) x)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             if (y.isTable()){
-                var f = ((LuaTable$) y)._luaGetMtFunc("concat");
+                var f = ((LuaTableOLD) y)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             vm.yeet(new LuaTypeError$("attempted to perform operation '%s sub %s'".formatted(x.getType().fancyName, y.getType().fancyName)));            
         }
-        assert x instanceof LuaNumber$;
-        assert y instanceof LuaNumber$;
-        return ((LuaNumber$) x).sub((LuaNumber$) y);
+        assert x instanceof LuaNumberOLD;
+        assert y instanceof LuaNumberOLD;
+        return ((LuaNumberOLD) x).sub((LuaNumberOLD) y);
     }
 
-    public static LuaVariable$ IL__mul(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariableOLD IL__mul(LuaVM_RT vm, LuaVariableOLD x, LuaVariableOLD y) {
         x = IL___COERCEToNum(x);
         y = IL___COERCEToNum(y);
         if (!x.isNumber() || !y.isNumber()) { // if any of the args isnt of the required type after coercion, look for a metatable
             if (x.isTable()){
-                var f = ((LuaTable$) x)._luaGetMtFunc("concat");
+                var f = ((LuaTableOLD) x)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             if (y.isTable()){
-                var f = ((LuaTable$) y)._luaGetMtFunc("concat");
+                var f = ((LuaTableOLD) y)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             vm.yeet(new LuaTypeError$("attempted to perform operation '%s mul %s'".formatted(x.getType().fancyName, y.getType().fancyName)));            
         }
-        assert x instanceof LuaNumber$;
-        assert y instanceof LuaNumber$;
-        return ((LuaNumber$) x).mul((LuaNumber$) y);
+        assert x instanceof LuaNumberOLD;
+        assert y instanceof LuaNumberOLD;
+        return ((LuaNumberOLD) x).mul((LuaNumberOLD) y);
     }
 
-    public static LuaVariable$ IL__div(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariableOLD IL__div(LuaVM_RT vm, LuaVariableOLD x, LuaVariableOLD y) {
         x = IL___COERCEToNum(x);
         y = IL___COERCEToNum(y);
         if (!x.isNumber() || !y.isNumber()) { // if any of the args isnt of the required type after coercion, look for a metatable
             if (x.isTable()){
-                var f = ((LuaTable$) x)._luaGetMtFunc("concat");
+                var f = ((LuaTableOLD) x)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             if (y.isTable()){
-                var f = ((LuaTable$) y)._luaGetMtFunc("concat");
+                var f = ((LuaTableOLD) y)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             vm.yeet(new LuaTypeError$("attempted to perform operation '%s div %s'".formatted(x.getType().fancyName, y.getType().fancyName)));            
         }
-        assert x instanceof LuaNumber$;
-        assert y instanceof LuaNumber$;
-        return ((LuaNumber$) x).div((LuaNumber$) y);
+        assert x instanceof LuaNumberOLD;
+        assert y instanceof LuaNumberOLD;
+        return ((LuaNumberOLD) x).div((LuaNumberOLD) y);
     }
 
-    public static LuaVariable$ IL__idiv(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariableOLD IL__idiv(LuaVM_RT vm, LuaVariableOLD x, LuaVariableOLD y) {
         x = IL___COERCEToNum(x);
         y = IL___COERCEToNum(y);
         if (!x.isNumber() || !y.isNumber()) { // if any of the args isnt of the required type after coercion, look for a metatable
             if (x.isTable()){
-                var f = ((LuaTable$) x)._luaGetMtFunc("concat");
+                var f = ((LuaTableOLD) x)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             if (y.isTable()){
-                var f = ((LuaTable$) y)._luaGetMtFunc("concat");
+                var f = ((LuaTableOLD) y)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             vm.yeet(new LuaTypeError$("attempted to perform operation '%s idiv %s'".formatted(x.getType().fancyName, y.getType().fancyName)));            
         }
-        assert x instanceof LuaNumber$;
-        assert y instanceof LuaNumber$;
-        return ((LuaNumber$) x).idiv((LuaNumber$) y);
+        assert x instanceof LuaNumberOLD;
+        assert y instanceof LuaNumberOLD;
+        return ((LuaNumberOLD) x).idiv((LuaNumberOLD) y);
     }
 
-    public static LuaVariable$ IL__mod(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariableOLD IL__mod(LuaVM_RT vm, LuaVariableOLD x, LuaVariableOLD y) {
         x = IL___COERCEToNum(x);
         y = IL___COERCEToNum(y);
         if (!x.isNumber() || !y.isNumber()) { // if any of the args isnt of the required type after coercion, look for a metatable
             if (x.isTable()){
-                var f = ((LuaTable$) x)._luaGetMtFunc("concat");
+                var f = ((LuaTableOLD) x)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             if (y.isTable()){
-                var f = ((LuaTable$) y)._luaGetMtFunc("concat");
+                var f = ((LuaTableOLD) y)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             vm.yeet(new LuaTypeError$("attempted to perform operation '%s mod %s'".formatted(x.getType().fancyName, y.getType().fancyName)));            
         }
-        assert x instanceof LuaNumber$;
-        assert y instanceof LuaNumber$;
-        return ((LuaNumber$) x).mod((LuaNumber$) y);
+        assert x instanceof LuaNumberOLD;
+        assert y instanceof LuaNumberOLD;
+        return ((LuaNumberOLD) x).mod((LuaNumberOLD) y);
     }
 
-    public static LuaVariable$ IL__pow(LuaVM_RT$ vm, LuaVariable$ x, LuaVariable$ y) {
+    public static LuaVariableOLD IL__pow(LuaVM_RT vm, LuaVariableOLD x, LuaVariableOLD y) {
         x = IL___COERCEToNum(x);
         y = IL___COERCEToNum(y);
         if (!x.isNumber() || !y.isNumber()) { // if any of the args isnt of the required type after coercion, look for a metatable
             if (x.isTable()){
-                var f = ((LuaTable$) x)._luaGetMtFunc("concat");
+                var f = ((LuaTableOLD) x)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             if (y.isTable()){
-                var f = ((LuaTable$) y)._luaGetMtFunc("concat");
+                var f = ((LuaTableOLD) y)._luaGetMtFunc("concat");
                 if (f != null) {
                     return f.Invoke(x, y)[0]; // metamethods can only return one value
                 }
             }
             vm.yeet(new LuaTypeError$("attempted to perform operation '%s pow %s'".formatted(x.getType().fancyName, y.getType().fancyName)));            
         }
-        assert x instanceof LuaNumber$;
-        assert y instanceof LuaNumber$;
-        return ((LuaNumber$) x).pow((LuaNumber$) y);
+        assert x instanceof LuaNumberOLD;
+        assert y instanceof LuaNumberOLD;
+        return ((LuaNumberOLD) x).pow((LuaNumberOLD) y);
     }
 }

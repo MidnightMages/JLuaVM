@@ -1,14 +1,14 @@
 package dev.asdf00.jluavm.exceptions;
 
-import dev.asdf00.jluavm.types.LuaString$;
-import dev.asdf00.jluavm.types.LuaVariable$;
+import dev.asdf00.jluavm.runtime.typesOLD.LuaStringOLD;
+import dev.asdf00.jluavm.runtime.typesOLD.LuaVariableOLD;
 
 public abstract class LuaRuntimeError$ extends RuntimeException {
     public LuaRuntimeError$(String msg) {
         super(msg);
     }
 
-    public LuaVariable$ getErrorString() {
-        return new LuaString$(getMessage());
+    public LuaVariableOLD getErrorString() {
+        return new LuaStringOLD(getMessage());
     }
 }

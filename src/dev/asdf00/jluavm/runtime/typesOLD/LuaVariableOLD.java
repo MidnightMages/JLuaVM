@@ -1,4 +1,4 @@
-package dev.asdf00.jluavm.types;
+package dev.asdf00.jluavm.runtime.typesOLD;
 
 import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
 
@@ -7,11 +7,11 @@ import java.util.Map;
 /**
  * TODO: make this class an interface, start all functions with "_lua" since they might leak out of this package via userdata.
  */
-public abstract class LuaVariable$ {
+public abstract class LuaVariableOLD {
 
     private final LuaType varKind;
 
-    public LuaVariable$(LuaType varKind) {
+    public LuaVariableOLD(LuaType varKind) {
         this.varKind = varKind;
     }
 
@@ -69,16 +69,16 @@ public abstract class LuaVariable$ {
             this.fancyName = fancyName;
         }
 
-        private static final Map<Class<? extends LuaVariable$>, LuaType> clazzMap = Map.of(
-                LuaBoolean$.class, LuaVariable$.LuaType.BOOL,
-                LuaFunction$.class, LuaVariable$.LuaType.FUNC,
-                LuaNil$.class, LuaVariable$.LuaType.NIL,
-                LuaNumber$.class, LuaVariable$.LuaType.NUM,
-                LuaNumberBw$.class, LuaVariable$.LuaType.NUM_BW,
-                LuaString$.class, LuaVariable$.LuaType.STR,
-                LuaTable$.class, LuaVariable$.LuaType.TABLE);
+        private static final Map<Class<? extends LuaVariableOLD>, LuaType> clazzMap = Map.of(
+                LuaBooleanOLD.class, LuaVariableOLD.LuaType.BOOL,
+                LuaFunctionOLD.class, LuaVariableOLD.LuaType.FUNC,
+                LuaNilOLD.class, LuaVariableOLD.LuaType.NIL,
+                LuaNumberOLD.class, LuaVariableOLD.LuaType.NUM,
+                LuaNumberBwOLD.class, LuaVariableOLD.LuaType.NUM_BW,
+                LuaStringOLD.class, LuaVariableOLD.LuaType.STR,
+                LuaTableOLD.class, LuaVariableOLD.LuaType.TABLE);
 
-        public static LuaType fromClass(Class<? extends LuaVariable$> type) {
+        public static LuaType fromClass(Class<? extends LuaVariableOLD> type) {
             var res = clazzMap.get(type);
             if (res == null) {
                 throw new InternalLuaRuntimeError("no type for unknown lua type class " + type.getName());
