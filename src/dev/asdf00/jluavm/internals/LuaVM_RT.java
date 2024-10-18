@@ -7,6 +7,7 @@ import dev.asdf00.jluavm.exceptions.runtime.LuaTypeError$;
 import dev.asdf00.jluavm.runtime.errors.AbstractLuaError;
 import dev.asdf00.jluavm.runtime.types.ILuaVariable;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
+import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.typesOLD.LuaNilOLD;
 import dev.asdf00.jluavm.runtime.typesOLD.LuaTableOLD;
 import dev.asdf00.jluavm.runtime.typesOLD.LuaVariableOLD;
@@ -29,9 +30,9 @@ public class LuaVM_RT extends LuaVM {
 
 
 
-    public ILuaVariable[] registerExpressionStack(int size) {
+    public LuaObject[] registerExpressionStack(int size) {
         // TODO: save expression stack for current java call
-        return new ILuaVariable[size];
+        return new LuaObject[size];
     }
 
     // =================================================================================================================
@@ -42,25 +43,20 @@ public class LuaVM_RT extends LuaVM {
         // TODO: set error
     }
 
-    public void callExternal(int resume, LuaFunction externalTarget, ILuaVariable... args) {
+    public void callExternal(int resume, LuaFunction externalTarget, LuaObject... args) {
         // TODO: flatten LuaArray into args array
     }
 
-    public void tailCall(int resume, LuaFunction externalTarget, ILuaVariable... args) {
-        boolean isTailcall = false;
-        if (!isTailcall) {
-            callExternal(resume, externalTarget, args);
-            return;
-        }
-        // TODO: flatten LuaArray into args array
-        // setup tail call
+    public void tailCall(LuaFunction externalTarget, LuaObject... args) {
+        // TODO: even if a tailcall is not possible, this function does not expect to be resumed but just to pass
+        //  through the returned values of the inner function.
     }
 
-    public void callInternal(int resume, LFunc localTarget, ILuaVariable... args) {
+    public void callInternal(int resume, LFunc localTarget, LuaObject... args) {
 
     }
 
-    public void returnValue(ILuaVariable... values) {
+    public void returnValue(LuaObject... values) {
 
     }
 

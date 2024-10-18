@@ -1,10 +1,9 @@
 package dev.asdf00.jluavm.runtime.utils;
 
 import dev.asdf00.jluavm.internals.LuaVM_RT;
-import dev.asdf00.jluavm.runtime.types.ILuaVariable;
-import dev.asdf00.jluavm.runtime.types.LuaArray;
+import dev.asdf00.jluavm.runtime.types.LuaObject;
 
 @FunctionalInterface
 public interface LFunc {
-    void invoke(LuaVM_RT vm, ILuaVariable[] stackFrame, ILuaVariable[] args, int resume, ILuaVariable[] expressionStack, LuaArray returned);
+    void invoke(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject returned);
 }

@@ -3,13 +3,14 @@ package dev.asdf00.jluavm.runtime.utils;
 import dev.asdf00.jluavm.runtime.types.ILuaVariable;
 import dev.asdf00.jluavm.runtime.types.LuaDouble;
 import dev.asdf00.jluavm.runtime.types.LuaLong;
+import dev.asdf00.jluavm.runtime.types.LuaObject;
 
 public class RTUtils {
-    public static ILuaVariable tryCoerceFloatToInt(ILuaVariable value) {
-        if (value instanceof LuaDouble dbl) {
-            double dn = dbl.value;
+    public static LuaObject tryCoerceFloatToInt(LuaObject value) {
+        if (value.isDouble()) {
+            double dn = value.dVal;
             if ((double) ((long) dn) == dn) {
-                value = LuaLong.of((long) dn);
+                value = LuaObject.of((long) dn);
             }
         }
         return value;

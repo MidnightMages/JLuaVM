@@ -4,12 +4,12 @@ import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.runtime.utils.LuaReturnValue;
 
 public abstract class LuaFunction implements ILuaVariable {
-    public final ILuaVariable[] closures;
-    public ILuaVariable _ENV;
+    public final LuaObject[] closures;
+    public LuaObject _ENV;
 
-    public LuaFunction(ILuaVariable[] closures) {
+    public LuaFunction(LuaObject[] closures) {
         this.closures = closures;
     }
 
-    public abstract void invoke(LuaVM_RT vm, ILuaVariable[] stackFrame, int resume, ILuaVariable[] expressionStack, LuaArray returned);
+    public abstract void invoke(LuaVM_RT vm, LuaObject[] stackFrame, int resume, LuaObject[] expressionStack, LuaObject returned);
 }

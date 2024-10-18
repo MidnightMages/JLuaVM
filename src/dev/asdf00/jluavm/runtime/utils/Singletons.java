@@ -1,15 +1,10 @@
 package dev.asdf00.jluavm.runtime.utils;
 
-import dev.asdf00.jluavm.runtime.types.ILuaVariable;
-import dev.asdf00.jluavm.runtime.types.LuaNil;
-import dev.asdf00.jluavm.runtime.types.LuaString;
+import dev.asdf00.jluavm.runtime.types.LuaObject;
 
 public class Singletons {
-    public static final LuaNil NIL = new LuaNil();
-    public static final ILuaVariable[] EMPTY_VARS = new ILuaVariable[0];
-    public static class Meta {
-        public static final LuaString __add = LuaString.of("__add");
-        public static final LuaString __index = LuaString.of("__index");
-        public static final LuaString __newindex = LuaString.of("__newindex");
-    }
+    public static final LuaObject emptyReturnValues = LuaObject.of(new LuaObject[0]);
+    public static final LuaObject __add = LuaObject.of("__add");
+    public static final LuaObject __index = LuaObject.of("__index");
+    public static final LuaObject __newindex = LuaObject.of("__newindex");
 }
