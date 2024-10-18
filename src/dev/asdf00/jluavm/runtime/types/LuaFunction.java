@@ -11,5 +11,5 @@ public abstract class LuaFunction implements ILuaVariable {
         this.closures = closures;
     }
 
-    public abstract LuaReturnValue invoke(LuaVM_RT vm, ILuaVariable[] stackFrame, int resume, ILuaVariable[] expressionStack, LuaArray returned);
+    public abstract void invoke(LuaVM_RT vm, ILuaVariable[] stackFrame, int resume, ILuaVariable[] expressionStack, LuaArray returned);
 }

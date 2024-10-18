@@ -4,9 +4,13 @@ import dev.asdf00.jluavm.LuaVM;
 import dev.asdf00.jluavm.exceptions.LuaRuntimeError$;
 import dev.asdf00.jluavm.exceptions.runtime.LuaMetaTableError$;
 import dev.asdf00.jluavm.exceptions.runtime.LuaTypeError$;
+import dev.asdf00.jluavm.runtime.errors.AbstractLuaError;
+import dev.asdf00.jluavm.runtime.types.ILuaVariable;
+import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.typesOLD.LuaNilOLD;
 import dev.asdf00.jluavm.runtime.typesOLD.LuaTableOLD;
 import dev.asdf00.jluavm.runtime.typesOLD.LuaVariableOLD;
+import dev.asdf00.jluavm.runtime.utils.LFunc;
 
 import java.util.Stack;
 
@@ -21,6 +25,52 @@ public class LuaVM_RT extends LuaVM {
         closeOnErrorStackStack = new Stack<>();
         closeOnErrorStackStack.push(new Stack<>());
     }
+
+
+
+
+    public ILuaVariable[] registerExpressionStack(int size) {
+        // TODO: save expression stack for current java call
+        return new ILuaVariable[size];
+    }
+
+    // =================================================================================================================
+    // lua vm call magic setup methods
+    // =================================================================================================================
+
+    public void error(AbstractLuaError err) {
+        // TODO: set error
+    }
+
+    public void callExternal(int resume, LuaFunction externalTarget, ILuaVariable... args) {
+        // TODO: flatten LuaArray into args array
+    }
+
+    public void tailCall(int resume, LuaFunction externalTarget, ILuaVariable... args) {
+        boolean isTailcall = false;
+        if (!isTailcall) {
+            callExternal(resume, externalTarget, args);
+            return;
+        }
+        // TODO: flatten LuaArray into args array
+        // setup tail call
+    }
+
+    public void callInternal(int resume, LFunc localTarget, ILuaVariable... args) {
+
+    }
+
+    public void returnValue(ILuaVariable... values) {
+
+    }
+
+
+
+
+
+
+
+
 
     /**
      * This method is only supposed to be called directly via {@link LuaVM_RT#yeet(LuaRuntimeError$)},

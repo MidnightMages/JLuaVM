@@ -6,5 +6,5 @@ import dev.asdf00.jluavm.runtime.types.LuaArray;
 
 @FunctionalInterface
 public interface LFunc {
-    LuaReturnValue invoke(LuaVM_RT vm, ILuaVariable[] stackFrame, ILuaVariable[] args, int resume, ILuaVariable[] expressionStack, LuaArray returned);
+    void invoke(LuaVM_RT vm, ILuaVariable[] stackFrame, ILuaVariable[] args, int resume, ILuaVariable[] expressionStack, LuaArray returned);
 }

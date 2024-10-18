@@ -26,10 +26,13 @@ public class Sandoboxo extends LuaFunction {
     }
 
     @Override
-    public LuaReturnValue invoke(LuaVM_RT vm, ILuaVariable[] stackFrame, int resume, ILuaVariable[] expressionStack, LuaArray returned) {
+    public void invoke(LuaVM_RT vm, ILuaVariable[] stackFrame, int resume, ILuaVariable[] expressionStack, LuaArray returned) {
         ILuaVariable t0 = null, t1 = null, t2 = null, t3 = null, t4 = null, t5 = null, t6 = null, t7 = null;
         // on resume
         switch (resume) {
+            case -1 -> {
+                expressionStack = vm.registerExpressionStack(8);
+            }
             case 0 -> {
                 // unpack fist return value
                 t0 = returned.get(0);
@@ -65,6 +68,7 @@ public class Sandoboxo extends LuaFunction {
                 t4 = expressionStack[4];
             }
         }
+        returned = null;
         switch (resume) {
             case -1:
                 // load constant
@@ -82,17 +86,20 @@ public class Sandoboxo extends LuaFunction {
                             t0 = Singletons.NIL;
                         } else {
                             // return value of getFromMetaTable lands in t0
-                            return LuaReturnValue.callInternal(0, RTUtils.pack(), Sandoboxo::getWithMeta, RTUtils.pack(mtbl, Singletons.Meta.__index));
+                            vm.callInternal(0, Sandoboxo::getWithMeta, mtbl, Singletons.Meta.__index);
+                            return;
                         }
                     }
                 } else if (t0 instanceof ILuaUserData uData) {
                     try {
                         t0 = uData._luaGet(t1);
                     } catch (LuaRuntimeError$ ex) {
-                        return LuaReturnValue.error(new LuaForeignCallError());
+                        vm.error(new LuaForeignCallError());
+                        return;
                     }
                 } else {
-                    return LuaReturnValue.error(new LuaTypeError());
+                    vm.error(new LuaTypeError());
+                    return;
                 }
                 t1 = null;
             case 0:
@@ -113,14 +120,19 @@ public class Sandoboxo extends LuaFunction {
                     t2 = addX.add(addY);
                     t3 = null;
                 } else {
-                    return LuaReturnValue.callInternal(1, RTUtils.pack(t0, t1), Sandoboxo::addWithMeta, RTUtils.pack(t2, t3));
+                    // save expression stack
+                    expressionStack[0] = t0;
+                    expressionStack[1] = t1;
+                    vm.callInternal(1, Sandoboxo::addWithMeta, t2, t3);
+                    return;
                 }
             case 1:
                 // set index
                 if (t0 instanceof LuaTable tbl) {
                     ILuaVariable key = RTUtils.tryCoerceFloatToInt(t1);
                     if (key.isNil() || key.isNaN()) {
-                        return LuaReturnValue.error(new LuaArgumentError());
+                        vm.error(new LuaArgumentError());
+                        return;
                     }
                     if (tbl.hasKey(key)) {
                         tbl.set(key, t2);
@@ -129,17 +141,20 @@ public class Sandoboxo extends LuaFunction {
                         if (mtbl == null) {
                             tbl.set(key, t2);
                         } else {
-                            return LuaReturnValue.callInternal(2, RTUtils.pack(), Sandoboxo::setWithMeta, RTUtils.pack(tbl, key, t2, mtbl));
+                            vm.callInternal(2, Sandoboxo::setWithMeta, tbl, key, t2, mtbl);
+                            return;
                         }
                     }
                 } else if (t0 instanceof ILuaUserData uData) {
                     try {
                         uData._luaSet(t1, t2);
                     } catch (LuaRuntimeError$ ex) {
-                        return LuaReturnValue.error(new LuaForeignCallError());
+                        vm.error(new LuaForeignCallError());
+                        return;
                     }
                 } else {
-                    return LuaReturnValue.error(new LuaTypeError());
+                    vm.error(new LuaTypeError());
+                    return;
                 }
                 t2 = null;
                 t1 = null;
@@ -167,9 +182,17 @@ public class Sandoboxo extends LuaFunction {
                 t6 = stackFrame[0];
                 // call f(a)
                 if (t5 instanceof LuaFunction func) {
-                    return LuaReturnValue.callExternal(3, RTUtils.pack(t0, t1, t2, t3, t4), func, RTUtils.pack(t6));
+                    // save expresion stack
+                    expressionStack[0] = t0;
+                    expressionStack[1] = t1;
+                    expressionStack[2] = t2;
+                    expressionStack[3] = t3;
+                    expressionStack[4] = t4;
+                    vm.callExternal(3, func, t6);
+                    return;
                 } else {
-                    return LuaReturnValue.error(new LuaTypeError());
+                    vm.error(new LuaTypeError());
+                    return;
                 }
             case 3:
                 // shuffle local vars for assignment
@@ -186,7 +209,8 @@ public class Sandoboxo extends LuaFunction {
                 if (t1 instanceof LuaTable tbl) {
                     ILuaVariable key = RTUtils.tryCoerceFloatToInt(t2);
                     if (key.isNil() || key.isNaN()) {
-                        return LuaReturnValue.error(new LuaArgumentError());
+                        vm.error(new LuaArgumentError());
+                        return;
                     }
                     if (tbl.hasKey(key)) {
                         tbl.set(key, t3);
@@ -195,17 +219,22 @@ public class Sandoboxo extends LuaFunction {
                         if (mtbl == null) {
                             tbl.set(key, t3);
                         } else {
-                            return LuaReturnValue.callInternal(4, RTUtils.pack(t0), Sandoboxo::setWithMeta, RTUtils.pack(tbl, key, t3, mtbl));
+                            // save expresion stack
+                            expressionStack[0] = t0;
+                            vm.callInternal(4, Sandoboxo::setWithMeta, tbl, key, t3, mtbl);
+                            return;
                         }
                     }
                 } else if (t1 instanceof ILuaUserData uData) {
                     try {
                         uData._luaSet(t2, t3);
                     } catch (LuaRuntimeError$ ex) {
-                        return LuaReturnValue.error(new LuaForeignCallError());
+                        vm.error(new LuaForeignCallError());
+                        return;
                     }
                 } else {
-                    return LuaReturnValue.error(new LuaTypeError());
+                    vm.error(new LuaTypeError());
+                    return;
                 }
                 t3 = null;
                 t2 = null;
@@ -218,16 +247,18 @@ public class Sandoboxo extends LuaFunction {
                 // load constant
                 t0 = LuaDouble.of(1);
                 // return
-                return LuaReturnValue.returnValue(t0);
+                vm.returnValue(t0);
+                return;
             default:
                 throw new InternalLuaRuntimeError("unknown resume point " + resume);
         }
     }
 
-    protected static LuaReturnValue getWithMeta(LuaVM_RT vm, ILuaVariable[] stackFrame, ILuaVariable[] args, int resume, ILuaVariable[] expressionStack, LuaArray returned) {
+    protected static void getWithMeta(LuaVM_RT vm, ILuaVariable[] stackFrame, ILuaVariable[] args, int resume, ILuaVariable[] expressionStack, LuaArray returned) {
         ILuaVariable t0 = null;
         // on resume
         switch (resume) {
+            case -1 -> vm.registerExpressionStack(1);
             case 0 -> {
                 // use first return variable
                 t0 = returned.get(0);
@@ -237,6 +268,7 @@ public class Sandoboxo extends LuaFunction {
                 t0 = returned.get(0);
             }
         }
+        returned = null;
         switch (resume) {
             case -1:
                 if (args.length != 2) {
@@ -245,31 +277,38 @@ public class Sandoboxo extends LuaFunction {
                 if (args[0] instanceof LuaTable tbl) {
                     ILuaVariable key = RTUtils.tryCoerceFloatToInt(args[1]);
                     if (tbl.hasKey(key)) {
-                        return LuaReturnValue.returnValue(tbl.get(key));
+                        vm.returnValue(tbl.get(key));
+                        return;
                     } else {
                         LuaTable mtbl = tbl.getMetaTable();
                         if (mtbl == null) {
-                            return LuaReturnValue.returnValue(Singletons.NIL);
+                            vm.returnValue(Singletons.NIL);
+                            return;
                         }
-                        return LuaReturnValue.callInternal(0, RTUtils.pack(), Sandoboxo::getWithMeta, RTUtils.pack(mtbl, Singletons.Meta.__index));
+                        vm.callInternal(0, Sandoboxo::getWithMeta, mtbl, Singletons.Meta.__index);
+                        return;
                     }
                 } else {
-                    return LuaReturnValue.error(new LuaMetaTableError());
+                    vm.error(new LuaMetaTableError());
+                    return;
                 }
             case 0:
                 if (t0 instanceof LuaFunction func) {
-                    return LuaReturnValue.callExternal(1, RTUtils.pack(), func, RTUtils.pack(args[0], RTUtils.tryCoerceFloatToInt(args[1])));
+                    vm.callExternal(1,func, args[0], RTUtils.tryCoerceFloatToInt(args[1]));
+                    return;
                 } else {
-                    return LuaReturnValue.returnValue(t0);
+                    vm.returnValue(t0);
+                    return;
                 }
             case 1:
-                return LuaReturnValue.returnValue(t0);
+               vm.returnValue(t0);
+               return;
             default:
                 throw new InternalLuaRuntimeError("unknown resume point " + resume);
         }
     }
 
-    protected static LuaReturnValue setWithMeta(LuaVM_RT vm, ILuaVariable[] stackFrame, ILuaVariable[] args, int resume, ILuaVariable[] expressionStack, LuaArray returned) {
+    protected static void setWithMeta(LuaVM_RT vm, ILuaVariable[] stackFrame, ILuaVariable[] args, int resume, ILuaVariable[] expressionStack, LuaArray returned) {
         ILuaVariable t0 = null, t1 = null, t2 = null, t3 = null, t4 = null, t5 = null, t6 = null, t7 = null;
         switch (resume) {
             case -1 -> {
@@ -287,6 +326,7 @@ public class Sandoboxo extends LuaFunction {
                 t3 = returned.get(0);
             }
         }
+        returned = null;
         switch (resume) {
             case -1:
                 // load constant
@@ -303,8 +343,13 @@ public class Sandoboxo extends LuaFunction {
                             t3 = Singletons.NIL;
                             t4 = null;
                         } else {
+                            // save expression stack
+                            expressionStack[0] = t0;
+                            expressionStack[1] = t1;
+                            expressionStack[2] = t2;
                             // return value of getFromMetaTable lands in t3
-                            return LuaReturnValue.callInternal(0, RTUtils.pack(t0, t1, t2), Sandoboxo::getWithMeta, RTUtils.pack(mtbl, Singletons.Meta.__newindex));
+                            vm.callInternal(0, Sandoboxo::getWithMeta, mtbl, Singletons.Meta.__newindex);
+                            return;
                         }
                     }
                 } else if (t0 instanceof ILuaUserData uData) {
@@ -312,28 +357,33 @@ public class Sandoboxo extends LuaFunction {
                         t0 = uData._luaGet(t1);
                         t1 = null;
                     } catch (LuaRuntimeError$ ex) {
-                        return LuaReturnValue.error(new LuaForeignCallError());
+                        vm.error(new LuaForeignCallError());
+                        return;
                     }
                 } else {
                     throw new InternalLuaRuntimeError("should not reach");
                 }
             case 0:
                 if (t3 instanceof LuaFunction func) {
-                    return LuaReturnValue.callExternal(1, RTUtils.pack(), func, RTUtils.pack(t0, t1, t2));
+                    vm.callExternal(1, func, t0, t1, t2);
+                    return;
                 } else {
-                    return LuaReturnValue.callInternal(1, RTUtils.pack(), Sandoboxo::setWithMeta, RTUtils.pack(t0, t1, t2, t3));
+                    vm.callInternal(1, Sandoboxo::setWithMeta, t0, t1, t2, t3);
+                    return;
                 }
             case 1:
-                return LuaReturnValue.returnValue();
+                vm.returnValue();
+                return;
             default:
                 throw new InternalLuaRuntimeError("unknown resume point " + resume);
         }
     }
 
-    protected static LuaReturnValue addWithMeta(LuaVM_RT vm, ILuaVariable[] stackFrame, ILuaVariable[] args, int resume, ILuaVariable[] expressionStack, LuaArray returned) {
+    protected static void addWithMeta(LuaVM_RT vm, ILuaVariable[] stackFrame, ILuaVariable[] args, int resume, ILuaVariable[] expressionStack, LuaArray returned) {
         ILuaVariable t0 = null, t1 = null, t2 = null, t3 = null;
         switch (resume) {
             case -1 -> {
+                expressionStack = vm.registerExpressionStack(4);
                 t0 = args.length > 0 ? args[0] : Singletons.NIL; // x
                 t1 = args.length > 1 ? args[1] : Singletons.NIL; // y
             }
@@ -346,6 +396,7 @@ public class Sandoboxo extends LuaFunction {
                 t0 = returned.get(0); // meta call result
             }
         }
+        returned = null;
         switch (resume) {
             case -1:
                 t2 = t0.getMetaTable();
@@ -353,17 +404,25 @@ public class Sandoboxo extends LuaFunction {
                     t2 = t1.getMetaTable();
                 }
                 if (t2 == null) {
-                    return LuaReturnValue.error(new LuaMetaTableError());
+                    vm.error(new LuaMetaTableError());
+                    return;
                 }
-                return LuaReturnValue.callInternal(0, RTUtils.pack(t0, t1), Sandoboxo::getWithMeta, RTUtils.pack(t2, Singletons.Meta.__add));
+                // save expression stack
+                expressionStack[0] = t0;
+                expressionStack[1] = t1;
+                vm.callInternal(0, Sandoboxo::getWithMeta, t2, Singletons.Meta.__add);
+                return;
             case 0:
                 if (t2 instanceof LuaFunction mfunc) {
-                    return LuaReturnValue.callExternal(1, RTUtils.pack(), mfunc, RTUtils.pack(t0, t1));
+                    vm.callExternal(1, mfunc, t0, t1);
+                    return;
                 } else {
-                    return LuaReturnValue.error(new LuaMetaTableError());
+                    vm.error(new LuaMetaTableError());
+                    return;
                 }
             case 1:
-                return LuaReturnValue.returnValue(t0);
+                vm.returnValue(t0);
+                return;
             default:
                 throw new InternalLuaRuntimeError("unknown resume point " + resume);
         }
@@ -375,10 +434,14 @@ public class Sandoboxo extends LuaFunction {
         }
 
         @Override
-        public LuaReturnValue invoke(LuaVM_RT vm, ILuaVariable[] stackFrame, int resume, ILuaVariable[] expressionStack, LuaArray returned) {
+        public void invoke(LuaVM_RT vm, ILuaVariable[] stackFrame, int resume, ILuaVariable[] expressionStack, LuaArray returned) {
             ILuaVariable t0 = null, t1 = null;
             switch (resume) {
+                case -1 -> {
+                    expressionStack = vm.registerExpressionStack(2);
+                }
             }
+            returned = null;
             switch (resume) {
                 case -1:
                     // load constant
@@ -386,7 +449,8 @@ public class Sandoboxo extends LuaFunction {
                     // load closure without box
                     t1 = closures[0];
                     // return multi value
-                    return LuaReturnValue.returnValue(RTUtils.pack(t0, t1));
+                    vm.returnValue(RTUtils.pack(t0, t1));
+                    return;
                 default:
                     throw new InternalLuaRuntimeError("unknown resume point " + resume);
             }
