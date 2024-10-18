@@ -16,10 +16,15 @@ import dev.asdf00.jluavm.runtime.utils.*;
  *     return 1.0, t
  *   end
  *   a, y, b = f(a)
+ *   if a then
+ *     return a + b
+ *   else
+ *     b = true
  *   return 1
  * end
  * </pre>
  */
+@SuppressWarnings({"IfStatementWithIdenticalBranches", "ConstantValue"})
 public class Sandoboxo extends LuaFunction {
     public Sandoboxo(LuaObject[] closures) {
         super(closures);
@@ -245,6 +250,17 @@ public class Sandoboxo extends LuaFunction {
                 stackFrame[1] = t0;
                 t0 = null;
 
+                // load local
+                t0 = stackFrame[1];
+                // if clause
+                if (RTUtils.isTruthy(t0)) {
+                    vm.callInternal(5, this::innerScope0);
+                } else {
+                    vm.callInternal(5, this::innerScope1);
+                }
+                t0 = null;
+            case 5:
+
                 // load constant
                 t0 = LuaObject.of(1);
                 // return
@@ -255,72 +271,32 @@ public class Sandoboxo extends LuaFunction {
         }
     }
 
-    /**
-     * This method is meant to be called when a plain table lookup has failed and a metatable __index call is needed.
-     * The arguments for this method takes the original table, the key and the metatable as arguments.
-     */
-    protected static void getWithMeta(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject returned) {
-        LuaObject t0 = null, t1 = null, t2 = null;
+    private void innerScope0(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject returned) {
+        LuaObject t0 = null, t1 = null;
         LuaObject[] tempRetVals = returned.asArray();
-        // on resume
         switch (resume) {
             case -1 -> {
-                expressionStack = vm.registerExpressionStack(3);
-                if (args.length != 3) {
-                    throw new InternalLuaRuntimeError("expected 3 arguments, got " + args.length);
-                }
-                t0 = args[0]; // original table
-                t1 = args[0]; // original key
-                t2 = args[0]; // metatable
-            }
-            case 0 -> {
-                // restore expression stack
-                t0 = expressionStack[0];
-                t1 = expressionStack[1];
-                // use first return variable
-                t2 = tempRetVals.length > 0 ? tempRetVals[0] : LuaObject.nil();
-            }
-            case 1 -> {
-                // use first return variable
-                t0 = tempRetVals.length > 0 ? tempRetVals[0] : LuaObject.nil();
+                expressionStack = vm.registerExpressionStack(2);
             }
         }
         tempRetVals = null;
         returned = null;
         switch (resume) {
             case -1:
-                // get from metatable
-                if (t2.isTable()) {
-                    LuaObject metatable = t2;
-                    LuaObject key = t1;
-                    if (metatable.hasKey(key)) {
-                        vm.returnValue(metatable.get(key));
-                        return;
-                    } else {
-                        LuaObject mmtbl = metatable.getMetaTable();
-                        if (mmtbl == null) {
-                            vm.returnValue(LuaObject.nil());
-                            return;
-                        }
-                        // save expresion stack
-                        expressionStack[0] = t0;
-                        expressionStack[1] = t1;
-                        vm.callInternal(0, Sandoboxo::getWithMeta, metatable, key, mmtbl);
-                        return;
-                    }
+                // load local
+                t0 = stackFrame[0];
+                // load local
+                t1 = stackFrame[1];
+                // add
+                if (t0.isArithmetic() && t1.isArithmetic()) {
+                    t0 = t0.add(t1);
                 } else {
-                    vm.error(new LuaMetaTableError());
+                    vm.callInternal(0, Sandoboxo::addWithMeta, t0, t1);
                     return;
                 }
+                t1 = null;
             case 0:
-                if (t2.isFunction()) {
-                    vm.callExternal(1, t2.getFunc(), t0, t1);
-                    return;
-                } else {
-                    vm.returnValue(t0);
-                    return;
-                }
-            case 1:
+                // return
                 vm.returnValue(t0);
                 return;
             default:
@@ -328,31 +304,12 @@ public class Sandoboxo extends LuaFunction {
         }
     }
 
-    /**
-     * This method is meant to be called when a plain table assignment has failed and a metatable __newindex call is needed.
-     * The arguments for this method takes the original table, the key, the value and the metatable as arguments.
-     */
-    protected static void setWithMeta(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject returned) {
-        LuaObject t0 = null, t1 = null, t2 = null, t3 = null, t4 = null;
+    private void innerScope1(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject returned) {
+        LuaObject t0 = null;
         LuaObject[] tempRetVals = returned.asArray();
         switch (resume) {
             case -1 -> {
-                expressionStack = vm.registerExpressionStack(5);
-                if (args.length != 4) {
-                    throw new InternalLuaRuntimeError("expected 4 arguments, got " + args.length);
-                }
-                t0 = args[0]; // table
-                t1 = args[1]; // key
-                t2 = args[2]; // value
-                t3 = args[3]; // metatable
-            }
-            case 0 -> {
-                // restore expression stack
-                t0 = expressionStack[0];
-                t1 = expressionStack[1];
-                t2 = expressionStack[2];
-                // use first return variable
-                t3 = tempRetVals.length > 0 ? tempRetVals[0] : LuaObject.nil();
+                expressionStack = vm.registerExpressionStack(1);
             }
         }
         tempRetVals = null;
@@ -360,196 +317,18 @@ public class Sandoboxo extends LuaFunction {
         switch (resume) {
             case -1:
                 // load constant
-                t4 = Singletons.__newindex;
-                // get index
-                if (t3.isTable()) {
-                    LuaObject table = t3;
-                    LuaObject key = RTUtils.tryCoerceFloatToInt(t4);
-                    if (table.hasKey(key)) {
-                        t3 = table.get(key);
-                    } else {
-                        LuaObject mtbl = table.getMetaTable();
-                        if (mtbl == null) {
-                            t3 = LuaObject.nil();
-                        } else {
-                            // save expression stack
-                            expressionStack[0] = t0;
-                            expressionStack[1] = t1;
-                            expressionStack[2] = t2;
-                            vm.callInternal(0, Sandoboxo::getWithMeta, table, key, mtbl);
-                            return;
-                        }
-                    }
-                } else {
-                    vm.error(new LuaTypeError());
-                    return;
-                }
-            case 0:
-                if (t3.isFunction()) {
-                    vm.callExternal(1, t3.getFunc(), t0, t1, t2);
-                    return;
-                } else if (t3.isNil()) {
-                    // no __newindex found, doing plain assignment instead
-                    t0.set(t1, t2);
-                    vm.returnValue();
-                    return;
-                }
-                // repeat indexing assignment over meta value instead of original table
-                t0 = t3;
-                t3 = null;
-                // set into meta value
-                if (t0.isTable()) {
-                    LuaObject table = t0;
-                    LuaObject key = RTUtils.tryCoerceFloatToInt(t1);
-                    if (key.isNil() || key.isNaN()) {
-                        vm.error(new LuaArgumentError());
-                        return;
-                    }
-                    if (table.hasKey(key)) {
-                        table.set(key, t2);
-                    } else {
-                        LuaObject mtbl = table.getMetaTable();
-                        if (mtbl == null) {
-                            table.set(key, t2);
-                        } else {
-                            vm.callInternal(1, Sandoboxo::setWithMeta, table, key, t2, mtbl);
-                            return;
-                        }
-                    }
-                } else if (t0.isUserData()) {
-                    try {
-                        t0.set(t1, t2);
-                    } catch (LuaRuntimeError$ ex) {
-                        vm.error(new LuaForeignCallError());
-                        return;
-                    }
-                } else {
-                    vm.error(new LuaTypeError());
-                    return;
-                }
-            case 1:
-                vm.returnValue();
+                t0 = LuaObject.of(true);
+                // load local
+                stackFrame[1] = t0;
+                // exit scope
+                vm.internalReturn();
                 return;
             default:
                 throw new InternalLuaRuntimeError("unknown resume point " + resume);
         }
     }
 
-    /**
-     * This method is meant to be called when at least one of the two arguments of the addition is not ARITHMETIC and a metatable __add call is needed.
-     * The arguments for this method takes x and y as arguments.
-     */
-    protected static void addWithMeta(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject returned) {
-        LuaObject t0 = null, t1 = null, t2 = null, t3 = null;
-        LuaObject[] tempRetVals = returned.asArray();
-        switch (resume) {
-            case -1 -> {
-                expressionStack = vm.registerExpressionStack(4);
-                if (args.length != 2) {
-                    throw new InternalLuaRuntimeError("expected 2 arguments, got " + args.length);
-                }
-                t0 = args[0]; // x
-                t1 = args[1]; // y
-            }
-            case 0 -> {
-                t0 = expressionStack[0];
-                t1 = expressionStack[1];
-                // unpack fist return value (meta value for x)
-                t2 = tempRetVals.length > 0 ? tempRetVals[0] : LuaObject.nil();
-            }
-            case 1 -> {
-                t0 = expressionStack[0];
-                t1 = expressionStack[1];
-                // unpack fist return value (meta value for y)
-                t2 = tempRetVals.length > 0 ? tempRetVals[0] : LuaObject.nil();
-            }
-        }
-        tempRetVals = null;
-        returned = null;
-        switch (resume) {
-            case -1:
-                t2 = t0.getMetaTable();
-                if (t2 == null) {
-                    // no meta value for x
-                    t2 = LuaObject.nil();
-                } else {
-                    t3 = Singletons.__add;
-                    // get meta value for x
-                    if (t2.isTable()) {
-                        LuaObject table = t2;
-                        LuaObject key = RTUtils.tryCoerceFloatToInt(t3);
-                        if (table.hasKey(key)) {
-                            t2 = table.get(key);
-                        } else {
-                            LuaObject mtbl = table.getMetaTable();
-                            if (mtbl == null) {
-                                t2 = LuaObject.nil();
-                            } else {
-                                // save expression stack
-                                expressionStack[0] = t0;
-                                expressionStack[1] = t1;
-                                vm.callInternal(0, Sandoboxo::getWithMeta, table, key, mtbl);
-                                return;
-                            }
-                        }
-                    } else {
-                        vm.error(new LuaTypeError());
-                        return;
-                    }
-                    t3 = null;
-                }
-            case 0:
-                if (t2.isFunction()) {
-                    // call the meta function and return the value
-                    vm.tailCall(t2.getFunc(), t0, t1);
-                    return;
-                }
-                // no meta method found for x
-                t2 = t1.getMetaTable();
-                if (t2 == null) {
-                    // no meta value for x
-                    t2 = LuaObject.nil();
-                } else {
-                    t3 = Singletons.__add;
-                    // get meta value for y
-                    if (t2.isTable()) {
-                        LuaObject table = t2;
-                        LuaObject key = RTUtils.tryCoerceFloatToInt(t3);
-                        if (table.hasKey(key)) {
-                            t2 = table.get(key);
-                        } else {
-                            LuaObject mtbl = table.getMetaTable();
-                            if (mtbl == null) {
-                                t2 = LuaObject.nil();
-                            } else {
-                                // save expression stack
-                                expressionStack[0] = t0;
-                                expressionStack[1] = t1;
-                                vm.callInternal(1, Sandoboxo::getWithMeta, table, key, mtbl);
-                                return;
-                            }
-                        }
-                    } else {
-                        vm.error(new LuaTypeError());
-                        return;
-                    }
-                    t3 = null;
-                }
-            case 1:
-                if (t2.isFunction()) {
-                    // call the meta function and return the value
-                    vm.tailCall(t2.getFunc(), t0, t1);
-                    return;
-                } else {
-                    // no meta method found
-                    vm.error(new LuaMetaTableError());
-                    return;
-                }
-            default:
-                throw new InternalLuaRuntimeError("unknown resume point " + resume);
-        }
-    }
-
+    // in reality, this class would live in its own space and not be a mere inner member class
     public static class InnerFunction extends LuaFunction {
         public InnerFunction(LuaObject... closures) {
             super(closures);

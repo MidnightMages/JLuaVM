@@ -1,9 +1,7 @@
 package dev.asdf00.jluavm.runtime.utils;
 
-import dev.asdf00.jluavm.runtime.types.ILuaVariable;
-import dev.asdf00.jluavm.runtime.types.LuaDouble;
-import dev.asdf00.jluavm.runtime.types.LuaLong;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
+import dev.asdf00.jluavm.runtime.typesOLD.LuaBooleanOLD;
 
 public class RTUtils {
     public static LuaObject tryCoerceFloatToInt(LuaObject value) {
@@ -16,11 +14,7 @@ public class RTUtils {
         return value;
     }
 
-    public static ILuaVariable[] pack() {
-        return Singletons.EMPTY_VARS;
-    }
-
-    public static ILuaVariable[] pack(ILuaVariable... p) {
-        return p;
+    public static boolean isTruthy(LuaObject value) {
+        return !value.isBoolean() && !value.isNil() || value.isBoolean() && value.getBool();
     }
 }

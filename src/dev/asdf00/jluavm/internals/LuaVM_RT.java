@@ -5,7 +5,6 @@ import dev.asdf00.jluavm.exceptions.LuaRuntimeError$;
 import dev.asdf00.jluavm.exceptions.runtime.LuaMetaTableError$;
 import dev.asdf00.jluavm.exceptions.runtime.LuaTypeError$;
 import dev.asdf00.jluavm.runtime.errors.AbstractLuaError;
-import dev.asdf00.jluavm.runtime.types.ILuaVariable;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.typesOLD.LuaNilOLD;
@@ -53,6 +52,10 @@ public class LuaVM_RT extends LuaVM {
     }
 
     public void callInternal(int resume, LFunc localTarget, LuaObject... args) {
+
+    }
+
+    public void internalReturn(LuaObject... values) {
 
     }
 
