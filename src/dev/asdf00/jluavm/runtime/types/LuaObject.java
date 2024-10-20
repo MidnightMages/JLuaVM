@@ -1,6 +1,10 @@
 package dev.asdf00.jluavm.runtime.types;
 
 import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
+import dev.asdf00.jluavm.exceptions.loading.InternalLuaLexerError;
+
+import static dev.asdf00.jluavm.parsing.Lexer.isDecDigit;
+import static dev.asdf00.jluavm.parsing.Lexer.parseHexDouble;
 
 public final class LuaObject {
     public static final LuaObject NIL = new LuaObject(null, 0, 0, Types.NIL);
@@ -82,7 +86,6 @@ public final class LuaObject {
     }
 
 
-
     // =================================================================================================================
     // utility methods
     // =================================================================================================================
@@ -131,10 +134,45 @@ public final class LuaObject {
 
     public LuaObject add(LuaObject other) {
         assert isType(Types.ARITHMETIC) && other.isType(Types.ARITHMETIC);
-        return null;
+        boolean doubleCalc;
+        double dx = dVal;
+        long lx = lVal;
+        if (isString()) {
+            var cres = coerceToNumber();
+            doubleCalc = cres.isDouble;
+            dx = cres.dVal;
+            lx = cres.lVal;
+        } else if (isDouble()) {
+            doubleCalc = true;
+        } else {
+            assert isLong();
+            doubleCalc = false;
+        }
+        double dy = other.dVal;
+        long ly = other.lVal;
+        if (isString()) {
+            var cres = other.coerceToNumber();
+            if (!doubleCalc && cres.isDouble) {
+                dx = lx;
+                doubleCalc = true;
+            }
+            dy = cres.dVal;
+            ly = cres.lVal;
+        } else if (isDouble()) {
+            if (!doubleCalc) {
+                dx = lx;
+                doubleCalc = true;
+            }
+        } else {
+            assert isLong();
+            if (doubleCalc) {
+                dy = ly;
+            }
+        }
+        return doubleCalc ? LuaObject.of(dx + dy) : LuaObject.of(lx + ly);
     }
 
-    public boolean hasKey(LuaObject key)  {
+    public boolean hasKey(LuaObject key) {
         return false;
     }
 
@@ -214,5 +252,189 @@ public final class LuaObject {
 
     public boolean isArithmetic() {
         return isType(Types.ARITHMETIC);
+    }
+
+    // =================================================================================================================
+    // coerse to number
+    // =================================================================================================================
+
+    /**
+     * This method is directly taken from {@linkplain dev.asdf00.jluavm.parsing.Lexer}.
+     * TODO: correctly coerce Long.MIN_VAL to long instead of double
+     */
+    private CoercedString coerceToNumber() {
+        assert isString() : "trying to coerce non-string";
+        final String stVal = (String) refVal;
+
+        char[] cur = new char[1];
+        char[] la = new char[1];
+
+        Runnable advance = new Runnable() {
+            private final int len = stVal.length();
+            private int i = 0;
+
+            {
+                cur[0] = i < len ? stVal.charAt(i) : (char) -1;
+                i++;
+                la[0] = i < len ? stVal.charAt(i) : (char) -1;
+                i++;
+            }
+
+            @Override
+            public void run() {
+                cur[0] = la[0];
+                la[0] = i < len ? stVal.charAt(i) : (char) -1;
+                i++;
+            }
+        };
+
+        // skip whitespace
+        while (Character.isWhitespace(cur[0])) {
+            advance.run();
+        }
+
+        boolean positive = true;
+        if (cur[0] == '-') {
+            positive = false;
+            advance.run();
+        }
+
+        if (!isDecDigit(cur[0]) && !(cur[0] == '.' && isDecDigit(la[0]))) {
+            // fail to coerce
+            return null;
+        }
+
+        boolean isInteger = true;
+        boolean isHex = false;
+        boolean isExp = false;
+        boolean isValid = true;
+        boolean allowPM = false;
+        final var nb = new StringBuilder();
+        nb.append(cur);
+        if (cur[0] == '0') {
+            advance.run();
+            if (cur[0] == 'x' || cur[0] == 'X') {
+                isHex = true;
+                isValid = false;
+                nb.append(cur);
+                advance.run();
+            }
+        } else if (cur[0] != '.') {
+            advance.run();
+        }
+
+        Runnable step = () -> {
+            nb.append(cur[0]);
+            advance.run();
+        };
+        for (; ; step.run()) {
+            if (allowPM) {
+                allowPM = false;
+                isExp = true;
+                if (cur[0] == '+' || cur[0] == '-') {
+                    isValid = false;
+                    continue;
+                }
+            }
+            if (isDecDigit(cur[0])) {
+                isValid = true;
+                continue;
+            }
+            if (isHex) {
+                if (('a' <= cur[0] && cur[0] <= 'f') || ('A' <= cur[0] && cur[0] <= 'F')) {
+                    continue;
+                }
+            }
+            if (isInteger) {
+                if (cur[0] == '.') {
+                    isInteger = false;
+                    isValid = false;
+                    isHex = false;
+                    continue;
+                }
+            } else if (!isExp) {
+                // exponent?
+                if (!isValid) {
+                    // fail to coerce
+                    return null;
+                }
+                if (cur[0] == 'p' || cur[0] == 'P' || cur[0] == 'e' || cur[0] == 'E') {
+                    isInteger = false;
+                    isHex = false;
+                    allowPM = true;
+                    isValid = false;
+                    continue;
+                }
+            }
+            break;
+        }
+
+        String number = nb.toString();
+        if (!isValid) {
+            // fail to coerce
+            return null;
+        }
+        try {
+            double doubleValue = -1;
+            long longValue = -1;
+            if (number.startsWith("0x")) {
+                if (isInteger) {
+                    doubleValue = parseHexDouble(number.substring(2));
+                    if (doubleValue <= Long.MAX_VALUE) {
+                        doubleValue = -1;
+                        longValue = Long.parseLong(number.substring(2), 16);
+                    }
+                } else {
+                    int point = number.indexOf('.');
+                    int ppos = number.indexOf('p');
+                    if (ppos < 0) {
+                        ppos = number.indexOf('P');
+                    }
+                    int epos = number.indexOf('e');
+                    if (epos < 0) {
+                        epos = number.indexOf('E');
+                    }
+                    if (ppos < 0 && epos < 0) {
+                        doubleValue = parseHexDouble(number.substring(2, point)) + Double.parseDouble(number.substring(point));
+                    } else {
+                        double a = epos < 0 ? 2 : 10;
+                        int splitter = epos < 0 ? ppos : epos;
+                        doubleValue = parseHexDouble(number.substring(2, point)) + Double.parseDouble(number.substring(point, splitter))
+                                * Math.pow(a, Double.parseDouble(number.substring(splitter + 1)));
+                    }
+                }
+            } else {
+                if (isInteger) {
+                    doubleValue = Double.parseDouble(number);
+                    if (doubleValue <= Long.MAX_VALUE) {
+                        doubleValue = -1;
+                        longValue = Long.parseLong(number);
+                    }
+                } else {
+                    int ppos = number.indexOf('p');
+                    if (ppos < 0) {
+                        ppos = number.indexOf('P');
+                    }
+                    int epos = number.indexOf('e');
+                    if (epos < 0) {
+                        epos = number.indexOf('E');
+                    }
+                    if (ppos < 0 && epos < 0) {
+                        doubleValue = Double.parseDouble(number);
+                    } else {
+                        double a = epos < 0 ? 2 : 10;
+                        int splitter = epos < 0 ? ppos : epos;
+                        doubleValue = Double.parseDouble(number.substring(0, splitter)) * Math.pow(a, Double.parseDouble(number.substring(splitter + 1)));
+                    }
+                }
+            }
+            return positive ? new CoercedString(!isInteger, doubleValue, longValue) : new CoercedString(!isInteger, -doubleValue, -longValue);
+        } catch (NumberFormatException e) {
+            throw new InternalLuaLexerError("Unexpected failure while reading number '%s'".formatted(number), e);
+        }
+    }
+
+    private record CoercedString(boolean isDouble, double dVal, long lVal) {
+
     }
 }

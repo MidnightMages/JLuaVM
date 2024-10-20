@@ -459,15 +459,15 @@ public class Lexer {
         return c != CEOF && (c == '_' || Character.isLetterOrDigit(c));
     }
 
-    private static boolean isHexDigit(char c) {
+    public static boolean isHexDigit(char c) {
         return ('0' <= c && c <= '9') || ('a' <= c && c <= 'f') || ('A' <= c && c <= 'F');
     }
 
-    private static boolean isDecDigit(char c) {
+    public static boolean isDecDigit(char c) {
         return '0' <= c && c <= '9';
     }
 
-    private static double parseHexDouble(String num) {
+    public static double parseHexDouble(String num) {
         double d = 0;
         for (int i = num.length() - 1; i >= 0; i--) {
             d *= 16;
