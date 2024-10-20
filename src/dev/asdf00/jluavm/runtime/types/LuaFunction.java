@@ -11,6 +11,8 @@ import dev.asdf00.jluavm.runtime.errors.LuaTypeError;
 import dev.asdf00.jluavm.runtime.utils.RTUtils;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 
+import java.lang.reflect.Constructor;
+
 public abstract class LuaFunction {
     public final LuaObject[] closures;
     public LuaObject _ENV;
@@ -19,7 +21,105 @@ public abstract class LuaFunction {
         this.closures = closures;
     }
 
-    public abstract void invoke(LuaVM_RT vm, LuaObject[] stackFrame, int resume, LuaObject[] expressionStack, LuaObject returned);
+    public abstract void invoke(LuaVM_RT vm, LuaObject[] stackFrame, int resume, LuaObject[] expressionStack, LuaObject[] returned);
+
+    protected static <T extends LuaFunction> T newInnerFunction(Constructor<T> ctor, LuaObject... closures) {
+        try {
+            return ctor.newInstance(closures);
+        } catch (ReflectiveOperationException e) {
+            throw new InternalLuaRuntimeError("error on generating inner function reference (%s)".formatted(e));
+        }
+    }
+
+    // =================================================================================================================
+    // overridable constants for stack frame setup
+    // =================================================================================================================
+
+    /**
+     * @return the maximum size of the local variable stack including all arguments (even params) as locals.
+     */
+    public abstract int getMaxLocalsSize();
+
+    /**
+     * @return argument count WITHOUT a possible params argument.
+     */
+    public abstract int getArgCount();
+
+    /**
+     * @return if the last argument is a params argument.
+     */
+    public abstract boolean hasParamsArg();
+
+    // =================================================================================================================
+    // closable magic
+    // =================================================================================================================
+
+    protected static void addClosable(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
+        LuaObject t0 = null, t1 = null, t2 = null;
+        // on resume
+        switch (resume) {
+            case -1 -> {
+                expressionStack = vm.registerExpressionStack(3);
+                if (args.length != 1) {
+                    throw new InternalLuaRuntimeError("expected 1 arguments, got " + args.length);
+                }
+                t0 = args[0]; // obj
+            }
+            case 0 -> {
+                // restore expression stack
+                t0 = expressionStack[0];
+                // use first return variable
+                t1 = returned.length > 0 ? returned[0] : LuaObject.nil();
+            }
+        }
+        returned = null;
+        switch (resume) {
+            case -1:
+                // try get __close meta method
+                t1 = t0.getMetaTable();
+                if (t1 == null) {
+                    vm.error(new LuaMetaTableError());
+                }
+                t2 = Singletons.__close;
+                // get index
+                if (t1.isTable()) {
+                    LuaObject table = t1;
+                    LuaObject key = RTUtils.tryCoerceFloatToInt(t2);
+                    if (table.hasKey(key)) {
+                        t1 = table.get(key);
+                    } else {
+                        LuaObject mtbl = table.getMetaTable();
+                        if (mtbl == null) {
+                            t1 = LuaObject.nil();
+                        } else {
+                            // save expression stack
+                            expressionStack[0] = t0;
+                            vm.callInternal(0, Sandoboxo::getWithMeta, table, key, mtbl);
+                            return;
+                        }
+                    }
+                } else {
+                    vm.error(new LuaTypeError());
+                    return;
+                }
+                t2 = null;
+            case 0:
+                if (!t1.isFunction()) {
+                    // no meta method __close found
+                    vm.error(new LuaMetaTableError());
+                    return;
+                }
+                vm.addClosable(t0);
+                vm.internalReturn();
+                return;
+            default:
+                throw new InternalLuaRuntimeError("unknown resume point " + resume);
+        }
+    }
+
+    protected static void closeNext(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
+        // TODO
+    }
 
     // =================================================================================================================
     // slow path methods for meta table involved stuff
@@ -29,9 +129,8 @@ public abstract class LuaFunction {
      * This method is meant to be called when a plain table lookup has failed and a metatable __index call is needed.
      * The arguments for this method takes the original table, the key and the metatable as arguments.
      */
-    protected static void getWithMeta(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject returned) {
+    protected static void getWithMeta(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
         LuaObject t0 = null, t1 = null, t2 = null;
-        LuaObject[] tempRetVals = returned.asArray();
         // on resume
         switch (resume) {
             case -1 -> {
@@ -48,14 +147,13 @@ public abstract class LuaFunction {
                 t0 = expressionStack[0];
                 t1 = expressionStack[1];
                 // use first return variable
-                t2 = tempRetVals.length > 0 ? tempRetVals[0] : LuaObject.nil();
+                t2 = returned.length > 0 ? returned[0] : LuaObject.nil();
             }
             case 1 -> {
                 // use first return variable
-                t0 = tempRetVals.length > 0 ? tempRetVals[0] : LuaObject.nil();
+                t0 = returned.length > 0 ? returned[0] : LuaObject.nil();
             }
         }
-        tempRetVals = null;
         returned = null;
         switch (resume) {
             case -1:
@@ -102,9 +200,8 @@ public abstract class LuaFunction {
      * This method is meant to be called when a plain table assignment has failed and a metatable __newindex call is needed.
      * The arguments for this method takes the original table, the key, the value and the metatable as arguments.
      */
-    protected static void setWithMeta(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject returned) {
+    protected static void setWithMeta(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
         LuaObject t0 = null, t1 = null, t2 = null, t3 = null, t4 = null;
-        LuaObject[] tempRetVals = returned.asArray();
         switch (resume) {
             case -1 -> {
                 expressionStack = vm.registerExpressionStack(5);
@@ -122,10 +219,9 @@ public abstract class LuaFunction {
                 t1 = expressionStack[1];
                 t2 = expressionStack[2];
                 // use first return variable
-                t3 = tempRetVals.length > 0 ? tempRetVals[0] : LuaObject.nil();
+                t3 = returned.length > 0 ? returned[0] : LuaObject.nil();
             }
         }
-        tempRetVals = null;
         returned = null;
         switch (resume) {
             case -1:
@@ -209,9 +305,8 @@ public abstract class LuaFunction {
      * This method is meant to be called when at least one of the two arguments of the addition is not ARITHMETIC and a metatable __add call is needed.
      * The arguments for this method takes x and y as arguments.
      */
-    protected static void addWithMeta(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject returned) {
+    protected static void addWithMeta(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
         LuaObject t0 = null, t1 = null, t2 = null, t3 = null;
-        LuaObject[] tempRetVals = returned.asArray();
         switch (resume) {
             case -1 -> {
                 expressionStack = vm.registerExpressionStack(4);
@@ -225,16 +320,15 @@ public abstract class LuaFunction {
                 t0 = expressionStack[0];
                 t1 = expressionStack[1];
                 // unpack fist return value (meta value for x)
-                t2 = tempRetVals.length > 0 ? tempRetVals[0] : LuaObject.nil();
+                t2 = returned.length > 0 ? returned[0] : LuaObject.nil();
             }
             case 1 -> {
                 t0 = expressionStack[0];
                 t1 = expressionStack[1];
                 // unpack fist return value (meta value for y)
-                t2 = tempRetVals.length > 0 ? tempRetVals[0] : LuaObject.nil();
+                t2 = returned.length > 0 ? returned[0] : LuaObject.nil();
             }
         }
-        tempRetVals = null;
         returned = null;
         switch (resume) {
             case -1:

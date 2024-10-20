@@ -5,5 +5,5 @@ import dev.asdf00.jluavm.runtime.types.LuaObject;
 
 @FunctionalInterface
 public interface LFunc {
-    void invoke(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject returned);
+    void invoke(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject[] returned);
 }

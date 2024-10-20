@@ -7,6 +7,8 @@ import dev.asdf00.jluavm.runtime.errors.*;
 import dev.asdf00.jluavm.runtime.types.*;
 import dev.asdf00.jluavm.runtime.utils.*;
 
+import java.lang.reflect.Constructor;
+
 /**
  * <pre>
  * function (a, b)
@@ -26,14 +28,30 @@ import dev.asdf00.jluavm.runtime.utils.*;
  */
 @SuppressWarnings({"IfStatementWithIdenticalBranches", "ConstantValue"})
 public class Sandoboxo extends LuaFunction {
+    public static Constructor<? extends LuaFunction>[] innerFunctions; // populated on class load
+
     public Sandoboxo(LuaObject[] closures) {
         super(closures);
     }
 
     @Override
-    public void invoke(LuaVM_RT vm, LuaObject[] stackFrame, int resume, LuaObject[] expressionStack, LuaObject returned) {
+    public int getMaxLocalsSize() {
+        return 3;
+    }
+
+    @Override
+    public int getArgCount() {
+        return 2;
+    }
+
+    @Override
+    public boolean hasParamsArg() {
+        return false;
+    }
+
+    @Override
+    public void invoke(LuaVM_RT vm, LuaObject[] stackFrame, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
         LuaObject t0 = null, t1 = null, t2 = null, t3 = null, t4 = null, t5 = null, t6 = null, t7 = null;
-        LuaObject[] tempRetVals = returned.asArray();
         // on resume
         switch (resume) {
             case -1 -> {
@@ -41,14 +59,14 @@ public class Sandoboxo extends LuaFunction {
             }
             case 0 -> {
                 // unpack fist return value
-                t0 = tempRetVals.length > 0 ? tempRetVals[0] : LuaObject.nil();
+                t0 = returned.length > 0 ? returned[0] : LuaObject.nil();
             }
             case 1 -> {
                 // restore expression stack
                 t0 = expressionStack[0];
                 t1 = expressionStack[1];
                 // unpack fist return value
-                t2 = tempRetVals.length > 0 ? tempRetVals[0] : LuaObject.nil();
+                t2 = returned.length > 0 ? returned[0] : LuaObject.nil();
             }
             case 2 -> {
                 // nothing to restore
@@ -61,9 +79,9 @@ public class Sandoboxo extends LuaFunction {
                 t3 = expressionStack[3];
                 t4 = expressionStack[4];
                 // unpack 3 return values
-                t5 = tempRetVals.length > 0 ? tempRetVals[0] : LuaObject.nil();
-                t6 = tempRetVals.length > 1 ? tempRetVals[1] : LuaObject.nil();
-                t7 = tempRetVals.length > 2 ? tempRetVals[2] : LuaObject.nil();
+                t5 = returned.length > 0 ? returned[0] : LuaObject.nil();
+                t6 = returned.length > 1 ? returned[1] : LuaObject.nil();
+                t7 = returned.length > 2 ? returned[2] : LuaObject.nil();
             }
             case 4 -> {
                 // restore expression stack
@@ -74,7 +92,6 @@ public class Sandoboxo extends LuaFunction {
                 t4 = expressionStack[4];
             }
         }
-        tempRetVals = null;
         returned = null;
         switch (resume) {
             case -1:
@@ -171,7 +188,7 @@ public class Sandoboxo extends LuaFunction {
                 // load t
                 t0 = stackFrame[2];
                 // declare inner function with closure
-                t0 = LuaObject.of(new InnerFunction(t0));
+                t0 = LuaObject.of(newInnerFunction(innerFunctions[0], t0));
                 // assign to local variable f
                 stackFrame[3] = t0;
                 t0 = null;
@@ -189,7 +206,7 @@ public class Sandoboxo extends LuaFunction {
                 t6 = stackFrame[0];
                 // call f(a)
                 if (t5.isFunction()) {
-                    // save expresion stack
+                    // save expression stack
                     expressionStack[0] = t0;
                     expressionStack[1] = t1;
                     expressionStack[2] = t2;
@@ -271,15 +288,13 @@ public class Sandoboxo extends LuaFunction {
         }
     }
 
-    private void innerScope0(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject returned) {
+    private void innerScope0(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
         LuaObject t0 = null, t1 = null;
-        LuaObject[] tempRetVals = returned.asArray();
         switch (resume) {
             case -1 -> {
                 expressionStack = vm.registerExpressionStack(2);
             }
         }
-        tempRetVals = null;
         returned = null;
         switch (resume) {
             case -1:
@@ -304,15 +319,13 @@ public class Sandoboxo extends LuaFunction {
         }
     }
 
-    private void innerScope1(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject returned) {
+    private void innerScope1(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
         LuaObject t0 = null;
-        LuaObject[] tempRetVals = returned.asArray();
         switch (resume) {
             case -1 -> {
                 expressionStack = vm.registerExpressionStack(1);
             }
         }
-        tempRetVals = null;
         returned = null;
         switch (resume) {
             case -1:
@@ -330,20 +343,35 @@ public class Sandoboxo extends LuaFunction {
 
     // in reality, this class would live in its own space and not be a mere inner member class
     public static class InnerFunction extends LuaFunction {
+        public static Constructor<? extends LuaFunction>[] innerFunctions; // populated on class load
+
         public InnerFunction(LuaObject... closures) {
             super(closures);
         }
 
         @Override
-        public void invoke(LuaVM_RT vm, LuaObject[] stackFrame, int resume, LuaObject[] expressionStack, LuaObject returned) {
+        public int getMaxLocalsSize() {
+            return 1;
+        }
+
+        @Override
+        public int getArgCount() {
+            return 1;
+        }
+
+        @Override
+        public boolean hasParamsArg() {
+            return false;
+        }
+
+        @Override
+        public void invoke(LuaVM_RT vm, LuaObject[] stackFrame, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
             LuaObject t0 = null, t1 = null;
-            LuaObject[] tempRetVals = returned.asArray();
             switch (resume) {
                 case -1 -> {
                     expressionStack = vm.registerExpressionStack(2);
                 }
             }
-            tempRetVals = null;
             returned = null;
             switch (resume) {
                 case -1:
