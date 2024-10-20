@@ -7,6 +7,7 @@ public class Singletons {
     public static final LuaObject __add = LuaObject.of("__add");
     public static final LuaObject __index = LuaObject.of("__index");
     public static final LuaObject __newindex = LuaObject.of("__newindex");
+    public static final LuaObject __call = LuaObject.of("__call");
 
     // advanced meta function
     public static final LuaObject __close = LuaObject.of("__close");

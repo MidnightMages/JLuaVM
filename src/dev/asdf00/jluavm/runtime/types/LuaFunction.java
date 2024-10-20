@@ -12,6 +12,7 @@ import dev.asdf00.jluavm.runtime.utils.RTUtils;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 
 import java.lang.reflect.Constructor;
+import java.util.Arrays;
 
 public abstract class LuaFunction {
     public final LuaObject[] closures;
@@ -130,11 +131,11 @@ public abstract class LuaFunction {
      * The arguments for this method takes the original table, the key and the metatable as arguments.
      */
     protected static void getWithMeta(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
-        LuaObject t0 = null, t1 = null, t2 = null;
+        LuaObject t0 = null, t1 = null, t2 = null, t3 = null;
         // on resume
         switch (resume) {
             case -1 -> {
-                expressionStack = vm.registerExpressionStack(3);
+                expressionStack = vm.registerExpressionStack(4);
                 if (args.length != 3) {
                     throw new InternalLuaRuntimeError("expected 3 arguments, got " + args.length);
                 }
@@ -149,7 +150,7 @@ public abstract class LuaFunction {
                 // use first return variable
                 t2 = returned.length > 0 ? returned[0] : LuaObject.nil();
             }
-            case 1 -> {
+            case 2 -> {
                 // use first return variable
                 t0 = returned.length > 0 ? returned[0] : LuaObject.nil();
             }
@@ -182,13 +183,38 @@ public abstract class LuaFunction {
                 }
             case 0:
                 if (t2.isFunction()) {
-                    vm.callExternal(1, t2.getFunc(), t0, t1);
-                    return;
-                } else {
-                    vm.internalReturn(t0);
+                    vm.callExternal(2, t2.getFunc(), t0, t1);
                     return;
                 }
-            case 1:
+                // if the meta value is not a function, we return the value at t2.__index
+                t3 = Singletons.__index;
+                if (t2.isTable()) {
+                    LuaObject table = t2;
+                    LuaObject key = RTUtils.tryCoerceFloatToInt(t3);
+                    if (table.hasKey(key)) {
+                        t2 = table.get(key);
+                    } else {
+                        LuaObject mtbl = table.getMetaTable();
+                        if (mtbl == null) {
+                            t2 = LuaObject.nil();
+                        } else {
+                            vm.callInternal(0, Sandoboxo::getWithMeta, table, key, mtbl);
+                            return;
+                        }
+                    }
+                } else if (t2.isUserData()) {
+                    try {
+                        t2 = t2.get(t3);
+                    } catch (LuaRuntimeError$ ex) {
+                        vm.error(new LuaForeignCallError());
+                        return;
+                    }
+                } else {
+                    vm.error(new LuaTypeError());
+                    return;
+                }
+                t1 = null;
+            case 2:
                 vm.internalReturn(t0);
                 return;
             default:
@@ -328,6 +354,10 @@ public abstract class LuaFunction {
                 // unpack fist return value (meta value for y)
                 t2 = returned.length > 0 ? returned[0] : LuaObject.nil();
             }
+            case 2 -> {
+                // unpack fist return value of meta call
+                t0 = returned.length > 0 ? returned[0] : LuaObject.nil();
+            }
         }
         returned = null;
         switch (resume) {
@@ -365,7 +395,11 @@ public abstract class LuaFunction {
             case 0:
                 if (t2.isFunction()) {
                     // call the meta function and return the value
-                    vm.tailCall(t2.getFunc(), t0, t1);
+                    vm.callExternal(2, t2.getFunc(), t0, t1);
+                    return;
+                } else if (!t2.isNil()) {
+                    // if we found something that is not a function, we try to call with meta
+                    vm.callInternal(2, LuaFunction::callWithMeta, t2, t0, t1);
                     return;
                 }
                 // no meta method found for x
@@ -402,13 +436,95 @@ public abstract class LuaFunction {
             case 1:
                 if (t2.isFunction()) {
                     // call the meta function and return the value
-                    vm.tailCall(t2.getFunc(), t0, t1);
+                    vm.callExternal(2, t2.getFunc(), t0, t1);
+                    return;
+                } else if (!t2.isNil()) {
+                    // if we found something that is not a function, we try to call with meta
+                    vm.callInternal(2, LuaFunction::callWithMeta, t2, t0, t1);
                     return;
                 } else {
-                    // no meta method found
+                    // we found no meta value
                     vm.error(new LuaMetaTableError());
                     return;
                 }
+            case 2:
+                vm.returnValue(t0);
+                return;
+            default:
+                throw new InternalLuaRuntimeError("unknown resume point " + resume);
+        }
+    }
+
+    /**
+     * This method is meant to be called when at least one of the two arguments of the addition is not ARITHMETIC and a metatable __add call is needed.
+     * The arguments for this method takes x and y as arguments.
+     */
+    protected static void callWithMeta(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
+        LuaObject t0 = null, t1 = null, t2 = null, t3 = null;
+        switch (resume) {
+            case -1 -> {
+                expressionStack = vm.registerExpressionStack(4);
+                if (args.length < 1) {
+                    throw new InternalLuaRuntimeError("expected 1 or more arguments, got " + args.length);
+                }
+                t0 = args[0]; // x
+                t1 = LuaObject.of(Arrays.copyOfRange(args, 1, args.length)); // args for call
+            }
+            case 0 -> {
+                t0 = expressionStack[0];
+                t1 = expressionStack[1];
+                // unpack fist return value (meta value for x)
+                t2 = returned.length > 0 ? returned[0] : LuaObject.nil();
+            }
+            case 1 -> {
+                // pack all return arguments
+                t0 = LuaObject.of(returned);
+            }
+        }
+        switch (resume) {
+            case -1:
+                if (t0.isFunction()) {
+                    throw new InternalLuaRuntimeError("callWithMeta should only be called on non-function objects");
+                }
+                t2 = t0.getMetaTable();
+                if (t2 == null) {
+                    vm.error(new LuaMetaTableError());
+                }
+                t3 = Singletons.__call;
+                // get meta value for possibly callable
+                if (t2.isTable()) {
+                    LuaObject table = t2;
+                    LuaObject key = RTUtils.tryCoerceFloatToInt(t3);
+                    if (table.hasKey(key)) {
+                        t2 = table.get(key);
+                    } else {
+                        LuaObject mtbl = table.getMetaTable();
+                        if (mtbl == null) {
+                            t2 = LuaObject.nil();
+                        } else {
+                            // save expression stack
+                            expressionStack[0] = t0;
+                            expressionStack[1] = t1;
+                            vm.callInternal(0, Sandoboxo::getWithMeta, table, key, mtbl);
+                            return;
+                        }
+                    }
+                } else {
+                    vm.error(new LuaTypeError());
+                    return;
+                }
+                t3 = null;
+            case 0:
+                if (t2.isFunction()) {
+                    vm.tailCall(t2.getFunc(), t0, t1);
+                    return;
+                } else {
+                vm.callInternal(1, LuaFunction::callWithMeta, t2, t0, t1);
+                return;
+                }
+            case 1:
+                vm.internalReturn(t0);
+                return;
             default:
                 throw new InternalLuaRuntimeError("unknown resume point " + resume);
         }

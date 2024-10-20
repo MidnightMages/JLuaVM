@@ -205,17 +205,17 @@ public class Sandoboxo extends LuaFunction {
                 // load a
                 t6 = stackFrame[0];
                 // call f(a)
+                // save expression stack
+                expressionStack[0] = t0;
+                expressionStack[1] = t1;
+                expressionStack[2] = t2;
+                expressionStack[3] = t3;
+                expressionStack[4] = t4;
                 if (t5.isFunction()) {
-                    // save expression stack
-                    expressionStack[0] = t0;
-                    expressionStack[1] = t1;
-                    expressionStack[2] = t2;
-                    expressionStack[3] = t3;
-                    expressionStack[4] = t4;
                     vm.callExternal(3, t5.getFunc(), t6);
                     return;
                 } else {
-                    vm.error(new LuaTypeError());
+                    vm.callInternal(3, LuaFunction::callWithMeta, t5, t6);
                     return;
                 }
             case 3:

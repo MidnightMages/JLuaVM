@@ -165,13 +165,25 @@ public class LuaVM_RT extends LuaVM {
         // TODO: set error
     }
 
+    public void callExternal(int resume, LuaFunction externalTarget) {
+        callExternal(resume, externalTarget, Singletons.EMPTY_LUA_OBJ_ARRAY);
+    }
+
     public void callExternal(int resume, LuaFunction externalTarget, LuaObject... args) {
         // TODO: flatten LuaArray into args array
+    }
+
+    public void tailCall(LuaFunction externalTarget) {
+        tailCall(externalTarget, Singletons.EMPTY_LUA_OBJ_ARRAY);
     }
 
     public void tailCall(LuaFunction externalTarget, LuaObject... args) {
         // TODO: even if a tailcall is not possible, this function does not expect to be resumed but just to pass
         //  through the returned values of the inner function.
+    }
+
+    public void callInternal(int resume, LFunc localTarget) {
+        callInternal(resume, localTarget, Singletons.EMPTY_LUA_OBJ_ARRAY);
     }
 
     public void callInternal(int resume, LFunc localTarget, LuaObject... args) {
