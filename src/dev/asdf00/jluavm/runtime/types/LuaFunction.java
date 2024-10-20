@@ -2,7 +2,7 @@ package dev.asdf00.jluavm.runtime.types;
 
 import dev.asdf00.jluavm.Sandoboxo;
 import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
-import dev.asdf00.jluavm.exceptions.LuaRuntimeError$;
+import dev.asdf00.jluavm.exceptions.LuaRuntimeError;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.runtime.errors.LuaArgumentError;
 import dev.asdf00.jluavm.runtime.errors.LuaForeignCallError;
@@ -205,7 +205,7 @@ public abstract class LuaFunction {
                 } else if (t2.isUserData()) {
                     try {
                         t2 = t2.get(t3);
-                    } catch (LuaRuntimeError$ ex) {
+                    } catch (LuaRuntimeError ex) {
                         vm.error(new LuaForeignCallError());
                         return;
                     }
@@ -311,7 +311,7 @@ public abstract class LuaFunction {
                 } else if (t0.isUserData()) {
                     try {
                         t0.set(t1, t2);
-                    } catch (LuaRuntimeError$ ex) {
+                    } catch (LuaRuntimeError ex) {
                         vm.error(new LuaForeignCallError());
                         return;
                     }

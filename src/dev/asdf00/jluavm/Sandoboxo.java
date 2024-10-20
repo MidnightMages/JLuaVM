@@ -1,7 +1,7 @@
 package dev.asdf00.jluavm;
 
 import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
-import dev.asdf00.jluavm.exceptions.LuaRuntimeError$;
+import dev.asdf00.jluavm.exceptions.LuaRuntimeError;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.runtime.errors.*;
 import dev.asdf00.jluavm.runtime.types.*;
@@ -117,7 +117,7 @@ public class Sandoboxo extends LuaFunction {
                 } else if (t0.isUserData()) {
                     try {
                         t0 = t0.get(t1);
-                    } catch (LuaRuntimeError$ ex) {
+                    } catch (LuaRuntimeError ex) {
                         vm.error(new LuaForeignCallError());
                         return;
                     }
@@ -172,7 +172,7 @@ public class Sandoboxo extends LuaFunction {
                 } else if (t0.isUserData()) {
                     try {
                         t0.set(t1, t2);
-                    } catch (LuaRuntimeError$ ex) {
+                    } catch (LuaRuntimeError ex) {
                         vm.error(new LuaForeignCallError());
                         return;
                     }
@@ -251,7 +251,7 @@ public class Sandoboxo extends LuaFunction {
                 } else if (t1.isUserData()) {
                     try {
                         t1.set(t2, t3);
-                    } catch (LuaRuntimeError$ ex) {
+                    } catch (LuaRuntimeError ex) {
                         vm.error(new LuaForeignCallError());
                         return;
                     }

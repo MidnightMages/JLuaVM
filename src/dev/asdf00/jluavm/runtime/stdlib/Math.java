@@ -1,5 +1,8 @@
 package dev.asdf00.jluavm.runtime.stdlib;
 
+// TODO: rewrite for new LuaFunction class compatibility
+/*-
+
 import dev.asdf00.jluavm.exceptions.runtime.LuaTypeError$;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.runtime.typesOLD.LuaBooleanOLD;
@@ -7,7 +10,7 @@ import dev.asdf00.jluavm.runtime.typesOLD.LuaNilOLD;
 import dev.asdf00.jluavm.runtime.typesOLD.LuaNumberOLD;
 import dev.asdf00.jluavm.runtime.typesOLD.LuaVariableOLD;
 
-public class Math$ {
+public class Math {
     private static LuaNumberOLD toNumberOrFail(LuaVM_RT vm, LuaVariableOLD xx) {
         return toNumberOrFail(vm, xx, 1);
     }
@@ -139,3 +142,5 @@ public class Math$ {
         return LuaBooleanOLD.fromState(Long.compareUnsigned((long) x2.getValue(), (long) y2.getValue()) < 0); // todo write tests for this lol
     }
 }
+
+ */
