@@ -6,13 +6,13 @@ public class VarInfo {
     private static final int CLOSABLE = 4;
     private static final int IN_CLOSURE = 8;
     private static final int WRITTEN = 16;
-    public final String jName;
+
+    public final int lVarIdx;
     private int flags;
     public final int sourcePt;
-    public int lastUsedPt;
 
-    public VarInfo(int sourcePt, String jName, boolean isConst, boolean isClosable) {
-        this.jName = jName;
+    public VarInfo(int sourcePt, int lVarIdx, boolean isConst, boolean isClosable) {
+        this.lVarIdx = lVarIdx;
         this.sourcePt = sourcePt;
         flags = 0;
         if (isConst) {
@@ -58,7 +58,7 @@ public class VarInfo {
     @Override
     public String toString() {
         return "VarInfo{" +
-                "jName='" + jName + '\'' +
+                "lVarIdx='" + lVarIdx + '\'' +
                 ", isGlobal=" + isGlobal() +
                 ", isConstant=" + isConstant() +
                 ", isClosable=" + isClosable() +

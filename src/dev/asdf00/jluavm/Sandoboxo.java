@@ -110,7 +110,7 @@ public class Sandoboxo extends LuaFunction {
                         if (mtbl == null) {
                             t0 = LuaObject.nil();
                         } else {
-                            vm.callInternal(0, Sandoboxo::getWithMeta, table, key, mtbl);
+                            vm.callInternal(0, LuaFunction::getWithMeta, table, key, mtbl);
                             return;
                         }
                     }
@@ -146,7 +146,7 @@ public class Sandoboxo extends LuaFunction {
                     // save expression stack
                     expressionStack[0] = t0;
                     expressionStack[1] = t1;
-                    vm.callInternal(1, Sandoboxo::addWithMeta, t2, t3);
+                    vm.callInternal(1, LuaFunction::binaryArithmeticOpWithMeta, Singletons.__add, t2, t3);
                     return;
                 }
             case 1:
@@ -165,7 +165,7 @@ public class Sandoboxo extends LuaFunction {
                         if (mtbl == null) {
                             table.set(key, t2);
                         } else {
-                            vm.callInternal(2, Sandoboxo::setWithMeta, table, key, t2, mtbl);
+                            vm.callInternal(2, LuaFunction::setWithMeta, table, key, t2, mtbl);
                             return;
                         }
                     }
@@ -244,7 +244,7 @@ public class Sandoboxo extends LuaFunction {
                         if (mtbl == null) {
                             table.set(key, t3);
                         } else {
-                            vm.callInternal(4, Sandoboxo::setWithMeta, table, key, t3, mtbl);
+                            vm.callInternal(4, LuaFunction::setWithMeta, table, key, t3, mtbl);
                             return;
                         }
                     }
@@ -306,7 +306,7 @@ public class Sandoboxo extends LuaFunction {
                 if (t0.isArithmetic() && t1.isArithmetic()) {
                     t0 = t0.add(t1);
                 } else {
-                    vm.callInternal(0, Sandoboxo::addWithMeta, t0, t1);
+                    vm.callInternal(0, LuaFunction::binaryArithmeticOpWithMeta, Singletons.__add, t0, t1);
                     return;
                 }
                 t1 = null;

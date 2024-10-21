@@ -13,6 +13,7 @@ import dev.asdf00.jluavm.parsing.ir.Node;
 import dev.asdf00.jluavm.parsing.ir.controlflow.BreakNode;
 import dev.asdf00.jluavm.parsing.ir.controlflow.GotoNode;
 import dev.asdf00.jluavm.parsing.ir.operations.AssignmentNode;
+import dev.asdf00.jluavm.parsing.ir.operations.BinaryArithmeticNode;
 import dev.asdf00.jluavm.parsing.ir.operations.BinaryOpNode;
 import dev.asdf00.jluavm.parsing.ir.values.ConstantNode;
 import dev.asdf00.jluavm.parsing.ir.operations.UnaryOpNode;
@@ -44,6 +45,7 @@ public class Parser {
 
         tempVarNameGen = new Supplier<>() {
             long id = 0;
+
             @Override
             public String get() {
                 return "_tempVar$" + (id++);
@@ -180,6 +182,7 @@ public class Parser {
     }
 
     private static final EnumSet<TokenType> STAT_START = EnumSet.of(SEMICOLON, IDENT, LPAR, DCOLON, BREAK, GOTO, DO, WHILE, REPEAT, IF, FOR, FUNCTION, LOCAL);
+
     private Node Stat() {
         Node statement = null;
         switch (ltok) {
@@ -358,6 +361,7 @@ public class Parser {
     }
 
     private static final EnumSet<TokenType> DEREF_OR_FUNCCALL_START = EnumSet.of(LBRAK, DOT, COLON, LPAR, LITERAL_STRING, LBRAC);
+
     private Node StatExp() {
         VarInfo info;
         boolean onlyIdent;
@@ -380,7 +384,8 @@ public class Parser {
             result = info == null ? new DeRefNode(new ConstantNode("_ENV"), ConstantNode.ofString(cur.stVal())) : new LocalAccessNode(info);
             onlyIdent = true;
         }
-        loop: for (;;) {
+        loop:
+        for (; ; ) {
             switch (ltok) {
                 case LBRAK, DOT -> {
                     result = DeRef(result);
@@ -412,6 +417,9 @@ public class Parser {
             check(ASSIGN);
             qLocals.forEach(p -> {
                 if (p.x() != null && p.y()) {
+                    if (p.x().isConstant()) {
+                        throw new LuaSemanticException(cur.pos(), "Constant variable must not be written");
+                    }
                     p.x().setWritten();
                 }
             });
@@ -437,7 +445,8 @@ public class Parser {
             result = info == null ? new DeRefNode(new ConstantNode("_ENV"), ConstantNode.ofString(cur.stVal())) : new LocalAccessNode(info);
             onlyIdent = true;
         }
-        loop: for (;;) {
+        loop:
+        for (; ; ) {
             switch (ltok) {
                 case LBRAK, DOT -> {
                     result = DeRef(result);
@@ -490,6 +499,7 @@ public class Parser {
 
     private static final EnumSet<TokenType> EXP_START = EnumSet.of(NIL, FALSE, TRUE, NUMERAL, LITERAL_STRING, TDOT,
             FUNCTION, LPAR, IDENT, NOT, HASH, SUB, BXOR, LBRAC);
+
     private Node Exp() {
         // or
         var result = BinOp1();
@@ -515,7 +525,8 @@ public class Parser {
     private Node BinOp2() {
         // < > <= >= ~= ==
         Node result = BinOp3();
-        loop: for (;;) {
+        loop:
+        for (; ; ) {
             switch (ltok) {
                 case LT, GT -> {
                     var op = ltok;
@@ -594,7 +605,8 @@ public class Parser {
         while (ltok == DDOT) {
             var op = ltok;
             scan();
-            result = new BinaryOpNode(result, BinOp8(), op);
+            Node y = BinOp8();
+            result = new BinaryArithmeticNode(op.metatableFuncNameBinary, result, y);
         }
         return result;
     }
@@ -602,11 +614,12 @@ public class Parser {
     private Node BinOp8() {
         // + -
         var result = BinOp9();
-        for (;;) {
+        for (; ; ) {
             if (ltok == ADD || ltok == SUB) {
                 var op = ltok;
                 scan();
-                result = new BinaryOpNode(result, BinOp9(), op);
+                Node y = BinOp9();
+                result = new BinaryArithmeticNode(op.metatableFuncNameBinary, result, y);
             } else {
                 break;
             }
@@ -617,12 +630,14 @@ public class Parser {
     private Node BinOp9() {
         // * / // %
         Node result = UnOp();
-        loop: for (;;) {
+        loop:
+        for (; ; ) {
             switch (ltok) {
                 case MULT, DIV, FDIV, MOD -> {
                     var op = ltok;
                     scan();
-                    result = new BinaryOpNode(result, UnOp(), op);
+                    Node y = UnOp();
+                    result = new BinaryArithmeticNode(op.metatableFuncNameBinary, result, y);
                 }
                 default -> {
                     break loop;
@@ -732,6 +747,7 @@ public class Parser {
     }
 
     private static final EnumSet<TokenType> ARGS_START = EnumSet.of(LPAR, LITERAL_STRING, LBRAC);
+
     private Node[] Args() {
         Node[] result;
         if (ltok == LPAR) {

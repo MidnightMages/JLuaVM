@@ -3,7 +3,6 @@ package dev.asdf00.jluavm.parsing.ir.operations;
 import dev.asdf00.jluavm.parsing.ir.Node;
 import dev.asdf00.jluavm.parsing.ir.values.DeRefNode;
 import dev.asdf00.jluavm.parsing.ir.values.LocalAccessNode;
-import dev.asdf00.jluavm.parsing.ir.values.ResolveResultNode;
 import dev.asdf00.jluavm.utils.Tuple;
 
 import java.util.ArrayList;

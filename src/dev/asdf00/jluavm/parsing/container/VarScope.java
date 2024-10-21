@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 
 public class VarScope {
     private final VarScope parent;
+    private final int baseIdx;
     public final ArrayList<VarScope> children = new ArrayList<>();
     public final int id;
     public final boolean isFunctionBorder;
@@ -23,6 +24,11 @@ public class VarScope {
         this.id = id;
         this.isFunctionBorder = isFunctionBorder;
         this.isLoop = isLoop;
+        if (parent == null || isFunctionBorder) {
+            baseIdx = 0;
+        } else {
+            baseIdx = parent.baseIdx + parent.names.size();
+        }
     }
 
     public VarScope exitScope() {
@@ -34,7 +40,7 @@ public class VarScope {
             return false;
         }
         containsClosable |= isClosable;
-        names.put(ident.stVal(), new VarInfo(ident.pos().sourcePt(), "_" + id + '$' + ident, isConst, isClosable));
+        names.put(ident.stVal(), new VarInfo(ident.pos().sourcePt(), baseIdx + names.size(), isConst, isClosable));
         return true;
     }
 
