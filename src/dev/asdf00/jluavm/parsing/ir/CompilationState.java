@@ -12,6 +12,11 @@ public class CompilationState {
     // scope building helpers manipulation
     // =================================================================================================================
 
+    public int clearEStack() {
+        // returns the stack size before clearing
+        return 0;
+    }
+
     public String pushEStack() {
         return "";
     }
