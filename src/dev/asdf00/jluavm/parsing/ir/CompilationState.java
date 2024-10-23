@@ -20,6 +20,14 @@ public class CompilationState {
         return "";
     }
 
+    public String peekEStack() {
+        return "";
+    }
+
+    public ArrayList<String> peekEStack(int cnt) {
+        return null;
+    }
+
     /**
      * Generate call, either external or internal.
      * @param expectedResultCnt this call generates as many e-stack elements as requested (missing elements are filled

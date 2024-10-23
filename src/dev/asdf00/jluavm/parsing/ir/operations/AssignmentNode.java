@@ -1,6 +1,11 @@
 package dev.asdf00.jluavm.parsing.ir.operations;
 
+import dev.asdf00.jluavm.exceptions.loading.InternalLuaSemanticError;
+import dev.asdf00.jluavm.parsing.container.VarInfo;
+import dev.asdf00.jluavm.parsing.ir.CompilationState;
+import dev.asdf00.jluavm.parsing.ir.CompilationState.EStackCallInfo;
 import dev.asdf00.jluavm.parsing.ir.Node;
+import dev.asdf00.jluavm.parsing.ir.controlflow.FunctionCallNode;
 import dev.asdf00.jluavm.parsing.ir.values.DeRefNode;
 import dev.asdf00.jluavm.parsing.ir.values.LocalAccessNode;
 import dev.asdf00.jluavm.utils.Tuple;
@@ -20,7 +25,117 @@ public class AssignmentNode extends Node {
     }
 
     @Override
-    public String generate() {
+    public String generate(CompilationState cState) {
+        String prev = "";
+        var tTars = new ArrayList<>();
+        for (var t : targets) {
+            // generate assignment values
+            if (t instanceof LocalAccessNode access) {
+                tTars.add(access.info);
+            } else if (t instanceof DeRefNode deRef) {
+                if (!prev.isEmpty()) {
+                    prev += "\n";
+                }
+                prev += deRef.value.generate(cState);
+                String vSpot = cState.peekEStack();
+                prev += "\n" + deRef.idx.generate(cState);
+                String iSpot = cState.peekEStack();
+                tTars.add(new Tuple<>(vSpot, iSpot));
+            } else {
+                throw new InternalLuaSemanticError("what is %s in assignment?".formatted(t.getClass().getName()));
+            }
+        }
+
+        var vSpots = new ArrayList<String>();
+        for (int i = 0; i < values.length - 1; i++) {
+            if (!prev.isEmpty()) {
+                prev += "\n";
+            }
+            // generate target values
+            prev += targets[i].generate(cState);
+            vSpots.add(cState.peekEStack());
+        }
+        if (values.length > 0) {
+            if (!prev.isEmpty()) {
+                prev += "\n";
+            }
+            // last value needs special care
+            var lv = values[values.length - 1];
+            if (lv instanceof FunctionCallNode call) {
+                // unroll max(0, targets.length - values.length) return values
+                int aCnt = Math.max(0, targets.length - values.length);
+                call.expectedArgCnt = aCnt;
+                prev += call.generate(cState);
+                vSpots.addAll(cState.peekEStack(aCnt));
+            } else {
+                prev += lv.generate(cState);
+                vSpots.add(cState.peekEStack());
+            }
+        }
+
+        // TODO: fill remaining value spots with NIL
+        //  assign all values with either genLocal/IndexedSet
+
+        return null;
+    }
+
+    private static String genIndexedSet(CompilationState cState, String obj, String idx, String val) {
+        EStackCallInfo sInfo = cState.generateEStackCallInfo(0);
+        String assignment = """
+        if (%s.isTable()) {
+            LuaObject table = %s;
+            LuaObject key = RTUtils.tryCoerceFloatToInt(%s);
+            if (key.isNil() || key.isNaN()) {
+                vm.error(new LuaArgumentError());
+                return;
+            }
+            if (table.hasKey(key)) {
+                table.set(key, %s);
+            } else {
+                LuaObject mtbl = table.getMetaTable();
+                if (mtbl == null) {
+                    table.set(key, %s);
+                } else {
+                    %s
+                    vm.callInternal(%d, LuaFunction::setWithMeta, table, key, %s, mtbl);
+                    return;
+                }
+            }
+        } else if (%s.isUserData()) {
+            try {
+                %s.set(%s, %s);
+            } catch (LuaRuntimeError ex) {
+                vm.error(new LuaForeignCallError());
+                return;
+            }
+        } else {
+            vm.error(new LuaTypeError());
+            return;
+        }
+        case %d:
+        """.formatted(obj, obj, idx, val, val, sInfo.saveEStack(), sInfo.resumeLabel(), val, obj, obj, idx, val, sInfo.resumeLabel());
+        return assignment;
+    }
+
+    private static String genLocalSet(VarInfo.SpecificVarInfo info, String val) {
+        String assignment;
+        if (info.closureIdx() < 0) {
+            if (info.baseInfo().sitsInBox()) {
+                assignment = "stackFrame[%d].setBox(%s);".formatted(info.baseInfo().lVarIdx, val);
+            } else {
+                assignment = "stackFrame[%d] = %s;".formatted(info.baseInfo().lVarIdx, val);
+            }
+        } else {
+            if (info.baseInfo().sitsInBox()) {
+                assignment = "closures[%d].setBox(%s);".formatted(info.closureIdx(), val);
+            } else {
+                throw new InternalLuaSemanticError("setting variable %s in closure without box???".formatted(info.baseInfo()));
+            }
+        }
+        return assignment;
+    }
+
+    public String generateOld() {
         assert targets.length > 0 : "empty targets in AssignmentNode";
         assert values.length > 0 : "empty values in AssignmentNode";
 

@@ -1,12 +1,12 @@
 package dev.asdf00.jluavm.parsing.ir.values;
 
-import dev.asdf00.jluavm.parsing.container.VarInfo;
+import dev.asdf00.jluavm.parsing.container.VarInfo.SpecificVarInfo;
 import dev.asdf00.jluavm.parsing.ir.Node;
 
 public class LocalAccessNode extends Node {
-    public final VarInfo info;
+    public final SpecificVarInfo info;
 
-    public LocalAccessNode(VarInfo info) {
+    public LocalAccessNode(SpecificVarInfo info) {
         this.info = info;
     }
 

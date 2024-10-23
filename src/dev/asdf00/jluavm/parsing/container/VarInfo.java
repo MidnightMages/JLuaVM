@@ -66,4 +66,8 @@ public class VarInfo {
                 ", isWritten=" + isWritten() +
                 '}';
     }
+
+    public record SpecificVarInfo(VarInfo baseInfo, int closureIdx){
+
+    }
 }
