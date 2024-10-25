@@ -1,9 +1,6 @@
 package dev.asdf00.jluavm.parsing;
 
-import dev.asdf00.jluavm.parsing.container.LabelInfo;
-import dev.asdf00.jluavm.parsing.container.Token;
-import dev.asdf00.jluavm.parsing.container.VarInfo;
-import dev.asdf00.jluavm.parsing.container.VarScope;
+import dev.asdf00.jluavm.parsing.container.*;
 import dev.asdf00.jluavm.parsing.ir.controlflow.GotoNode;
 import dev.asdf00.jluavm.parsing.ir.controlflow.LabelNode;
 
@@ -52,7 +49,7 @@ public class SymTable {
         return curScope.add(ident, isConst, isClosable);
     }
 
-    public VarInfo get(String ident) {
+    public SpecificVarInfo get(String ident) {
         return curScope.get(ident, false);
     }
 

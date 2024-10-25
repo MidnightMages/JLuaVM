@@ -2,7 +2,7 @@ package dev.asdf00.jluavm.parsing.ir.operations;
 
 import dev.asdf00.jluavm.exceptions.loading.InternalLuaSemanticError;
 import dev.asdf00.jluavm.parsing.container.VarInfo;
-import dev.asdf00.jluavm.parsing.container.VarInfo.SpecificVarInfo;
+import dev.asdf00.jluavm.parsing.container.SpecificVarInfo;
 import dev.asdf00.jluavm.parsing.ir.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.CompilationState.EStackCallInfo;
 import dev.asdf00.jluavm.parsing.ir.Node;
@@ -146,7 +146,7 @@ public class AssignmentNode extends Node {
         return assignment;
     }
 
-    private static String genLocalSet(VarInfo.SpecificVarInfo info, String val) {
+    private static String genLocalSet(SpecificVarInfo info, String val) {
         String assignment;
         if (info.closureIdx() < 0) {
             if (info.baseInfo().sitsInBox()) {

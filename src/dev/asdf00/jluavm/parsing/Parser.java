@@ -1,9 +1,6 @@
 package dev.asdf00.jluavm.parsing;
 
-import dev.asdf00.jluavm.parsing.container.LabelInfo;
-import dev.asdf00.jluavm.parsing.container.Token;
-import dev.asdf00.jluavm.parsing.container.TokenType;
-import dev.asdf00.jluavm.parsing.container.VarInfo;
+import dev.asdf00.jluavm.parsing.container.*;
 import dev.asdf00.jluavm.exceptions.loading.LuaParserException;
 import dev.asdf00.jluavm.exceptions.LuaLoadingException;
 import dev.asdf00.jluavm.exceptions.loading.LuaSemanticException;
@@ -14,7 +11,6 @@ import dev.asdf00.jluavm.parsing.ir.controlflow.BreakNode;
 import dev.asdf00.jluavm.parsing.ir.controlflow.GotoNode;
 import dev.asdf00.jluavm.parsing.ir.operations.AssignmentNode;
 import dev.asdf00.jluavm.parsing.ir.operations.BinaryArithmeticNode;
-import dev.asdf00.jluavm.parsing.ir.operations.BinaryOpNode;
 import dev.asdf00.jluavm.parsing.ir.values.ConstantNode;
 import dev.asdf00.jluavm.parsing.ir.operations.UnaryOpNode;
 import dev.asdf00.jluavm.parsing.ir.values.ConstructedTableNode;
@@ -363,7 +359,7 @@ public class Parser {
     private static final EnumSet<TokenType> DEREF_OR_FUNCCALL_START = EnumSet.of(LBRAK, DOT, COLON, LPAR, LITERAL_STRING, LBRAC);
 
     private Node StatExp() {
-        VarInfo info;
+        SpecificVarInfo info;
         boolean onlyIdent;
         Node result;
         if (ltok == LPAR) {
@@ -403,7 +399,7 @@ public class Parser {
         if (isAssignable()) {
             var assignTargets = new ArrayList<Node>();
             assignTargets.add(result);
-            var qLocals = new ArrayList<Tuple<VarInfo, Boolean>>();
+            var qLocals = new ArrayList<Tuple<SpecificVarInfo, Boolean>>();
             qLocals.add(new Tuple<>(info, onlyIdent));
             while (ltok == COMMA) {
                 scan();
@@ -417,20 +413,20 @@ public class Parser {
             check(ASSIGN);
             qLocals.forEach(p -> {
                 if (p.x() != null && p.y()) {
-                    if (p.x().isConstant()) {
+                    if (p.x().baseInfo().isConstant()) {
                         throw new LuaSemanticException(cur.pos(), "Constant variable must not be written");
                     }
-                    p.x().setWritten();
+                    p.x().baseInfo().setWritten();
                 }
             });
             Node[] expressions = ExpList();
-            result = new AssignmentNode(tempVarNameGen, assignTargets.toArray(Node[]::new), expressions);
+            result = new AssignmentNode(assignTargets.toArray(Node[]::new), expressions);
         }
         return result;
     }
 
-    private Triple<Node, VarInfo, Boolean> ValExp() {
-        VarInfo info;
+    private Triple<Node, SpecificVarInfo, Boolean> ValExp() {
+        SpecificVarInfo info;
         boolean onlyIdent;
         Node result;
         if (ltok == LPAR) {
@@ -692,7 +688,7 @@ public class Parser {
                 if (!funcCur.hasParams) {
                     throw new LuaSemanticException(cur.pos(), "cannot use '...' outside a vararg function");
                 }
-                return new ConstantNode("$params");
+                return new LocalAccessNode(symTab.get("..."));
             }
             case FUNCTION -> {
                 scan();

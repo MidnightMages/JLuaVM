@@ -4,8 +4,7 @@ import dev.asdf00.jluavm.exceptions.loading.LuaSemanticException;
 import dev.asdf00.jluavm.parsing.ir.controlflow.GotoNode;
 import dev.asdf00.jluavm.parsing.ir.controlflow.LabelNode;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class VarScope {
@@ -13,11 +12,15 @@ public class VarScope {
     private final int baseIdx;
     public final ArrayList<VarScope> children = new ArrayList<>();
     public final int id;
+
+    private final LinkedHashMap<String, VarInfo> names = new LinkedHashMap<>();
+    private final LinkedHashMap<String, LabelInfo> labels = new LinkedHashMap<>();
+
     public final boolean isFunctionBorder;
     public final boolean isLoop;
     public boolean containsClosable = false;
-    private final LinkedHashMap<String, VarInfo> names = new LinkedHashMap<>();
-    private final LinkedHashMap<String, LabelInfo> labels = new LinkedHashMap<>();
+
+    private final LinkedHashMap<VarInfo, Integer> captured;
 
     public VarScope(VarScope parent, int id, boolean isFunctionBorder, boolean isLoop) {
         this.parent = parent;
@@ -29,6 +32,7 @@ public class VarScope {
         } else {
             baseIdx = parent.baseIdx + parent.names.size();
         }
+        captured = isFunctionBorder ? new LinkedHashMap<>() : null;
     }
 
     public VarScope exitScope() {
@@ -44,15 +48,27 @@ public class VarScope {
         return true;
     }
 
-    public VarInfo get(String ident, boolean crossedFunctionBorder) {
+    public SpecificVarInfo get(String ident, boolean crossedFunctionBorder) {
         var rVal = names.get(ident);
         if (rVal == null) {
-            return parent == null ? null : parent.get(ident, crossedFunctionBorder || isFunctionBorder);
+            // not in this scope
+            if (parent == null) {
+                return null;
+            }
+            var sInfo = parent.get(ident, crossedFunctionBorder || isFunctionBorder);
+            if (isFunctionBorder) {
+                // capture from outside this function
+                int cIdx = captured.computeIfAbsent(sInfo.baseInfo(), k -> captured.size());
+                // wrap into new specific var info to signal presence of capture
+                sInfo = new SpecificVarInfo(sInfo.baseInfo(), cIdx);
+            }
+            return sInfo;
         } else {
             if (crossedFunctionBorder) {
                 rVal.setInClosure();
             }
-            return rVal;
+            // var was defined in this scope
+            return new SpecificVarInfo(rVal, -1);
         }
     }
 
