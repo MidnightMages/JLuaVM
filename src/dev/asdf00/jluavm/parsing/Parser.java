@@ -1,5 +1,6 @@
 package dev.asdf00.jluavm.parsing;
 
+import dev.asdf00.jluavm.exceptions.loading.InternalLuaLoadingError;
 import dev.asdf00.jluavm.parsing.container.*;
 import dev.asdf00.jluavm.exceptions.loading.LuaParserException;
 import dev.asdf00.jluavm.exceptions.LuaLoadingException;
@@ -652,12 +653,29 @@ public class Parser {
 
     private Node UnOp() {
         // not # - ~
-        if (ltok == NOT || ltok == HASH || ltok == SUB || ltok == BXOR) {
-            var op = ltok;
-            scan();
-            return new UnaryOpNode(UnOp(), op);
+        var opList = new Stack<TokenType>();
+        loop: for (;;) {
+            switch (ltok) {
+                case NOT, HASH, SUB, BXOR -> {
+                    opList.push(ltok);
+                    scan();
+                }
+                default -> {
+                    break loop;
+                }
+            }
         }
-        return BinOp10();
+        Node result = BinOp10();
+        while (!opList.isEmpty()) {
+            result = switch (opList.pop()) {
+                case NOT -> new LogicNotNode(result);
+                case HASH -> new LenghtOfNode(result);
+                case SUB -> UnaryOpNode.negate(result);
+                case BXOR -> UnaryOpNode.invert(result);
+                default -> throw new InternalLuaLoadingError("should not reach");
+            };
+        }
+        return result;
     }
 
     private Node BinOp10() {

@@ -1,6 +1,6 @@
 package dev.asdf00.jluavm.parsing.ir.operations;
 
-import dev.asdf00.jluavm.exceptions.loading.InternalLuaSemanticError;
+import dev.asdf00.jluavm.exceptions.loading.InternalLuaLoadingError;
 import dev.asdf00.jluavm.parsing.container.SpecificVarInfo;
 import dev.asdf00.jluavm.parsing.ir.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.CompilationState.EStackCallInfo;
@@ -39,7 +39,7 @@ public class AssignmentNode extends Node {
                 String iSpot = cState.peekEStack();
                 tTars[i] = new Tuple<>(vSpot, iSpot);
             } else {
-                throw new InternalLuaSemanticError("what is %s in assignment?".formatted(targets[i].getClass().getName()));
+                throw new InternalLuaLoadingError("what is %s in assignment?".formatted(targets[i].getClass().getName()));
             }
         }
 
@@ -157,7 +157,7 @@ public class AssignmentNode extends Node {
             if (info.baseInfo().sitsInBox()) {
                 assignment = "closures[%d].setBox(%s);".formatted(info.closureIdx(), val);
             } else {
-                throw new InternalLuaSemanticError("setting variable %s in closure without box???".formatted(info.baseInfo()));
+                throw new InternalLuaLoadingError("setting variable %s in closure without box???".formatted(info.baseInfo()));
             }
         }
         return assignment;

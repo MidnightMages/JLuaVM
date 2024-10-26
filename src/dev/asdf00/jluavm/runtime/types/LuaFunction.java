@@ -531,4 +531,80 @@ public abstract class LuaFunction {
                 throw new InternalLuaRuntimeError("unknown resume point " + resume);
         }
     }
+
+    /**
+     * This method is meant to be called when the value of the unary expression does not satisfy the necessary type restrictions for
+     * the given operation and a metatable call is needed to resolve this expression.
+     * The arguments this method takes are the name of the meta-method to call and the value as arguments.
+     */
+    protected static void unaryOpWithMeta(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
+        LuaObject t0 = null, t1 = null, t2 = null;
+        switch (resume) {
+            case -1 -> {
+                expressionStack = vm.registerExpressionStack(3);
+                if (args.length != 2) {
+                    throw new InternalLuaRuntimeError("expected 2 arguments, got " + args.length);
+                }
+                t0 = args[0]; // metatable op entry
+                t1 = args[1]; // value
+            }
+            case 0 -> {
+                t0 = expressionStack[0];
+                t1 = expressionStack[1];
+                // unpack fist return value (meta value for x)
+                t2 = returned.length > 0 ? returned[0] : LuaObject.nil();
+            }
+            case 1 -> {
+                t0 = expressionStack[0];
+                t1 = expressionStack[1];
+                // unpack fist return value (meta value for y)
+                t2 = returned.length > 0 ? returned[0] : LuaObject.nil();
+            }
+        }
+        returned = null;
+        switch (resume) {
+            case -1:
+                t2 = t1.getMetaTable();
+                if (t2 != null && t2.isTable()) {
+                    LuaObject table = t2;
+                    LuaObject key = RTUtils.tryCoerceFloatToInt(t0);
+                    if (table.hasKey(key)) {
+                        t2 = table.get(key);
+                    } else {
+                        LuaObject mtbl = table.getMetaTable();
+                        if (mtbl == null) {
+                            t2 = LuaObject.nil();
+                        } else {
+                            // save expression stack
+                            expressionStack[0] = t0;
+                            expressionStack[1] = t1;
+                            vm.callInternal(0, Sandoboxo::getWithMeta, table, key, mtbl);
+                            return;
+                        }
+                    }
+                } else {
+                    vm.error(new LuaTypeError());
+                    return;
+                }
+            case 0:
+                if (t2.isFunction()) {
+                    // call the meta function and return the value
+                    vm.callExternal(1, t2.getFunc(), t1);
+                    return;
+                } else if (!t2.isNil()) {
+                    // if we found something that is not a function, we try to call with meta
+                    vm.callInternal(1, LuaFunction::callWithMeta, t2, t1);
+                    return;
+                } else {
+                    // we found no meta value
+                    vm.error(new LuaMetaTableError());
+                    return;
+                }
+            case 1:
+                vm.returnValue(t0);
+                return;
+            default:
+                throw new InternalLuaRuntimeError("unknown resume point " + resume);
+        }
+    }
 }

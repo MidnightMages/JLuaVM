@@ -12,9 +12,10 @@ public class LogicNotNode extends Node {
 
     @Override
     public String generate(CompilationState cState) {
+        String result = value.generate(cState) + "\n";
         String vSpot = cState.popEStack();
         String rSpot = cState.pushEStack();
-        String result = "%s = LuaObject.of(!RTUtils.isTruthy(%s));".formatted(rSpot, vSpot);
+        result += "\n%s = LuaObject.of(!RTUtils.isTruthy(%s));".formatted(rSpot, vSpot);
         return result;
     }
 }
