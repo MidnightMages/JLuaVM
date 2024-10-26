@@ -10,11 +10,8 @@ import dev.asdf00.jluavm.parsing.ir.Node;
 import dev.asdf00.jluavm.parsing.ir.controlflow.BreakNode;
 import dev.asdf00.jluavm.parsing.ir.controlflow.FunctionCallNode;
 import dev.asdf00.jluavm.parsing.ir.controlflow.GotoNode;
-import dev.asdf00.jluavm.parsing.ir.operations.AssignmentNode;
-import dev.asdf00.jluavm.parsing.ir.operations.BinaryOpNode;
-import dev.asdf00.jluavm.parsing.ir.operations.LogicBinaryOpNode;
+import dev.asdf00.jluavm.parsing.ir.operations.*;
 import dev.asdf00.jluavm.parsing.ir.values.ConstantNode;
-import dev.asdf00.jluavm.parsing.ir.operations.UnaryOpNode;
 import dev.asdf00.jluavm.parsing.ir.values.ConstructedTableNode;
 import dev.asdf00.jluavm.parsing.ir.values.DeRefNode;
 import dev.asdf00.jluavm.parsing.ir.values.LocalAccessNode;
@@ -504,7 +501,6 @@ public class Parser {
         // or
         var result = BinOp1();
         while (ltok == OR) {
-            var op = ltok;
             scan();
             Node y = BinOp1();
             result = new LogicBinaryOpNode(true, result, y);
@@ -516,7 +512,6 @@ public class Parser {
         // and
         Node result = BinOp2();
         while (ltok == AND) {
-            var op = ltok;
             scan();
             Node y = BinOp2();
             result = new LogicBinaryOpNode(false, result, y);
@@ -533,21 +528,23 @@ public class Parser {
                 case LT, GT -> {
                     var op = ltok;
                     scan();
-                    var bo3 = BinOp3();
-                    result = new BinaryOpNode(op == LT ? result : bo3, op == LT ? bo3 : result, op);
+                    Node y = BinOp3();
+                    result = new RelationalOpNode(LT.metatableFuncNameBinary, op != LT, result, y);
                 }
                 case LE, GE -> {
                     var op = ltok;
                     scan();
-                    var bo3 = BinOp3();
-                    result = new BinaryOpNode(op == LE ? result : bo3, op == LE ? bo3 : result, op);
+                    Node y = BinOp3();
+                    result = new RelationalOpNode(LE.metatableFuncNameBinary, op != LE, result, y);
                 }
                 case EQ, NE -> {
                     var op = ltok;
                     scan();
-                    result = new BinaryOpNode(result, BinOp3(), EQ);
-                    if (op == NE)
-                        result = new UnaryOpNode(result, NOT);
+                    Node y = BinOp3();
+                    result = new EqualsNode(result, y);
+                    if (op == NE) {
+                        result = new LogicNotNode(result);
+                    }
                 }
                 default -> {
                     break loop;

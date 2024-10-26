@@ -1,6 +1,7 @@
 package dev.asdf00.jluavm.parsing.ir.operations;
 
 import dev.asdf00.jluavm.parsing.ir.CompilationState;
+import dev.asdf00.jluavm.parsing.ir.CompilationState.EStackCallInfo;
 import dev.asdf00.jluavm.parsing.ir.Node;
 
 public class BinaryOpNode extends Node {
@@ -23,19 +24,19 @@ public class BinaryOpNode extends Node {
 
         String sy = cState.popEStack();
         String sx = cState.popEStack();
-        CompilationState.EStackCallInfo callInfo = cState.generateEStackCallInfo(1);
+        EStackCallInfo callInfo = cState.generateEStackCallInfo(1);
         String r = cState.pushEStack();
 
         String result = """
-        if (%s.%s() && %s.%s()) {
-            %s = %s.%s(%s);
-        } else {
-            %s
-            vm.callInternal(%d, LuaFunction::binaryOpWithMeta, Singletons.__%s, %s, %s);
-            return;
-        }
-        case %d:
-        """.formatted(sx, typeRestriction, sy, typeRestriction,
+                if (%s.%s() && %s.%s()) {
+                    %s = %s.%s(%s);
+                } else {
+                    %s
+                    vm.callInternal(%d, LuaFunction::binaryOpWithMeta, Singletons.__%s, %s, %s);
+                    return;
+                }
+                case %d:
+                """.formatted(sx, typeRestriction, sy, typeRestriction,
                 sx, sx, op, sy,
                 callInfo.saveEStack(),
                 callInfo.resumeLabel(), op, sx, sy,
