@@ -11,7 +11,7 @@ import dev.asdf00.jluavm.parsing.ir.controlflow.BreakNode;
 import dev.asdf00.jluavm.parsing.ir.controlflow.FunctionCallNode;
 import dev.asdf00.jluavm.parsing.ir.controlflow.GotoNode;
 import dev.asdf00.jluavm.parsing.ir.operations.AssignmentNode;
-import dev.asdf00.jluavm.parsing.ir.operations.BinaryArithmeticNode;
+import dev.asdf00.jluavm.parsing.ir.operations.BinaryOpNode;
 import dev.asdf00.jluavm.parsing.ir.values.ConstantNode;
 import dev.asdf00.jluavm.parsing.ir.operations.UnaryOpNode;
 import dev.asdf00.jluavm.parsing.ir.values.ConstructedTableNode;
@@ -560,7 +560,8 @@ public class Parser {
         while (ltok == BOR) {
             var op = ltok;
             scan();
-            result = new BinaryOpNode(result, BinOp4(), op);
+            Node y = BinOp4();
+            result = BinaryOpNode.bitwise(op.metatableFuncNameBinary, result, y);
         }
         return result;
     }
@@ -571,7 +572,8 @@ public class Parser {
         while (ltok == BXOR) {
             var op = ltok;
             scan();
-            result = new BinaryOpNode(result, BinOp5(), op);
+            Node y = BinOp5();
+            result = BinaryOpNode.bitwise(op.metatableFuncNameBinary, result, y);
         }
         return result;
     }
@@ -582,7 +584,8 @@ public class Parser {
         while (ltok == BAND) {
             var op = ltok;
             scan();
-            result = new BinaryOpNode(result, BinOp6(), op);
+            Node y = BinOp6();
+            result = BinaryOpNode.bitwise(op.metatableFuncNameBinary, result, y);
         }
         return result;
     }
@@ -593,7 +596,8 @@ public class Parser {
         while (ltok == SHL || ltok == SHR) {
             var op = ltok;
             scan();
-            result = new BinaryOpNode(result, BinOp7(), op);
+            Node y = BinOp7();
+            result = BinaryOpNode.bitwise(op.metatableFuncNameBinary, result, y);
         }
         return result;
     }
@@ -605,7 +609,7 @@ public class Parser {
             var op = ltok;
             scan();
             Node y = BinOp8();
-            result = new BinaryArithmeticNode(op.metatableFuncNameBinary, result, y);
+            result = BinaryOpNode.arithmetic(op.metatableFuncNameBinary, result, y);
         }
         return result;
     }
@@ -618,7 +622,7 @@ public class Parser {
                 var op = ltok;
                 scan();
                 Node y = BinOp9();
-                result = new BinaryArithmeticNode(op.metatableFuncNameBinary, result, y);
+                result = BinaryOpNode.arithmetic(op.metatableFuncNameBinary, result, y);
             } else {
                 break;
             }
@@ -636,7 +640,7 @@ public class Parser {
                     var op = ltok;
                     scan();
                     Node y = UnOp();
-                    result = new BinaryArithmeticNode(op.metatableFuncNameBinary, result, y);
+                    result = BinaryOpNode.arithmetic(op.metatableFuncNameBinary, result, y);
                 }
                 default -> {
                     break loop;
@@ -662,7 +666,8 @@ public class Parser {
         while (ltok == EXPONENT) {
             var op = ltok;
             scan();
-            result = new BinaryOpNode(result, TermExp(), op);
+            Node y = TermExp();
+            result = BinaryOpNode.arithmetic(op.metatableFuncNameBinary, result, y);
         }
         return result;
     }

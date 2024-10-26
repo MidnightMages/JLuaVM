@@ -45,46 +45,6 @@ public final class LuaObject {
         this.metaTable = null;
     }
 
-    // =================================================================================================================
-    // construction methods
-    // =================================================================================================================
-
-    public static LuaObject box() {
-        return new LuaObject(null, 0, 0, Types.BOX);
-    }
-
-    public static LuaObject nil() {
-        return NIL;
-    }
-
-    public static LuaObject of(boolean val) {
-        return val ? TRUE : FALSE;
-    }
-
-    public static LuaObject of(double val) {
-        return new LuaObject(null, val, 0, Types.DOUBLE);
-    }
-
-    public static LuaObject of(long val) {
-        return new LuaObject(null, 0, val, Types.LONG);
-    }
-
-    public static LuaObject of(String val) {
-        return new LuaObject(val, 0, 0, Types.STRING);
-    }
-
-    public static LuaObject of(LuaFunction val) {
-        return new LuaObject(val, 0, 0, Types.FUNCTION);
-    }
-
-    public static LuaObject of(ILuaUserData val) {
-        return new LuaObject(val, 0, 0, Types.USERDATA);
-    }
-
-    public static LuaObject of(LuaObject... val) {
-        return new LuaObject(val, 0, 0, Types.ARRAY);
-    }
-
 
     // =================================================================================================================
     // utility methods
@@ -104,28 +64,6 @@ public final class LuaObject {
 
     public boolean isNaN() {
         return isDouble() && Double.isNaN(dVal);
-    }
-
-    // =================================================================================================================
-    // getter methods
-    // =================================================================================================================
-
-    public LuaFunction getFunc() {
-        if (!isFunction()) {
-            throw new InternalLuaRuntimeError("This is not a function!");
-        }
-        return (LuaFunction) refVal;
-    }
-
-    public LuaObject[] asArray() {
-        if (!isArray()) {
-            throw new InternalLuaRuntimeError("This is not an array!");
-        }
-        return (LuaObject[]) refVal;
-    }
-
-    public boolean getBool() {
-        return lVal != 0;
     }
 
     // =================================================================================================================
@@ -172,6 +110,18 @@ public final class LuaObject {
         return doubleCalc ? LuaObject.of(dx + dy) : LuaObject.of(lx + ly);
     }
 
+    public LuaObject pow(LuaObject other) {
+        assert isType(Types.ARITHMETIC) && other.isType(Types.ARITHMETIC);
+        // TODO: always coerce to double not long!
+        return null;
+    }
+
+    public LuaObject concat(LuaObject other) {
+        assert isType(Types.ARITHMETIC) && other.isType(Types.ARITHMETIC);
+        // TODO: always coerce to string then concat
+        return null;
+    }
+
     public boolean hasKey(LuaObject key) {
         return false;
     }
@@ -196,62 +146,6 @@ public final class LuaObject {
             throw new InternalLuaRuntimeError("This is not a box!");
         }
         return (LuaObject) refVal;
-    }
-
-    // =================================================================================================================
-    // easy type check methods
-    // =================================================================================================================
-
-    public boolean isNil() {
-        return isType(Types.NIL);
-    }
-
-    public boolean isBoolean() {
-        return isType(Types.BOOLEAN);
-    }
-
-    public boolean isDouble() {
-        return isType(Types.DOUBLE);
-    }
-
-    public boolean isLong() {
-        return isType(Types.LONG);
-    }
-
-    public boolean isString() {
-        return isType(Types.STRING);
-    }
-
-    public boolean isFunction() {
-        return isType(Types.FUNCTION);
-    }
-
-    public boolean isUserData() {
-        return isType(Types.USERDATA);
-    }
-
-    public boolean isThread() {
-        return isType(Types.THREAD);
-    }
-
-    public boolean isTable() {
-        return isType(Types.TABLE);
-    }
-
-    public boolean isArray() {
-        return isType(Types.ARRAY);
-    }
-
-    public boolean isBox() {
-        return isType(Types.BOX);
-    }
-
-    public boolean isNumber() {
-        return isType(Types.NUMBER);
-    }
-
-    public boolean isArithmetic() {
-        return isType(Types.ARITHMETIC);
     }
 
     // =================================================================================================================
@@ -436,5 +330,123 @@ public final class LuaObject {
 
     private record CoercedString(boolean isDouble, double dVal, long lVal) {
 
+    }
+
+    // =================================================================================================================
+    // getter methods
+    // =================================================================================================================
+
+    public LuaFunction getFunc() {
+        if (!isFunction()) {
+            throw new InternalLuaRuntimeError("This is not a function!");
+        }
+        return (LuaFunction) refVal;
+    }
+
+    public LuaObject[] asArray() {
+        if (!isArray()) {
+            throw new InternalLuaRuntimeError("This is not an array!");
+        }
+        return (LuaObject[]) refVal;
+    }
+
+    public boolean getBool() {
+        return lVal != 0;
+    }
+
+    // =================================================================================================================
+    // easy type check methods
+    // =================================================================================================================
+
+    public boolean isNil() {
+        return isType(Types.NIL);
+    }
+
+    public boolean isBoolean() {
+        return isType(Types.BOOLEAN);
+    }
+
+    public boolean isDouble() {
+        return isType(Types.DOUBLE);
+    }
+
+    public boolean isLong() {
+        return isType(Types.LONG);
+    }
+
+    public boolean isString() {
+        return isType(Types.STRING);
+    }
+
+    public boolean isFunction() {
+        return isType(Types.FUNCTION);
+    }
+
+    public boolean isUserData() {
+        return isType(Types.USERDATA);
+    }
+
+    public boolean isThread() {
+        return isType(Types.THREAD);
+    }
+
+    public boolean isTable() {
+        return isType(Types.TABLE);
+    }
+
+    public boolean isArray() {
+        return isType(Types.ARRAY);
+    }
+
+    public boolean isBox() {
+        return isType(Types.BOX);
+    }
+
+    public boolean isNumber() {
+        return isType(Types.NUMBER);
+    }
+
+    public boolean isArithmetic() {
+        return isType(Types.ARITHMETIC);
+    }
+
+    // =================================================================================================================
+    // construction methods
+    // =================================================================================================================
+
+    public static LuaObject box() {
+        return new LuaObject(null, 0, 0, Types.BOX);
+    }
+
+    public static LuaObject nil() {
+        return NIL;
+    }
+
+    public static LuaObject of(boolean val) {
+        return val ? TRUE : FALSE;
+    }
+
+    public static LuaObject of(double val) {
+        return new LuaObject(null, val, 0, Types.DOUBLE);
+    }
+
+    public static LuaObject of(long val) {
+        return new LuaObject(null, 0, val, Types.LONG);
+    }
+
+    public static LuaObject of(String val) {
+        return new LuaObject(val, 0, 0, Types.STRING);
+    }
+
+    public static LuaObject of(LuaFunction val) {
+        return new LuaObject(val, 0, 0, Types.FUNCTION);
+    }
+
+    public static LuaObject of(ILuaUserData val) {
+        return new LuaObject(val, 0, 0, Types.USERDATA);
+    }
+
+    public static LuaObject of(LuaObject... val) {
+        return new LuaObject(val, 0, 0, Types.ARRAY);
     }
 }

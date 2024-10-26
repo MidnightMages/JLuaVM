@@ -403,10 +403,11 @@ public abstract class LuaFunction {
     }
 
     /**
-     * This method is meant to be called when at least one of the two arguments of an arithmetic operation is not ARITHMETIC and a metatable call is needed.
+     * This method is meant to be called when at least one of the two arguments of a binary expression does not satisfy the necessary type restrictions for
+     * the given operation and a metatable call is needed to resolve this expression.
      * The arguments this method takes are the name of the meta-method to call, x and y as arguments.
      */
-    protected static void binaryArithmeticOpWithMeta(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
+    protected static void binaryOpWithMeta(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
         LuaObject t0 = null, t1 = null, t2 = null, t3 = null;
         switch (resume) {
             case -1 -> {

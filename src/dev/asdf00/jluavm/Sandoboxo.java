@@ -146,7 +146,7 @@ public class Sandoboxo extends LuaFunction {
                     // save expression stack
                     expressionStack[0] = t0;
                     expressionStack[1] = t1;
-                    vm.callInternal(1, LuaFunction::binaryArithmeticOpWithMeta, Singletons.__add, t2, t3);
+                    vm.callInternal(1, LuaFunction::binaryOpWithMeta, Singletons.__add, t2, t3);
                     return;
                 }
             case 1:
@@ -306,7 +306,7 @@ public class Sandoboxo extends LuaFunction {
                 if (t0.isArithmetic() && t1.isArithmetic()) {
                     t0 = t0.add(t1);
                 } else {
-                    vm.callInternal(0, LuaFunction::binaryArithmeticOpWithMeta, Singletons.__add, t0, t1);
+                    vm.callInternal(0, LuaFunction::binaryOpWithMeta, Singletons.__add, t0, t1);
                     return;
                 }
                 t1 = null;
