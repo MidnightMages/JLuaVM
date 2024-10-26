@@ -43,6 +43,10 @@ public class CompilationState {
         return new EStackCallInfo(0, "");
     }
 
+    public int getMaxResumeLabel() {
+        return 0;
+    }
+
     public record EStackCallInfo(int resumeLabel, String saveEStack) {
     }
 }

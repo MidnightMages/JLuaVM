@@ -1,7 +1,6 @@
 package dev.asdf00.jluavm.runtime.utils;
 
 import dev.asdf00.jluavm.runtime.types.LuaObject;
-import dev.asdf00.jluavm.runtime.typesOLD.LuaBooleanOLD;
 
 public class RTUtils {
     public static LuaObject tryCoerceFloatToInt(LuaObject value) {

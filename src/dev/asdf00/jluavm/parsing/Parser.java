@@ -12,6 +12,7 @@ import dev.asdf00.jluavm.parsing.ir.controlflow.FunctionCallNode;
 import dev.asdf00.jluavm.parsing.ir.controlflow.GotoNode;
 import dev.asdf00.jluavm.parsing.ir.operations.AssignmentNode;
 import dev.asdf00.jluavm.parsing.ir.operations.BinaryOpNode;
+import dev.asdf00.jluavm.parsing.ir.operations.LogicBinaryOpNode;
 import dev.asdf00.jluavm.parsing.ir.values.ConstantNode;
 import dev.asdf00.jluavm.parsing.ir.operations.UnaryOpNode;
 import dev.asdf00.jluavm.parsing.ir.values.ConstructedTableNode;
@@ -505,7 +506,8 @@ public class Parser {
         while (ltok == OR) {
             var op = ltok;
             scan();
-            result = new BinaryOpNode(result, BinOp1(), op);
+            Node y = BinOp1();
+            result = new LogicBinaryOpNode(true, result, y);
         }
         return result;
     }
@@ -516,7 +518,8 @@ public class Parser {
         while (ltok == AND) {
             var op = ltok;
             scan();
-            result = new BinaryOpNode(result, BinOp2(), op);
+            Node y = BinOp2();
+            result = new LogicBinaryOpNode(false, result, y);
         }
         return result;
     }

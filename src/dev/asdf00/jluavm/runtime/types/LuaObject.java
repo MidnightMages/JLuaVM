@@ -410,6 +410,10 @@ public final class LuaObject {
         return isType(Types.ARITHMETIC);
     }
 
+    public boolean isIntCoercible() {
+        return isLong() || (isDouble() && (double)((long) dVal) == dVal);
+    }
+
     // =================================================================================================================
     // construction methods
     // =================================================================================================================

@@ -22,6 +22,7 @@ import java.lang.reflect.Constructor;
  *     return a + b
  *   else
  *     b = true
+ *   t = a and x
  *   return 1
  * end
  * </pre>
@@ -277,6 +278,55 @@ public class Sandoboxo extends LuaFunction {
                 }
                 t0 = null;
             case 5:
+
+                // load a
+                t0 = stackFrame[0];
+                // inner resume points mapped to outer resume
+            case 6:
+                if (RTUtils.isTruthy(t0)) {
+                    // overwrite eStack position to reenter here on resume
+                    t0 = LuaObject.TRUE;
+                    switch (resume) {
+                        case -1, 0, 1, 2, 3, 4, 5:
+                            // load constant
+                            t1 = _ENV;
+                            // load constant
+                            t2 = LuaObject.of("x");
+                            // get index
+                            if (t0.isTable()) {
+                                LuaObject table = t1;
+                                LuaObject key = RTUtils.tryCoerceFloatToInt(t2);
+                                if (table.hasKey(key)) {
+                                    t1 = table.get(key);
+                                } else {
+                                    LuaObject mtbl = table.getMetaTable();
+                                    if (mtbl == null) {
+                                        t1 = LuaObject.nil();
+                                    } else {
+                                        vm.callInternal(0, LuaFunction::getWithMeta, table, key, mtbl);
+                                        return;
+                                    }
+                                }
+                            } else if (t1.isUserData()) {
+                                try {
+                                    t1 = t1.get(t2);
+                                } catch (LuaRuntimeError ex) {
+                                    vm.error(new LuaForeignCallError());
+                                    return;
+                                }
+                            } else {
+                                vm.error(new LuaTypeError());
+                                return;
+                            }
+                            t2 = null;
+                        case 6:
+                    }
+                    t0 = t1;
+                    t1 = null;
+                }
+                // set local
+                stackFrame[2] = t0;
+                t0 = null;
 
                 // load constant
                 t0 = LuaObject.of(1);

@@ -48,6 +48,6 @@ public class BinaryOpNode extends Node {
     }
 
     public static BinaryOpNode bitwise(String op, Node x, Node y) {
-        return new BinaryOpNode("isNumber", op, x, y);
+        return new BinaryOpNode("isIntCoercible", op, x, y);
     }
 }
