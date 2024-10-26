@@ -1,7 +1,6 @@
 package dev.asdf00.jluavm.parsing.ir.operations;
 
 import dev.asdf00.jluavm.exceptions.loading.InternalLuaSemanticError;
-import dev.asdf00.jluavm.parsing.container.VarInfo;
 import dev.asdf00.jluavm.parsing.container.SpecificVarInfo;
 import dev.asdf00.jluavm.parsing.ir.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.CompilationState.EStackCallInfo;
@@ -62,7 +61,7 @@ public class AssignmentNode extends Node {
             if (lv instanceof FunctionCallNode call) {
                 // unroll max(0, targets.length - values.length) return values
                 int aCnt = Math.max(0, targets.length - values.length);
-                call.expectedArgCnt = aCnt;
+                call.expectedResultCnt = aCnt;
                 sb.append(call.generate(cState));
                 vSpots.addAll(cState.peekEStack(aCnt));
             } else {

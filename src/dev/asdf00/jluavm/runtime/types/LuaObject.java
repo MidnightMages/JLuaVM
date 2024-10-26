@@ -119,7 +119,7 @@ public final class LuaObject {
 
     public LuaObject[] asArray() {
         if (!isArray()) {
-            throw new InternalLuaRuntimeError("This is not a function!");
+            throw new InternalLuaRuntimeError("This is not an array!");
         }
         return (LuaObject[]) refVal;
     }

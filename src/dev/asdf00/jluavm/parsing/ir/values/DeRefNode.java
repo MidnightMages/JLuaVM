@@ -16,42 +16,45 @@ public class DeRefNode extends Node {
     @Override
     public String generate(CompilationState cState) {
         String prev = value.generate(cState) + "\n";
-        prev = idx.generate(cState) + "\n";
+        prev += idx.generate(cState) + "\n";
+        return prev + dereference(cState);
+    }
 
+    public static String dereference(CompilationState cState) {
         String i = cState.popEStack();
         String v = cState.popEStack();
         EStackCallInfo callInfo = cState.generateEStackCallInfo(1);
         String r = cState.pushEStack();
 
         String result = """
-        if (%s.isTable()) {
-            LuaObject table = %s;
-            LuaObject key = RTUtils.tryCoerceFloatToInt(%s);
-            if (table.hasKey(key)) {
-                %s = table.get(key);
-            } else {
-                LuaObject mtbl = table.getMetaTable();
-                if (mtbl == null) {
-                    %s = LuaObject.nil();
+                if (%s.isTable()) {
+                    LuaObject table = %s;
+                    LuaObject key = RTUtils.tryCoerceFloatToInt(%s);
+                    if (table.hasKey(key)) {
+                        %s = table.get(key);
+                    } else {
+                        LuaObject mtbl = table.getMetaTable();
+                        if (mtbl == null) {
+                            %s = LuaObject.nil();
+                        } else {
+                            %s
+                            vm.callInternal(%d, LuaFunction::getWithMeta, table, key, mtbl);
+                            return;
+                        }
+                    }
+                } else if (%s.isUserData()) {
+                    try {
+                        %s = %s.get(%s);
+                    } catch (LuaRuntimeError ex) {
+                        vm.error(new LuaForeignCallError());
+                        return;
+                    }
                 } else {
-                    %s
-                    vm.callInternal(%d, LuaFunction::getWithMeta, table, key, mtbl);
+                    vm.error(new LuaTypeError());
                     return;
                 }
-            }
-        } else if (%s.isUserData()) {
-            try {
-                %s = %s.get(%s);
-            } catch (LuaRuntimeError ex) {
-                vm.error(new LuaForeignCallError());
-                return;
-            }
-        } else {
-            vm.error(new LuaTypeError());
-            return;
-        }
-        case %d:
-        """.formatted(v, v, i, r, r, callInfo.saveEStack(), callInfo.resumeLabel(), v, r, v, i, callInfo.resumeLabel());
+                case %d:
+                """.formatted(v, v, i, r, r, callInfo.saveEStack(), callInfo.resumeLabel(), v, r, v, i, callInfo.resumeLabel());
         return result;
     }
 }

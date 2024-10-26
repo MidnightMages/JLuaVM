@@ -8,6 +8,7 @@ import dev.asdf00.jluavm.parsing.ir.IRBlock;
 import dev.asdf00.jluavm.parsing.ir.IRFunction;
 import dev.asdf00.jluavm.parsing.ir.Node;
 import dev.asdf00.jluavm.parsing.ir.controlflow.BreakNode;
+import dev.asdf00.jluavm.parsing.ir.controlflow.FunctionCallNode;
 import dev.asdf00.jluavm.parsing.ir.controlflow.GotoNode;
 import dev.asdf00.jluavm.parsing.ir.operations.AssignmentNode;
 import dev.asdf00.jluavm.parsing.ir.operations.BinaryArithmeticNode;
@@ -19,6 +20,7 @@ import dev.asdf00.jluavm.parsing.ir.values.LocalAccessNode;
 import dev.asdf00.jluavm.utils.Triple;
 import dev.asdf00.jluavm.utils.Tuple;
 
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.function.Supplier;
 
@@ -371,8 +373,7 @@ public class Parser {
             if (ltok == LBRAK || ltok == DOT) {
                 result = DeRef(result);
             } else {
-                // TODO: function call
-                FuncCall();
+                result = FuncCall(result);
             }
         } else {
             check(IDENT);
@@ -387,8 +388,7 @@ public class Parser {
                     result = DeRef(result);
                 }
                 case COLON, LPAR, LITERAL_STRING, LBRAC -> {
-                    // TODO: function call
-                    FuncCall();
+                    result = FuncCall(result);
                 }
                 default -> {
                     break loop;
@@ -448,8 +448,7 @@ public class Parser {
                     result = DeRef(result);
                 }
                 case COLON, LPAR, LITERAL_STRING, LBRAC -> {
-                    // TODO: function call
-                    FuncCall();
+                    result = FuncCall(result);
                 }
                 default -> {
                     break loop;
@@ -474,13 +473,17 @@ public class Parser {
         return new DeRefNode(target, index);
     }
 
-    private void FuncCall() {
-        // TODO: function call
+    private Node FuncCall(Node callable) {
+        Node object = null;
+        Node func = callable;
         if (ltok == COLON) {
             scan();
+            object = callable;
             check(IDENT);
+            func = new ConstantNode("LuaObject.ofB64(\"%s\")".formatted(Base64.getEncoder().encode(cur.stVal().getBytes(StandardCharsets.UTF_8))));
         }
-        Args();
+        Node[] args = Args();
+        return new FunctionCallNode(object, func, args);
     }
 
     private Node[] ExpList() {
