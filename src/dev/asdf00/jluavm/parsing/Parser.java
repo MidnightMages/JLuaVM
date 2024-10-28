@@ -377,7 +377,7 @@ public class Parser {
         } else {
             check(IDENT);
             info = symTab.get(cur.stVal());
-            result = info == null ? new DeRefNode(new ConstantNode("_ENV"), ConstantNode.ofString(cur.stVal())) : new LocalAccessNode(info);
+            result = info == null ? new DeRefNode(ConstantNode.ofPlain("_ENV"), ConstantNode.ofIdent(cur.stVal())) : new LocalAccessNode(info);
             onlyIdent = true;
         }
         loop:
@@ -437,7 +437,7 @@ public class Parser {
         } else {
             check(IDENT);
             info = symTab.get(cur.stVal());
-            result = info == null ? new DeRefNode(new ConstantNode("_ENV"), ConstantNode.ofString(cur.stVal())) : new LocalAccessNode(info);
+            result = info == null ? new DeRefNode(ConstantNode.ofPlain("_ENV"), ConstantNode.ofIdent(cur.stVal())) : new LocalAccessNode(info);
             onlyIdent = true;
         }
         loop:
@@ -467,7 +467,7 @@ public class Parser {
         } else {
             check(DOT);
             check(IDENT);
-            index = ConstantNode.ofString(cur.stVal());
+            index = ConstantNode.ofIdent(cur.stVal());
         }
         return new DeRefNode(target, index);
     }
@@ -479,7 +479,7 @@ public class Parser {
             scan();
             object = callable;
             check(IDENT);
-            func = new ConstantNode("LuaObject.ofB64(\"%s\")".formatted(Base64.getEncoder().encode(cur.stVal().getBytes(StandardCharsets.UTF_8))));
+            func = ConstantNode.ofIdent(cur.stVal());
         }
         Node[] args = Args();
         return new FunctionCallNode(object, func, args);
@@ -695,7 +695,7 @@ public class Parser {
         switch (ltok) {
             case NIL -> {
                 scan();
-                return ConstantNode.nil();
+                return ConstantNode.ofNil();
             }
             case TRUE, FALSE -> {
                 scan();
@@ -803,10 +803,11 @@ public class Parser {
 
     private Node[] FieldList() {
         var fieldList = new ArrayList<Node>();
-        Field(fieldList);
+        long freeIdx = 1;
+        freeIdx = Field(fieldList, freeIdx);
         while ((ltok == COMMA || ltok == SEMICOLON) && lla.type() != RBRAC) {
             FieldSep();
-            Field(fieldList);
+            freeIdx = Field(fieldList, freeIdx);
         }
         if (ltok == COMMA || ltok == SEMICOLON) {
             FieldSep();
@@ -815,7 +816,7 @@ public class Parser {
         return fieldList.toArray(Node[]::new);
     }
 
-    private void Field(ArrayList<Node> fieldList) {
+    private long Field(ArrayList<Node> fieldList, long freeIdx) {
         if (ltok == LBRAK) {
             scan();
             fieldList.add(Exp());
@@ -824,13 +825,15 @@ public class Parser {
             fieldList.add(Exp());
         } else if (ltok == IDENT && lla.type() == ASSIGN) {
             scan();
-            fieldList.add(ConstantNode.ofString(cur.stVal()));
+            fieldList.add(ConstantNode.ofIdent(cur.stVal()));
             scan();  // ASSIGN
             fieldList.add(Exp());
         } else {
-            fieldList.add(new ConstantNode("null")); // placeholder value for replacement in LuaTable$.of
+            fieldList.add(ConstantNode.ofLong(freeIdx));
             fieldList.add(Exp());
+            freeIdx++;
         }
+        return freeIdx;
     }
 
     private void FieldSep() {

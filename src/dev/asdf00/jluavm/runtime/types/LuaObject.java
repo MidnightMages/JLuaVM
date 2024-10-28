@@ -453,4 +453,9 @@ public final class LuaObject {
     public static LuaObject of(LuaObject... val) {
         return new LuaObject(val, 0, 0, Types.ARRAY);
     }
+
+    public static LuaObject table(LuaObject... val) {
+
+        return new LuaObject(val, 0, 0, Types.TABLE);
+    }
 }

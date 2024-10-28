@@ -1,44 +1,54 @@
 package dev.asdf00.jluavm.parsing.ir.values;
 
+import dev.asdf00.jluavm.parsing.ir.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.Node;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Locale;
 
-public class ConstantNode extends Node {
+public final class ConstantNode extends Node {
     private final String codeRepr;
 
-    public ConstantNode(String codeRepr) {
+    private ConstantNode(String codeRepr) {
         this.codeRepr = codeRepr;
     }
 
-    public static ConstantNode ofB64(String transformToB64) {
-        return new ConstantNode("literalStringB64$(\"%s\")".formatted(Base64.getEncoder().encode(transformToB64.getBytes(StandardCharsets.UTF_8))));
-    }
-
-    public static ConstantNode ofString(String str) {
-        return new ConstantNode("LuaString$.of(\"%s\")".formatted(str));
-    }
-
-    public static ConstantNode ofBool(boolean bool) {
-        return new ConstantNode("LuaBoolean$.fromState(%s)".formatted(bool ? "true" : "false"));
-    }
-
-    public static ConstantNode ofDouble(double val) {
-        return new ConstantNode(String.format(Locale.US, "LuaNumber$.of(%f)", val));
-    }
-
-    public static ConstantNode ofLong(long val) {
-        return new ConstantNode("LuaNumberBw$.of(%d)".formatted(val));
-    }
-
-    public static ConstantNode nil() {
-        return new ConstantNode("LuaNil$.singleton");
-    }
-
     @Override
-    public String generate() {
+    public String generate(CompilationState cState) {
         return codeRepr;
+    }
+
+    public static ConstantNode ofLong(long lVal) {
+        return new ConstantNode("LuaObject.of(%d)".formatted(lVal));
+    }
+
+    public static ConstantNode ofDouble(double dVal) {
+        return new ConstantNode("LuaObject.of(%d)".formatted(dVal));
+    }
+
+    public static ConstantNode ofBool(boolean bVal) {
+        return new ConstantNode("LuaObject." + (bVal ? "TRUE" : "FALSE"));
+    }
+
+    public static ConstantNode ofNil() {
+        return new ConstantNode("LuaObject.nil()");
+    }
+
+    public static ConstantNode ofIdent(String ident) {
+        // idents can only be lower-, upper- and title-case characters (as well as digits and underscores) and can
+        // therefore not escape the string context and do not need any weird escape sequences. therefore, we can just
+        // embed the string as is.
+        return new ConstantNode("LuaObject.of(\"%s\")".formatted(ident));
+    }
+
+    public static ConstantNode ofB64(String literalString) {
+        // literal strings can contain any number of weird characters like backslash, double quote or null characters.
+        // therefore we effectively treat it as a list of raw UTF8 bytes and encode it with base 64 to be sure.
+        return new ConstantNode("LuaObject.ofB64(\"%s\")".formatted(Base64.getEncoder().encode(literalString.getBytes(StandardCharsets.UTF_8))));
+    }
+
+    public static ConstantNode ofPlain(String codeRepr) {
+        return new ConstantNode(codeRepr);
     }
 }
