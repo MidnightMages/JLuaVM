@@ -27,7 +27,6 @@ import static dev.asdf00.jluavm.parsing.container.TokenType.*;
 
 public class Parser {
     private final Supplier<String> fClassNameGenerator;
-    private final Supplier<String> tempVarNameGen;
     private final SymTable symTab;
     private final Lexer lexer;
     private TokenType ltok = EOF;  // TokenType of la
@@ -39,15 +38,6 @@ public class Parser {
         this.fClassNameGenerator = fClassNameGenerator;
         symTab = new SymTable();
         lexer = new Lexer(input);
-
-        tempVarNameGen = new Supplier<>() {
-            long id = 0;
-
-            @Override
-            public String get() {
-                return "_tempVar$" + (id++);
-            }
-        };
     }
 
     private void check(TokenType type) {
@@ -240,7 +230,7 @@ public class Parser {
             }
             case IF -> {
                 scan();
-                Exp();
+                Node condition = Exp();
                 check(THEN);
                 enterScope(false, false);
                 Block();
