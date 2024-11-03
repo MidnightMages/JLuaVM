@@ -45,7 +45,11 @@ public class BinaryOpNode extends Node {
     }
 
     public static BinaryOpNode arithmetic(String op, Node x, Node y) {
-        return new BinaryOpNode("isArithmetic", op, x, y);
+        return new BinaryOpNode("isNumberCoercible", op, x, y);
+    }
+
+    public static BinaryOpNode stringConcat(Node x, Node y) {
+        return new BinaryOpNode("isArithmetic", "concat", x, y);
     }
 
     public static BinaryOpNode bitwise(String op, Node x, Node y) {

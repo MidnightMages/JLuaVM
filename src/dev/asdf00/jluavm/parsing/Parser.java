@@ -600,7 +600,7 @@ public class Parser {
             var op = ltok;
             scan();
             Node y = BinOp8();
-            result = BinaryOpNode.arithmetic(op.metatableFuncNameBinary, result, y);
+            result = BinaryOpNode.stringConcat(result, y);
         }
         return result;
     }

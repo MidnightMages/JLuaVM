@@ -31,17 +31,17 @@ public final class LuaObject {
 
     public Object refVal; // reassignable only for box
     public LuaObject metaTable;
-    public final double dVal; // maybe inline that into lVal with Double.doubleToRawLongBits(dVal) if we have excessive ram use
-    public final long lVal;
+    public double dVal; // maybe inline that into lVal with Double.doubleToRawLongBits(dVal) if we have excessive ram use
+    public long lVal;
     public final int type; // one-hot encoding
-    public final int otherMarks; // currently unused but free due to object alignment
+    public int markWord; // currently unused but free due to object alignment
 
     private LuaObject(Object refVal, double dVal, long lVal, int type) {
         this.refVal = refVal;
         this.dVal = dVal;
         this.lVal = lVal;
         this.type = type;
-        this.otherMarks = 0;
+        this.markWord = 0;
         this.metaTable = null;
     }
 
@@ -77,6 +77,9 @@ public final class LuaObject {
         long lx = lVal;
         if (isString()) {
             var cres = coerceToNumber();
+            if (cres == null) {
+                throw new InternalLuaRuntimeError("relying on number coersion of uncoercable string '%s'".formatted(getString()));
+            }
             doubleCalc = cres.isDouble;
             dx = cres.dVal;
             lx = cres.lVal;
@@ -88,21 +91,24 @@ public final class LuaObject {
         }
         double dy = other.dVal;
         long ly = other.lVal;
-        if (isString()) {
+        if (other.isString()) {
             var cres = other.coerceToNumber();
+            if (cres == null) {
+                throw new InternalLuaRuntimeError("relying on number coersion of uncoercable string '%s'".formatted(other.getString()));
+            }
             if (!doubleCalc && cres.isDouble) {
                 dx = lx;
                 doubleCalc = true;
             }
             dy = cres.dVal;
             ly = cres.lVal;
-        } else if (isDouble()) {
+        } else if (other.isDouble()) {
             if (!doubleCalc) {
                 dx = lx;
                 doubleCalc = true;
             }
         } else {
-            assert isLong();
+            assert other.isLong();
             if (doubleCalc) {
                 dy = ly;
             }
@@ -158,6 +164,11 @@ public final class LuaObject {
      */
     private CoercedString coerceToNumber() {
         assert isString() : "trying to coerce non-string";
+        if ((markWord & 0b11) != 0) {
+            // already coerced this string, only read cached result
+            return new CoercedString((markWord & 1) != 0, dVal, lVal);
+        }
+
         final String stVal = (String) refVal;
 
         char[] cur = new char[1];
@@ -322,7 +333,23 @@ public final class LuaObject {
                     }
                 }
             }
-            return positive ? new CoercedString(!isInteger, doubleValue, longValue) : new CoercedString(!isInteger, -doubleValue, -longValue);
+            if (!positive) {
+                if (isInteger) {
+                    longValue = -longValue;
+                } else {
+                    doubleValue = -doubleValue;
+                }
+            }
+            // save result to cache
+            markWord |= 1 << (isInteger ? 1 : 0);
+            if (isInteger) {
+                markWord |= 0b10;
+                lVal = longValue;
+            } else {
+                markWord |= 1;
+                dVal = doubleValue;
+            }
+            return new CoercedString(!isInteger, doubleValue, longValue);
         } catch (NumberFormatException e) {
             throw new InternalLuaLexerError("Unexpected failure while reading number '%s'".formatted(number), e);
         }
@@ -351,7 +378,13 @@ public final class LuaObject {
     }
 
     public boolean getBool() {
+        assert isBoolean();
         return lVal != 0;
+    }
+
+    public String getString() {
+        assert isString();
+        return (String) refVal;
     }
 
     // =================================================================================================================
@@ -412,6 +445,16 @@ public final class LuaObject {
 
     public boolean isIntCoercible() {
         return isLong() || (isDouble() && (double)((long) dVal) == dVal);
+    }
+
+    public boolean isNumberCoercible() {
+        if (isNumber()) {
+            return true;
+        } else if (isString() && coerceToNumber() != null) {
+            return true;
+        } else {
+            return false;
+        }
     }
 
     // =================================================================================================================
