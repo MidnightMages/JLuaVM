@@ -3,6 +3,8 @@ package dev.asdf00.jluavm.runtime.types;
 import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
 import dev.asdf00.jluavm.exceptions.loading.InternalLuaLexerError;
 
+import java.text.DecimalFormat;
+
 import static dev.asdf00.jluavm.parsing.Lexer.isDecDigit;
 import static dev.asdf00.jluavm.parsing.Lexer.parseHexDouble;
 
@@ -70,6 +72,33 @@ public final class LuaObject {
     // lua object interactions
     // =================================================================================================================
 
+    public LuaObject len(LuaObject other) {
+        assert isType(Types.ARITHMETIC) && other.isType(Types.ARITHMETIC);
+        // TODO: always coerce to string then concat
+        return null;
+    }
+
+
+    public LuaObject unm() {
+        assert isType(Types.ARITHMETIC);
+        boolean doubleCalc;
+        double dx = dVal;
+        long lx = lVal;
+        if (isString()) {
+            var cres = coerceToNumber();
+            if (cres == null) { throw new InternalLuaRuntimeError("coersion of uncoercable string '%s'".formatted(getString())); }
+            doubleCalc = cres.isDouble;
+            dx = cres.dVal;
+            lx = cres.lVal;
+        } else if (isDouble()) {
+            doubleCalc = true;
+        } else {
+            assert isLong();
+            doubleCalc = false;
+        }
+        return doubleCalc ? LuaObject.of(-dx) : LuaObject.of(-lx);
+    }
+
     public LuaObject add(LuaObject other) {
         assert isType(Types.ARITHMETIC) && other.isType(Types.ARITHMETIC);
         boolean doubleCalc;
@@ -77,9 +106,7 @@ public final class LuaObject {
         long lx = lVal;
         if (isString()) {
             var cres = coerceToNumber();
-            if (cres == null) {
-                throw new InternalLuaRuntimeError("relying on number coersion of uncoercable string '%s'".formatted(getString()));
-            }
+            if (cres == null) { throw new InternalLuaRuntimeError("coersion of uncoercable string '%s'".formatted(getString())); }
             doubleCalc = cres.isDouble;
             dx = cres.dVal;
             lx = cres.lVal;
@@ -93,9 +120,7 @@ public final class LuaObject {
         long ly = other.lVal;
         if (other.isString()) {
             var cres = other.coerceToNumber();
-            if (cres == null) {
-                throw new InternalLuaRuntimeError("relying on number coersion of uncoercable string '%s'".formatted(other.getString()));
-            }
+            if (cres == null) { throw new InternalLuaRuntimeError("coersion of uncoercable string '%s'".formatted(getString())); }
             if (!doubleCalc && cres.isDouble) {
                 dx = lx;
                 doubleCalc = true;
@@ -116,16 +141,369 @@ public final class LuaObject {
         return doubleCalc ? LuaObject.of(dx + dy) : LuaObject.of(lx + ly);
     }
 
-    public LuaObject pow(LuaObject other) {
+    public LuaObject sub(LuaObject other) {
         assert isType(Types.ARITHMETIC) && other.isType(Types.ARITHMETIC);
-        // TODO: always coerce to double not long!
-        return null;
+        boolean doubleCalc;
+        double dx = dVal;
+        long lx = lVal;
+        if (isString()) {
+            var cres = coerceToNumber();
+            if (cres == null) { throw new InternalLuaRuntimeError("coersion of uncoercable string '%s'".formatted(getString())); }
+            doubleCalc = cres.isDouble;
+            dx = cres.dVal;
+            lx = cres.lVal;
+        } else if (isDouble()) {
+            doubleCalc = true;
+        } else {
+            assert isLong();
+            doubleCalc = false;
+        }
+        double dy = other.dVal;
+        long ly = other.lVal;
+        if (other.isString()) {
+            var cres = other.coerceToNumber();
+            if (cres == null) { throw new InternalLuaRuntimeError("coersion of uncoercable string '%s'".formatted(getString())); }
+            if (!doubleCalc && cres.isDouble) {
+                dx = lx;
+                doubleCalc = true;
+            }
+            dy = cres.dVal;
+            ly = cres.lVal;
+        } else if (other.isDouble()) {
+            if (!doubleCalc) {
+                dx = lx;
+                doubleCalc = true;
+            }
+        } else {
+            assert other.isLong();
+            if (doubleCalc) {
+                dy = ly;
+            }
+        }
+        return doubleCalc ? LuaObject.of(dx - dy) : LuaObject.of(lx - ly);
     }
 
+    public LuaObject mul(LuaObject other) {
+        assert isType(Types.ARITHMETIC) && other.isType(Types.ARITHMETIC);
+        boolean doubleCalc;
+        double dx = dVal;
+        long lx = lVal;
+        if (isString()) {
+            var cres = coerceToNumber();
+            if (cres == null) { throw new InternalLuaRuntimeError("coersion of uncoercable string '%s'".formatted(getString())); }
+            doubleCalc = cres.isDouble;
+            dx = cres.dVal;
+            lx = cres.lVal;
+        } else if (isDouble()) {
+            doubleCalc = true;
+        } else {
+            assert isLong();
+            doubleCalc = false;
+        }
+        double dy = other.dVal;
+        long ly = other.lVal;
+        if (other.isString()) {
+            var cres = other.coerceToNumber();
+            if (cres == null) { throw new InternalLuaRuntimeError("coersion of uncoercable string '%s'".formatted(getString())); }
+            if (!doubleCalc && cres.isDouble) {
+                dx = lx;
+                doubleCalc = true;
+            }
+            dy = cres.dVal;
+            ly = cres.lVal;
+        } else if (other.isDouble()) {
+            if (!doubleCalc) {
+                dx = lx;
+                doubleCalc = true;
+            }
+        } else {
+            assert other.isLong();
+            if (doubleCalc) {
+                dy = ly;
+            }
+        }
+        return doubleCalc ? LuaObject.of(dx * dy) : LuaObject.of(lx * ly);
+    }
+
+    public LuaObject div(LuaObject other) {
+        assert isType(Types.ARITHMETIC) && other.isType(Types.ARITHMETIC);
+        double dx;
+        if (isString()) {
+            var cres = coerceToNumber();
+            if (cres == null) { throw new InternalLuaRuntimeError("coersion of uncoercable string '%s'".formatted(getString())); }
+            dx = cres.isDouble ? cres.dVal : cres.lVal;
+        } else if (isDouble()) {
+            dx = dVal;
+        } else {
+            assert isLong();
+            dx = lVal;
+        }
+        double dy;
+        if (other.isString()) {
+            var cres = other.coerceToNumber();
+            if (cres == null) { throw new InternalLuaRuntimeError("coersion of uncoercable string '%s'".formatted(getString())); }
+            dy = cres.isDouble ? cres.dVal : cres.lVal;
+        } else if (other.isDouble()) {
+            dy = other.dVal;
+        } else {
+            assert other.isLong();
+            dy = other.lVal;
+        }
+        return LuaObject.of(dx / dy);
+    }
+
+    public LuaObject idiv(LuaObject other) {
+        assert isType(Types.ARITHMETIC) && other.isType(Types.ARITHMETIC);
+        boolean doubleCalc;
+        double dx = dVal;
+        long lx = lVal;
+        if (isString()) {
+            var cres = coerceToNumber();
+            if (cres == null) { throw new InternalLuaRuntimeError("coersion of uncoercable string '%s'".formatted(getString())); }
+            doubleCalc = cres.isDouble;
+            dx = cres.dVal;
+            lx = cres.lVal;
+        } else if (isDouble()) {
+            doubleCalc = true;
+        } else {
+            assert isLong();
+            doubleCalc = false;
+        }
+        double dy = other.dVal;
+        long ly = other.lVal;
+        if (other.isString()) {
+            var cres = other.coerceToNumber();
+            if (cres == null) { throw new InternalLuaRuntimeError("coersion of uncoercable string '%s'".formatted(getString())); }
+            if (!doubleCalc && cres.isDouble) {
+                dx = lx;
+                doubleCalc = true;
+            }
+            dy = cres.dVal;
+            ly = cres.lVal;
+        } else if (other.isDouble()) {
+            if (!doubleCalc) {
+                dx = lx;
+                doubleCalc = true;
+            }
+        } else {
+            assert other.isLong();
+            if (doubleCalc) {
+                dy = ly;
+            }
+        }
+        return LuaObject.of(doubleCalc ? (long)(dx / dy) : lx / ly);
+    }
+
+    public LuaObject mod(LuaObject other) {
+        assert isType(Types.ARITHMETIC) && other.isType(Types.ARITHMETIC);
+        boolean doubleCalc;
+        double dx = dVal;
+        long lx = lVal;
+        if (isString()) {
+            var cres = coerceToNumber();
+            if (cres == null) { throw new InternalLuaRuntimeError("coersion of uncoercable string '%s'".formatted(getString())); }
+            doubleCalc = cres.isDouble;
+            dx = cres.dVal;
+            lx = cres.lVal;
+        } else if (isDouble()) {
+            doubleCalc = true;
+        } else {
+            assert isLong();
+            doubleCalc = false;
+        }
+        double dy = other.dVal;
+        long ly = other.lVal;
+        if (other.isString()) {
+            var cres = other.coerceToNumber();
+            if (cres == null) { throw new InternalLuaRuntimeError("coersion of uncoercable string '%s'".formatted(getString())); }
+            if (!doubleCalc && cres.isDouble) {
+                dx = lx;
+                doubleCalc = true;
+            }
+            dy = cres.dVal;
+            ly = cres.lVal;
+        } else if (other.isDouble()) {
+            if (!doubleCalc) {
+                dx = lx;
+                doubleCalc = true;
+            }
+        } else {
+            assert other.isLong();
+            if (doubleCalc) {
+                dy = ly;
+            }
+        }
+        return LuaObject.of(doubleCalc ? (long) (dx % dy) : lx % ly);
+    }
+
+    public LuaObject pow(LuaObject other) {
+        assert isType(Types.ARITHMETIC) && other.isType(Types.ARITHMETIC);
+        double dx;
+        if (isString()) {
+            var cres = coerceToNumber();
+            if (cres == null) { throw new InternalLuaRuntimeError("coersion of uncoercable string '%s'".formatted(getString())); }
+            dx = cres.isDouble ? cres.dVal : cres.lVal;
+        } else if (isDouble()) {
+            dx = dVal;
+        } else {
+            assert isLong();
+            dx = lVal;
+        }
+        double dy;
+        if (other.isString()) {
+            var cres = other.coerceToNumber();
+            if (cres == null) { throw new InternalLuaRuntimeError("coersion of uncoercable string '%s'".formatted(getString())); }
+            dy = cres.isDouble ? cres.dVal : cres.lVal;
+        } else if (other.isDouble()) {
+            dy = other.dVal;
+        } else {
+            assert other.isLong();
+            dy = other.lVal;
+        }
+        return LuaObject.of(Math.pow(dx, dy));
+    }
+
+    private static final DecimalFormat doubleToStringFormat = new DecimalFormat("#.0#############"); // TODO add unittest to make sure this lack of threadsafety doesnt cause any issues
+    private static final DecimalFormat longToStringFormat = new DecimalFormat("#");
     public LuaObject concat(LuaObject other) {
         assert isType(Types.ARITHMETIC) && other.isType(Types.ARITHMETIC);
-        // TODO: always coerce to string then concat
-        return null;
+        String dx;
+        if (other.isString()) {
+            dx = getString();
+        } else if (other.isDouble()) {
+            dx = doubleToStringFormat.format(dVal);
+        } else {
+            assert other.isLong();
+            dx = longToStringFormat.format(lVal);
+        }
+        String dy;
+        if (other.isString()) {
+            dy = other.getString();
+        } else if (other.isDouble()) {
+            dy = doubleToStringFormat.format(other.dVal);
+        } else {
+            assert other.isLong();
+            dy = longToStringFormat.format(other.lVal);
+        }
+        return LuaObject.of(dx + dy);
+    }
+
+    public LuaObject band(LuaObject other) {
+        assert isIntCoercible();
+        assert other.isIntCoercible();
+
+        var lx = isLong() ? lVal : (long)dVal;
+        var ly = other.isLong() ? other.lVal : (long)other.dVal;
+        return LuaObject.of(lx & ly);
+    }
+
+    public LuaObject bor(LuaObject other) {
+        assert isIntCoercible();
+        assert other.isIntCoercible();
+
+        var lx = isLong() ? lVal : (long)dVal;
+        var ly = other.isLong() ? other.lVal : (long)other.dVal;
+        return LuaObject.of(lx | ly);
+    }
+
+    public LuaObject bxor(LuaObject other) {
+        assert isIntCoercible();
+        assert other.isIntCoercible();
+
+        var lx = isLong() ? lVal : (long)dVal;
+        var ly = other.isLong() ? other.lVal : (long)other.dVal;
+        return LuaObject.of(lx ^ ly);
+    }
+
+    public LuaObject bnot() {
+        assert isIntCoercible();
+
+        return LuaObject.of(~(isLong() ? lVal : (long)dVal));
+    }
+
+    public LuaObject shl(LuaObject other) {
+        assert isIntCoercible();
+        assert other.isIntCoercible();
+
+        var lx = isLong() ? lVal : (long)dVal;
+        var ly = other.isLong() ? other.lVal : (long)other.dVal;
+        return LuaObject.of(lx << ly);
+    }
+
+    public LuaObject shr(LuaObject other) {
+        assert isIntCoercible();
+        assert other.isIntCoercible();
+
+        var lx = isLong() ? lVal : (long)dVal;
+        var ly = other.isLong() ? other.lVal : (long)other.dVal;
+        return LuaObject.of(lx >>> ly);
+    }
+
+    public LuaObject eq(LuaObject other) {
+        // both number or both strings
+        assert(isNumber() && other.isNumber() || isString() && other.isString());
+
+        if (isNumber()){
+            if (isLong() && other.isLong())
+                return LuaObject.of(lVal == other.lVal);
+
+            var dx = isLong() ? (double)lVal : dVal;
+            var dy = other.isLong() ? (double)other.lVal : other.dVal;
+            return LuaObject.of(dx == dy);
+        }
+        return LuaObject.of(getString().equals(other.getString()));
+    }
+
+    public LuaObject lt(LuaObject other) {
+        // both number or both strings
+        assert(isNumber() && other.isNumber() || isString() && other.isString());
+
+        if (isNumber()){
+            if (isLong() && other.isLong())
+                return LuaObject.of(lVal < other.lVal);
+
+            var dx = isLong() ? (double)lVal : dVal;
+            var dy = other.isLong() ? (double)other.lVal : other.dVal;
+            return LuaObject.of(dx < dy);
+        }
+
+        var sx = getString();
+        var sy = other.getString();
+        for (int i = 0; i < Math.min(sx.length(), sy.length()); i++) {
+            var cx = sx.charAt(i);
+            var cy = sy.charAt(i);
+            if (cx < cy)
+                return LuaObject.TRUE;
+            else if (cx > cy)
+                return LuaObject.FALSE;
+        }
+        return LuaObject.of(sx.length() < sy.length());
+    }
+
+    public LuaObject le(LuaObject other) {
+        // both number or both strings
+        assert(isNumber() && other.isNumber() || isString() && other.isString());
+
+        if (isNumber()){
+            if (isLong() && other.isLong())
+                return LuaObject.of(lVal < other.lVal);
+
+            var dx = isLong() ? (double)lVal : dVal;
+            var dy = other.isLong() ? (double)other.lVal : other.dVal;
+            return LuaObject.of(dx < dy);
+        }
+
+        var sx = getString();
+        var sy = other.getString();
+        for (int i = 0; i < Math.min(sx.length(), sy.length()); i++) {
+            var cx = sx.charAt(i);
+            var cy = sy.charAt(i);
+            if (cx < cy)
+                return LuaObject.TRUE;
+            else if (cx > cy)
+                return LuaObject.FALSE;
+        }
+        return LuaObject.of(sx.length() <= sy.length());
     }
 
     public boolean hasKey(LuaObject key) {
