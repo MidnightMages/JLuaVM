@@ -160,4 +160,17 @@ public class VarScope {
         }
         return closableList.toArray(VarInfo[]::new);
     }
+
+    public int getClosableCount() {
+        if (!containsClosable) {
+            return 0;
+        }
+        int cnt = 0;
+        for (var v : names.values()) {
+            if (v.isClosable()) {
+                cnt++;
+            }
+        }
+        return cnt;
+    }
 }

@@ -8,9 +8,7 @@ import dev.asdf00.jluavm.exceptions.loading.LuaSemanticException;
 import dev.asdf00.jluavm.parsing.ir.IRBlock;
 import dev.asdf00.jluavm.parsing.ir.IRFunction;
 import dev.asdf00.jluavm.parsing.ir.Node;
-import dev.asdf00.jluavm.parsing.ir.controlflow.BreakNode;
-import dev.asdf00.jluavm.parsing.ir.controlflow.FunctionCallNode;
-import dev.asdf00.jluavm.parsing.ir.controlflow.GotoNode;
+import dev.asdf00.jluavm.parsing.ir.controlflow.*;
 import dev.asdf00.jluavm.parsing.ir.operations.*;
 import dev.asdf00.jluavm.parsing.ir.values.ConstantNode;
 import dev.asdf00.jluavm.parsing.ir.values.ConstructedTableNode;
@@ -70,16 +68,14 @@ public class Parser {
             var f = new IRFunction(fClassNameGenerator.get());
             funcStack.push(f);
             funcCur = f;
-            blockStack.push(f);
-            blockCur = f;
-        } else {
-            var b = new IRBlock();
-            blockStack.push(b);
-            blockCur = b;
         }
     }
 
-    private void exitScope() {
+    /**
+     * Closes current scope and returns the number of variables that need to be closed here
+     * @return
+     */
+    private int exitScope() {
         var exited = symTab.exitScope();
         if (exited.isFunctionBorder) {
             if (funcCur.needFixup.size() > 0) {
@@ -90,9 +86,7 @@ public class Parser {
                 funcCur = funcStack.pop();
             }
         }
-        if (blockStack.size() > 0) {
-            blockCur = blockStack.pop();
-        }
+        return exited.getClosableCount();
     }
 
     private GotoNode generateGoto() {
@@ -129,9 +123,6 @@ public class Parser {
     private final Stack<IRFunction> funcStack = new Stack<>();
     private IRFunction funcCur;
 
-    private final Stack<IRBlock> blockStack = new Stack<>();
-    private IRBlock blockCur;
-
     // =================================================================================================================
     //    PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING
     // =================================================================================================================
@@ -153,11 +144,14 @@ public class Parser {
         return topLevelFunction;
     }
 
-    private void Block() {
+    private ArrayList<Node> Block() {
+        var statements = new ArrayList<Node>();
         while (STAT_START.contains(ltok)) {
-            Stat();
+            Node s = Stat();
+            statements.add(s);
         }
         if (ltok == RETURN) {
+            // TODO: add return node
             scan();
             if (EXP_START.contains(ltok)) {
                 ExpList();
@@ -166,6 +160,7 @@ public class Parser {
                 scan();
             }
         }
+        return statements;
     }
 
     private static final EnumSet<TokenType> STAT_START = EnumSet.of(SEMICOLON, IDENT, LPAR, DCOLON, BREAK, GOTO, DO, WHILE, REPEAT, IF, FOR, FUNCTION, LOCAL);
@@ -209,8 +204,9 @@ public class Parser {
             case DO -> {
                 scan();
                 enterScope(false, false);
-                Block();
-                exitScope();
+                var innerStats = Block();
+                int closableCnt = exitScope();
+                statement = new DoEndNode(innerStats.toArray(Node[]::new), closableCnt);
                 check(END);
             }
             case WHILE -> {

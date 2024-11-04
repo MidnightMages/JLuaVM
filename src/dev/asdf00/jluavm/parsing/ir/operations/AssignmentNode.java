@@ -91,7 +91,7 @@ public class AssignmentNode extends Node {
             sb.append('\n');
             if (tTars[i] instanceof SpecificVarInfo info) {
                 // local assignment
-                sb.append(genLocalSet(info, vSpots.get(i)));
+                sb.append(genLocalSet(cState, info, vSpots.get(i)));
             } else {
                 var spots = (Tuple<String, String>) tTars[i];
                 sb.append(genIndexedSet(cState, spots.x(), spots.y(), vSpots.get(i)));
@@ -145,13 +145,68 @@ public class AssignmentNode extends Node {
         return assignment;
     }
 
-    private static String genLocalSet(SpecificVarInfo info, String val) {
+    private static String genLocalSet(CompilationState cState, SpecificVarInfo info, String val) {
         String assignment;
         if (info.closureIdx() < 0) {
             if (info.baseInfo().sitsInBox()) {
                 assignment = "stackFrame[%d].setBox(%s);".formatted(info.baseInfo().lVarIdx, val);
             } else {
-                assignment = "stackFrame[%d] = %s;".formatted(info.baseInfo().lVarIdx, val);
+                // this could be a local definition, therefore we need to insert a closability check for all closable variables
+                if (info.baseInfo().isClosable()) {
+                    // insert closability check
+                    String mtbl = cState.pushEStack();
+                    cState.popEStack();
+                    var callInfo = cState.generateEStackCallInfo(1);
+                    String mval = cState.pushEStack();
+                    cState.popEStack();
+                    assignment = """
+                            %s = %s.getMetaTable()
+                            if (%s.isTable()) {
+                                LuaObject table = %s;
+                                LuaObject key = Singletons.__close;
+                                if (table.hasKey(key)) {
+                                    %s = table.get(key);
+                                } else {
+                                    LuaObject mtbl = table.getMetaTable();
+                                    if (mtbl == null) {
+                                        %s = LuaObject.nil();
+                                    } else {
+                                        %s
+                                        vm.callInternal(%d, LuaFunction::getWithMeta, table, key, mtbl);
+                                        return;
+                                    }
+                                }
+                            } else if (%s.isUserData()) {
+                                try {
+                                    %s = %s.get(Singletons.__close);
+                                } catch (LuaRuntimeError ex) {
+                                    vm.error(new LuaForeignCallError());
+                                    return;
+                                }
+                            } else {
+                                vm.error(new LuaTypeError());
+                                return;
+                            }
+                            case %d:
+                            if (%s.isNil()) {
+                                vm.error(new LuaMetaTableError());
+                                return;
+                            }\n
+                            """.formatted(mtbl, val,
+                            mtbl,
+                            mtbl,
+                            mval,
+                            mval,
+                            callInfo.saveEStack(),
+                            callInfo.resumeLabel(),
+                            mtbl,
+                            mval, mtbl,
+                            callInfo.resumeLabel(),
+                            mval);
+                } else {
+                    assignment = "";
+                }
+                assignment += "stackFrame[%d] = %s;".formatted(info.baseInfo().lVarIdx, val);
             }
         } else {
             if (info.baseInfo().sitsInBox()) {

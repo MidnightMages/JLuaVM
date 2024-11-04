@@ -52,6 +52,4 @@ public class SymTable {
     public SpecificVarInfo get(String ident) {
         return curScope.get(ident, false);
     }
-
-
 }
