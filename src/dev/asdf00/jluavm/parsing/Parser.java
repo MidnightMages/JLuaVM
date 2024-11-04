@@ -219,9 +219,10 @@ public class Parser {
             case REPEAT -> {
                 scan();
                 enterScope(false, true);
-                Block();
+                var innerStats = Block();
                 check(UNTIL);
-                Exp();
+                Node exitCond = Exp();
+
                 exitScope();
             }
             case IF -> {

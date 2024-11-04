@@ -1,5 +1,7 @@
 package dev.asdf00.jluavm.parsing.ir;
 
+import dev.asdf00.jluavm.parsing.ir.controlflow.ConditionalContinueNode;
+
 public class IRBlock extends Node {
     public final Node[] statements;
     public final boolean loop;
@@ -26,7 +28,10 @@ public class IRBlock extends Node {
             sb.append('\n').append(statements[i].generate(cState));
             assert cState.clearEStack() == 0 : "we expect the expression stack to be empty here";
         }
-        sb.append(genClose(cState, closableCnt));
+        if (!(statements[statements.length - 1] instanceof ConditionalContinueNode)) {
+            // conditional continue nodes do all the closing of variables themselves, only close if no conditional continue node
+            sb.append(genClose(cState, closableCnt));
+        }
         assert cState.clearEStack() == 0 : "we expect the expression stack to be empty here";
         cState.closeInnerBlock(sb.toString());
         return blockName;
