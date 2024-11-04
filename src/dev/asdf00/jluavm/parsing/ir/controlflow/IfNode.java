@@ -14,6 +14,10 @@ public class IfNode extends Node {
     public final IRBlock[] elseIfs;
     public final IRBlock _else;
 
+    public IfNode(Node cond, IRBlock then) {
+        this(cond, then, new Node[0], new IRBlock[0], null);
+    }
+
     public IfNode(Node cond, IRBlock then, Node[] subConds, IRBlock[] elseIfs, IRBlock _else) {
         this.cond = cond;
         this.then = then;

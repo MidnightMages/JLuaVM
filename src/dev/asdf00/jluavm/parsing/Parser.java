@@ -205,16 +205,19 @@ public class Parser {
                 scan();
                 enterScope(false, false);
                 var innerStats = Block();
+                check(END);
                 int closableCnt = exitScope();
                 statement = new DoEndNode(innerStats.toArray(Node[]::new), closableCnt);
-                check(END);
             }
             case WHILE -> {
                 scan();
-                Exp();
+                Node entryCond = Exp();
                 check(DO);
-                Block();
+                enterScope(false, true);
+                var innerStats = Block();
                 check(END);
+                int closableCnt = exitScope();
+                statement = new IfNode(entryCond, new IRBlock(innerStats.toArray(Node[]::new), entryCond, true, closableCnt));
             }
             case REPEAT -> {
                 scan();
@@ -222,8 +225,8 @@ public class Parser {
                 var innerStats = Block();
                 check(UNTIL);
                 Node exitCond = Exp();
-
-                exitScope();
+                int closableCnt = exitScope();
+                statement = new PlainInnerBlockNode(new IRBlock(innerStats.toArray(Node[]::new), exitCond, false, closableCnt));
             }
             case IF -> {
                 scan();
@@ -257,11 +260,11 @@ public class Parser {
                 check(END);
                 IRBlock[] elifs = new IRBlock[elifBlocks.size()];
                 for (int i = 0; i < elifs.length; i++) {
-                    elifs[i] = new IRBlock(elifBlocks.get(i).toArray(Node[]::new), false, elifCCnts.get(i));
+                    elifs[i] = new IRBlock(elifBlocks.get(i).toArray(Node[]::new), elifCCnts.get(i));
                 }
-                statement = new IfNode(condition, new IRBlock(thenBlock.toArray(Node[]::new), false, thenCCnt),
+                statement = new IfNode(condition, new IRBlock(thenBlock.toArray(Node[]::new), thenCCnt),
                         elifConds.toArray(Node[]::new), elifs,
-                        new IRBlock(elseBlock == null ? null : elseBlock.toArray(Node[]::new), false, elseCCnt));
+                        new IRBlock(elseBlock == null ? null : elseBlock.toArray(Node[]::new), elseCCnt));
             }
             case FOR -> {
                 scan();

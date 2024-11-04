@@ -1,38 +1,60 @@
 package dev.asdf00.jluavm.parsing.ir;
 
-import dev.asdf00.jluavm.parsing.ir.controlflow.ConditionalContinueNode;
-
 public class IRBlock extends Node {
     public final Node[] statements;
-    public final boolean loop;
+    public final Node continueCondition;
+    public final boolean breakOnFalse;
     public final int closableCnt;
 
-    public IRBlock(Node[] statements, boolean loop, int closableCnt) {
+    public IRBlock(Node[] statements, int closableCnt) {
+        this(statements, null, false, closableCnt);
+    }
+
+    public IRBlock(Node[] statements, Node continueCondition, boolean breakOnFalse, int closableCnt) {
         this.statements = statements;
-        this.loop = loop;
+        this.continueCondition = continueCondition;
+        this.breakOnFalse = breakOnFalse;
         this.closableCnt = closableCnt;
     }
 
     @Override
     public String generate(CompilationState cState) {
-        String blockName = cState.openInnerBlock(loop);
+        String blockName = cState.openInnerBlock(continueCondition != null);
         if (statements.length < 1) {
             assert closableCnt == 0;
             cState.closeInnerBlock("// empty inner block");
             return blockName;
         }
         var sb = new StringBuilder();
-        sb.append(statements[0].generate(cState));
-        assert cState.clearEStack() == 0 : "we expect the expression stack to be empty here";
-        for (int i = 1; i < statements.length; i++) {
-            sb.append('\n').append(statements[i].generate(cState));
+        for (int i = 0; i < statements.length; i++) {
+            sb.append(statements[i].generate(cState)).append('\n');
             assert cState.clearEStack() == 0 : "we expect the expression stack to be empty here";
         }
-        if (!(statements[statements.length - 1] instanceof ConditionalContinueNode)) {
-            // conditional continue nodes do all the closing of variables themselves, only close if no conditional continue node
-            sb.append(genClose(cState, closableCnt));
+        if (continueCondition != null) {
+            // this is a loop, generate conditional exit
+            String cBlock = continueCondition.generate(cState);
+            String closings = genClose(cState, closableCnt);
+            String cSpot = cState.popEStack();
+            assert cState.clearEStack() == 0 : "we expect the expression stack to be empty here";
+            sb.append("""
+                    %s
+                    %s
+                    if (%sRTUtils.isTruthy(%s)) {
+                        break resumeSwitch;
+                    } else {
+                        vm.internalReturn();
+                        return;
+                    }
+                    """.formatted(cBlock, closings, breakOnFalse ? "" : "!", cSpot));
+        } else {
+            // this is not a loop, finish with standard internal return
+            sb.append(genClose(cState, closableCnt)).append('\n');
+            assert cState.clearEStack() == 0 : "we expect the expression stack to be empty here";
+            sb.append("""
+                    vm.internalReturn();
+                    return;
+                    """);
         }
-        assert cState.clearEStack() == 0 : "we expect the expression stack to be empty here";
         cState.closeInnerBlock(sb.toString());
         return blockName;
     }
