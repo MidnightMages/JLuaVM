@@ -229,23 +229,38 @@ public class Parser {
                 Node condition = Exp();
                 check(THEN);
                 enterScope(false, false);
-                Block();
-                exitScope();
+                var thenBlock = Block();
+                int thenCCnt = exitScope();
+                var elifConds = new ArrayList<Node>();
+                var elifBlocks = new ArrayList<ArrayList<Node>>();
+                var elifCCnts = new ArrayList<Integer>();
                 while (ltok == ELSEIF) {
                     scan();
-                    Exp();
+                    var elifCond = Exp();
+                    elifConds.add(elifCond);
                     check(THEN);
                     enterScope(false, false);
-                    Block();
-                    exitScope();
+                    var elifBlock = Block();
+                    elifBlocks.add(elifBlock);
+                    int elifCCnt = exitScope();
+                    elifCCnts.add(elifCCnt);
                 }
+                ArrayList<Node> elseBlock = null;
+                int elseCCnt = 0;
                 if (ltok == ELSE) {
                     scan();
                     enterScope(false, false);
-                    Block();
-                    exitScope();
+                    elseBlock = Block();
+                    elseCCnt = exitScope();
                 }
                 check(END);
+                IRBlock[] elifs = new IRBlock[elifBlocks.size()];
+                for (int i = 0; i < elifs.length; i++) {
+                    elifs[i] = new IRBlock(elifBlocks.get(i).toArray(Node[]::new), false, elifCCnts.get(i));
+                }
+                statement = new IfNode(condition, new IRBlock(thenBlock.toArray(Node[]::new), false, thenCCnt),
+                        elifConds.toArray(Node[]::new), elifs,
+                        new IRBlock(elseBlock == null ? null : elseBlock.toArray(Node[]::new), false, elseCCnt));
             }
             case FOR -> {
                 scan();

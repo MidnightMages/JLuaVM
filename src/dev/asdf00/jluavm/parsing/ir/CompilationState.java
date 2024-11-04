@@ -49,4 +49,12 @@ public class CompilationState {
 
     public record EStackCallInfo(int resumeLabel, String saveEStack) {
     }
+
+    public String openInnerBlock(boolean loop) {
+        return "blockName";
+    }
+
+    public void closeInnerBlock(String content) {
+
+    }
 }
