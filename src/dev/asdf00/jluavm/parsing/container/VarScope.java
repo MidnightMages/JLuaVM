@@ -39,13 +39,14 @@ public class VarScope {
         return parent;
     }
 
-    public boolean add(Token ident, boolean isConst, boolean isClosable) {
+    public SpecificVarInfo add(Token ident, boolean isConst, boolean isClosable) {
         if (names.containsKey(ident)) {
-            return false;
+            return null;
         }
         containsClosable |= isClosable;
-        names.put(ident.stVal(), new VarInfo(ident.pos().sourcePt(), baseIdx + names.size(), isConst, isClosable));
-        return true;
+        VarInfo info = new VarInfo(ident.pos().sourcePt(), baseIdx + names.size(), isConst, isClosable)
+        names.put(ident.stVal(), info);
+        return new SpecificVarInfo(info, -1);
     }
 
     public SpecificVarInfo get(String ident, boolean crossedFunctionBorder) {

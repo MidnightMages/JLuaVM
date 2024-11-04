@@ -56,10 +56,12 @@ public class Parser {
         return cur.type() == RBRAK || cur.type() == IDENT;
     }
 
-    private void define(Token ident, int attributes) {
-        if (!symTab.add(ident, (attributes & 1) == 1, (attributes & 2) == 2)) {
+    private SpecificVarInfo define(Token ident, int attributes) {
+        SpecificVarInfo info = symTab.add(ident, (attributes & 1) == 1, (attributes & 2) == 2);
+        if (info == null) {
             throw new LuaSemanticException(ident.pos(), "'%s' is defined twice!".formatted(cur.stVal()));
         }
+        return info;
     }
 
     private void enterScope(boolean isFunctionBorder, boolean isLoop) {
@@ -148,7 +150,9 @@ public class Parser {
         var statements = new ArrayList<Node>();
         while (STAT_START.contains(ltok)) {
             Node s = Stat();
-            statements.add(s);
+            if (s != null) {
+                statements.add(s);
+            }
         }
         if (ltok == RETURN) {
             // TODO: add return node
@@ -188,11 +192,13 @@ public class Parser {
                     }
                 }
                 statement = new BreakNode(ls, closableList.toArray(VarInfo[]::new));
+                // TODO: break node
             }
             case GOTO -> {
                 scan();
                 check(IDENT);
                 statement = generateGoto();
+                // TODO: goto node
             }
             case DCOLON -> {
                 // label
@@ -200,6 +206,7 @@ public class Parser {
                 check(IDENT);
                 statement = symTab.addLabel(cur, funcCur.needFixup);
                 check(DCOLON);
+                // TODO: label definition
             }
             case DO -> {
                 scan();
@@ -296,6 +303,7 @@ public class Parser {
                 Block();
                 exitScope();
                 check(END);
+                // TODO: for loop
             }
             case FUNCTION -> {
                 scan();
@@ -312,6 +320,7 @@ public class Parser {
                     check(IDENT);
                 }
                 FuncBody(hasSelf);
+                // TODO: function definition
             }
             case LOCAL -> {
                 scan();
@@ -320,26 +329,32 @@ public class Parser {
                     check(IDENT);
                     define(cur, 0);
                     FuncBody(false);
+                    // TODO: function definition
                 } else {
                     check(IDENT);
+                    var localList = new ArrayList<LocalAccessNode>();
                     Token locVar = cur;
                     int attributes = Attrib();
-                    define(locVar, attributes);
+                    localList.add(new LocalAccessNode(define(locVar, attributes)));
                     while (ltok == COMMA) {
                         scan();
                         check(IDENT);
                         locVar = cur;
                         attributes = Attrib();
-                        define(locVar, attributes);
+                        localList.add(new LocalAccessNode(define(locVar, attributes)));
                     }
+                    Node[] expressions;
                     if (ltok == ASSIGN) {
                         scan();
-                        ExpList();
+                        expressions = ExpList();
+                    } else {
+                        expressions = new Node[0];
                     }
+                    statement = new AssignmentNode(localList.toArray(Node[]::new), expressions);
                 }
             }
             case IDENT, LPAR -> {
-                StatExp();
+                statement = StatExp();
             }
         }
         return statement;
