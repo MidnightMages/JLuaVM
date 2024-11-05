@@ -1,8 +1,4 @@
-package dev.asdf00.jluavm.parsing.ir.controlflow;
-
-import dev.asdf00.jluavm.parsing.ir.CompilationState;
-import dev.asdf00.jluavm.parsing.ir.IRBlock;
-import dev.asdf00.jluavm.parsing.ir.Node;
+package dev.asdf00.jluavm.parsing.ir;
 
 public class PlainInnerBlockNode extends Node {
     public final IRBlock innerBlock;

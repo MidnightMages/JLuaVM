@@ -29,6 +29,17 @@ public class SymTable {
         return rVal;
     }
 
+    public int getCurFuncClosableCnt() {
+        VarScope c = curScope;
+        int cnt = 0;
+        while (!c.isFunctionBorder) {
+            cnt += c.getClosableCount();
+            c = c.parent;
+        }
+        cnt += c.getClosableCount();
+        return cnt;
+    }
+
     public VarScope getNextLoop() {
         return curScope.getNextLoopScope();
     }

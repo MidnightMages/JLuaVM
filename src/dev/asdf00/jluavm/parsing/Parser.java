@@ -5,10 +5,7 @@ import dev.asdf00.jluavm.exceptions.loading.InternalLuaLoadingError;
 import dev.asdf00.jluavm.exceptions.loading.LuaParserException;
 import dev.asdf00.jluavm.exceptions.loading.LuaSemanticException;
 import dev.asdf00.jluavm.parsing.container.*;
-import dev.asdf00.jluavm.parsing.ir.IRBlock;
-import dev.asdf00.jluavm.parsing.ir.IRFunction;
-import dev.asdf00.jluavm.parsing.ir.Node;
-import dev.asdf00.jluavm.parsing.ir.SequenceNode;
+import dev.asdf00.jluavm.parsing.ir.*;
 import dev.asdf00.jluavm.parsing.ir.controlflow.*;
 import dev.asdf00.jluavm.parsing.ir.operations.*;
 import dev.asdf00.jluavm.parsing.ir.values.ConstantNode;
@@ -158,14 +155,17 @@ public class Parser {
             }
         }
         if (ltok == RETURN) {
-            // TODO: add return node
             scan();
+            Node[] returnValues;
             if (EXP_START.contains(ltok)) {
-                ExpList();
+                returnValues = ExpList();
+            } else {
+                returnValues = new Node[0];
             }
             if (ltok == SEMICOLON) {
                 scan();
             }
+            statements.add(new ReturnNode(returnValues, symTab.getCurFuncClosableCnt()));
         }
         return statements;
     }

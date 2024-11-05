@@ -4,11 +4,12 @@ import dev.asdf00.jluavm.exceptions.loading.LuaSemanticException;
 import dev.asdf00.jluavm.parsing.ir.controlflow.GotoNode;
 import dev.asdf00.jluavm.parsing.ir.controlflow.LabelNode;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.stream.Collectors;
 
 public class VarScope {
-    private final VarScope parent;
+    public final VarScope parent;
     private final int baseIdx;
     public final ArrayList<VarScope> children = new ArrayList<>();
     public final int id;
