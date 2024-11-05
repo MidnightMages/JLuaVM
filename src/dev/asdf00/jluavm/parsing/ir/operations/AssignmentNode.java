@@ -191,7 +191,8 @@ public class AssignmentNode extends Node {
                             if (%s.isNil()) {
                                 vm.error(new LuaMetaTableError());
                                 return;
-                            }\n
+                            }
+                            vm.addClosable(%s);\n
                             """.formatted(mtbl, val,
                             mtbl,
                             mtbl,
@@ -202,7 +203,8 @@ public class AssignmentNode extends Node {
                             mtbl,
                             mval, mtbl,
                             callInfo.resumeLabel(),
-                            mval);
+                            mval,
+                            val);
                 } else {
                     assignment = "";
                 }
