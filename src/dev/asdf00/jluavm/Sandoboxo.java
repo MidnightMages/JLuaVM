@@ -100,7 +100,7 @@ public class Sandoboxo extends LuaFunction {
                 t0 = _ENV;
                 // load constant
                 t1 = LuaObject.of("x");
-                // get index
+                // getExpression index
                 if (t0.isTable()) {
                     LuaObject table = t0;
                     LuaObject key = RTUtils.tryCoerceFloatToInt(t1);
@@ -292,7 +292,7 @@ public class Sandoboxo extends LuaFunction {
                             t1 = _ENV;
                             // load constant
                             t2 = LuaObject.of("x");
-                            // get index
+                            // getExpression index
                             if (t0.isTable()) {
                                 LuaObject table = t1;
                                 LuaObject key = RTUtils.tryCoerceFloatToInt(t2);

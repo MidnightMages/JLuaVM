@@ -1,13 +1,14 @@
 package dev.asdf00.jluavm.parsing;
 
-import dev.asdf00.jluavm.exceptions.loading.InternalLuaLoadingError;
-import dev.asdf00.jluavm.parsing.container.*;
-import dev.asdf00.jluavm.exceptions.loading.LuaParserException;
 import dev.asdf00.jluavm.exceptions.LuaLoadingException;
+import dev.asdf00.jluavm.exceptions.loading.InternalLuaLoadingError;
+import dev.asdf00.jluavm.exceptions.loading.LuaParserException;
 import dev.asdf00.jluavm.exceptions.loading.LuaSemanticException;
+import dev.asdf00.jluavm.parsing.container.*;
 import dev.asdf00.jluavm.parsing.ir.IRBlock;
 import dev.asdf00.jluavm.parsing.ir.IRFunction;
 import dev.asdf00.jluavm.parsing.ir.Node;
+import dev.asdf00.jluavm.parsing.ir.SequenceNode;
 import dev.asdf00.jluavm.parsing.ir.controlflow.*;
 import dev.asdf00.jluavm.parsing.ir.operations.*;
 import dev.asdf00.jluavm.parsing.ir.values.ConstantNode;
@@ -17,8 +18,9 @@ import dev.asdf00.jluavm.parsing.ir.values.LocalAccessNode;
 import dev.asdf00.jluavm.utils.Triple;
 import dev.asdf00.jluavm.utils.Tuple;
 
-import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.Stack;
 import java.util.function.Supplier;
 
 import static dev.asdf00.jluavm.parsing.container.TokenType.*;
@@ -75,6 +77,7 @@ public class Parser {
 
     /**
      * Closes current scope and returns the number of variables that need to be closed here
+     *
      * @return
      */
     private int exitScope() {
@@ -175,6 +178,7 @@ public class Parser {
             case SEMICOLON -> {
                 // nop
                 scan();
+                statement = null;
             }
             case BREAK -> {
                 scan();
@@ -277,19 +281,48 @@ public class Parser {
                 scan();
                 enterScope(false, true);
                 check(IDENT);
+                SpecificVarInfo iterator = define(cur, 0);
+                SpecificVarInfo internalIterator = define(new Token(IDENT, cur.pos(), "$internalIterator$"), 0);
                 if (ltok == ASSIGN) {
                     scan();
-                    // normal FOR
+                    // numerical for
                     // start
-                    Exp();
+                    Node initialValue = Exp();
                     check(COMMA);
                     // end
-                    Exp();
+                    Node upperBound = Exp();
+                    SpecificVarInfo ubVar = define(new Token(IDENT, cur.pos(), "$upperBound$"), 0);
+                    Node step;
+                    SpecificVarInfo stepVar;
                     if (ltok == COMMA) {
                         scan();
                         // step
-                        Exp();
+                        step = Exp();
+                        stepVar = define(new Token(IDENT, cur.pos(), "$forStep$"), 0);
+                    } else {
+                        // default step width is 1
+                        step = ConstantNode.ofLong(1);
+                        stepVar = define(new Token(IDENT, cur.pos(), "$forStep$"), 0);
                     }
+                    check(DO);
+                    var innerStats = Block();
+                    int closableCnt = exitScope();
+                    check(END);
+
+                    // we need to move the value of the internal iterator to the actual local iterator variable
+                    innerStats.add(0, new AssignmentNode(new Node[]{new LocalAccessNode(iterator)}, new Node[]{new LocalAccessNode(internalIterator)}));
+                    // we add the for-step to the end of the internal statements
+                    // the step might break the loop if an integer addition over/under-flows and must therefore close stuff in that case
+                    innerStats.add(new StepForNode(internalIterator, stepVar, closableCnt));
+                    Node entryCondition = new RelationalOpNode(LE.metatableFuncNameBinary, false, new LocalAccessNode(internalIterator), new LocalAccessNode(ubVar));
+
+                    // build for-loop
+                    statement = new SequenceNode(
+                            new AssignmentNode(new Node[]{new LocalAccessNode(internalIterator), new LocalAccessNode(ubVar), new LocalAccessNode(stepVar)},
+                                    new Node[]{initialValue, upperBound, step}),
+                            new CoerceNumericForNode(internalIterator, ubVar, stepVar),
+                            new IfNode(entryCondition, new IRBlock(innerStats.toArray(Node[]::new), entryCondition, true, closableCnt))
+                    );
                 } else {
                     // foreach
                     while (ltok == COMMA) {
@@ -298,12 +331,12 @@ public class Parser {
                     }
                     check(IN);
                     ExpList();
+                    check(DO);
+                    Block();
+                    int closableCnt = exitScope();
+                    check(END);
+                    // TODO: foreach loop
                 }
-                check(DO);
-                Block();
-                exitScope();
-                check(END);
-                // TODO: for loop
             }
             case FUNCTION -> {
                 scan();
@@ -674,7 +707,8 @@ public class Parser {
     private Node UnOp() {
         // not # - ~
         var opList = new Stack<TokenType>();
-        loop: for (;;) {
+        loop:
+        for (; ; ) {
             switch (ltok) {
                 case NOT, HASH, SUB, BXOR -> {
                     opList.push(ltok);

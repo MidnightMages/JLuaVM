@@ -76,13 +76,13 @@ public abstract class LuaFunction {
         returned = null;
         switch (resume) {
             case -1:
-                // try get __close meta method
+                // try getExpression __close meta method
                 t1 = t0.getMetaTable();
                 if (t1 == null) {
                     vm.error(new LuaMetaTableError());
                 }
                 t2 = Singletons.__close;
-                // get index
+                // getExpression index
                 if (t1.isTable()) {
                     LuaObject table = t1;
                     LuaObject key = RTUtils.tryCoerceFloatToInt(t2);
@@ -158,7 +158,7 @@ public abstract class LuaFunction {
         returned = null;
         switch (resume) {
             case -1:
-                // get from metatable
+                // getExpression from metatable
                 if (t2.isTable()) {
                     LuaObject metatable = t2;
                     LuaObject key = t1;
@@ -253,7 +253,7 @@ public abstract class LuaFunction {
             case -1:
                 // load constant
                 t4 = Singletons.__newindex;
-                // get index
+                // getExpression index
                 if (t3.isTable()) {
                     LuaObject table = t3;
                     LuaObject key = RTUtils.tryCoerceFloatToInt(t4);
@@ -363,7 +363,7 @@ public abstract class LuaFunction {
                     vm.error(new LuaMetaTableError());
                 }
                 t3 = Singletons.__call;
-                // get meta value for possibly callable
+                // getExpression meta value for possibly callable
                 if (t2.isTable()) {
                     LuaObject table = t2;
                     LuaObject key = RTUtils.tryCoerceFloatToInt(t3);
@@ -446,7 +446,7 @@ public abstract class LuaFunction {
                     // no meta value for x
                     t3 = LuaObject.nil();
                 } else {
-                    // get meta value for x
+                    // getExpression meta value for x
                     if (t3.isTable()) {
                         LuaObject table = t3;
                         LuaObject key = RTUtils.tryCoerceFloatToInt(t0);
@@ -486,7 +486,7 @@ public abstract class LuaFunction {
                     // no meta value for x
                     t3 = LuaObject.nil();
                 } else {
-                    // get meta value for y
+                    // getExpression meta value for y
                     if (t3.isTable()) {
                         LuaObject table = t3;
                         LuaObject key = RTUtils.tryCoerceFloatToInt(t0);

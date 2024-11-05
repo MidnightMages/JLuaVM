@@ -137,6 +137,6 @@ public class IRBlock extends Node {
                     mvalCall.resumeLabel(), mtval, close,
                     mvalCall.resumeLabel()));
         }
-        return sb.toString();
+        return sb.isEmpty() ? "// nothing to close" : sb.toString();
     }
 }

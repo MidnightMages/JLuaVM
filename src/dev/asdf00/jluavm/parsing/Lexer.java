@@ -66,7 +66,7 @@ public class Lexer {
         }
 
         // START OF NEW TOKEN
-        // get position of last retrieved char to mark a token start
+        // getExpression position of last retrieved char to mark a token start
         Position pos = input.prevPos();
         if (cur == CEOF) {
             return new Token(EOF, pos);
