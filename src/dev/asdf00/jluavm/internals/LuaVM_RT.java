@@ -158,7 +158,7 @@ public class LuaVM_RT extends LuaVM {
     }
 
     // =================================================================================================================
-    // lua vm call magic setup methods
+    // lua vm call magic setup methods (MUST be followed by return, and return must be preceded by exactly one of these, or throw internal lua error)
     // =================================================================================================================
 
     public void error(AbstractLuaError err) {
