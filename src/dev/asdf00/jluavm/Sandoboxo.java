@@ -273,10 +273,11 @@ public class Sandoboxo extends LuaFunction {
                 // if clause
                 if (RTUtils.isTruthy(t0)) {
                     vm.callInternal(5, this::innerScope0);
+                    return;
                 } else {
                     vm.callInternal(5, this::innerScope1);
+                    return;
                 }
-                t0 = null;
             case 5:
 
                 // load a
