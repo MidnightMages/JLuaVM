@@ -64,6 +64,10 @@ public final class LuaObject {
         return type;
     }
 
+    public String getTypeAsString(){
+        throw new UnsupportedOperationException();
+    }
+
     public boolean isNaN() {
         return isDouble() && Double.isNaN(dVal);
     }
@@ -547,6 +551,10 @@ public final class LuaObject {
 
     public LuaObject set(LuaObject key, LuaObject value) {
         return null;
+    }
+
+    public LuaObject set(String key, LuaObject value){
+        return set(LuaObject.of(key), value);
     }
 
     public void setBox(LuaObject val) {
