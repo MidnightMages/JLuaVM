@@ -1,5 +1,6 @@
 package dev.asdf00.jluavm.runtime.types;
 
+import dev.asdf00.jluavm.api.lambdas.*;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 
@@ -28,33 +29,33 @@ public class AtomicLuaFunction extends LuaFunction {
     }
 
     // helpers for lua functions of type F(a); F(a,b); F(a,b,...)
-    public static AtomicLuaFunction forZeroResults(BiConsumer<LuaVM_RT,LuaObject> c) {
+    public static AtomicLuaFunction forZeroResults(LLConsumer c) {
         return new AtomicLuaFunction((BiConsumer<LuaVM_RT, LuaObject[]>) (vm, args) -> c.accept(vm, args[0]));
     }
 
-//    public static AtomicLuaFunction forZeroResults(TriConsumer<LuaVM_RT,LuaObject, LuaObject> c) {
-//        return new AtomicLuaFunction((BiConsumer<LuaVM_RT, LuaObject[]>) (vm, args) -> c.accept(vm, args[0], args[1]));
-//    }
+    public static AtomicLuaFunction forZeroResults(LLBiConsumer c) {
+        return new AtomicLuaFunction((BiConsumer<LuaVM_RT, LuaObject[]>) (vm, args) -> c.accept(vm, args[0], args[1]));
+    }
     // ... more if necessary
 
     // helpers for lua functions of type F(a)->r; F(a,b)->r; F(a,b,...)->r
-    public static AtomicLuaFunction forOneResult(BiFunction<LuaVM_RT,LuaObject, LuaObject> c) {
+    public static AtomicLuaFunction forOneResult(LLFunction c) {
         return new AtomicLuaFunction((vm,args) -> new LuaObject[]{c.apply(vm,args[0])});
     }
 
-//    public static AtomicLuaFunction forOneResult(TriFunction<LuaVM_RT, LuaObject, LuaObject, LuaObject> c) {
-//        return new AtomicLuaFunction((vm,args) -> new LuaObject[]{c.apply(vm,args[0], args[1])});
-//    }
+    public static AtomicLuaFunction forOneResult(LLBiFunction c) {
+        return new AtomicLuaFunction((vm,args) -> new LuaObject[]{c.apply(vm,args[0], args[1])});
+    }
     // ... more if necessary
 
     // helpers for lua functions of type F(a)->r[]; F(a,b)->r[]; F(a,b,...)->r[]
-    public static AtomicLuaFunction forManyResults(BiFunction<LuaVM_RT, LuaObject, LuaObject[]> c) {
+    public static AtomicLuaFunction forManyResults(LLMultiFunction c) {
         return new AtomicLuaFunction((BiFunction<LuaVM_RT, LuaObject[], LuaObject[]>) (vm, args) -> c.apply(vm, args[0]));
     }
 
-//    public static AtomicLuaFunction forManyResults(TriFunction<LuaVM_RT, LuaObject, LuaObject, LuaObject[]> c) {
-//        return new AtomicLuaFunction((TriFunction<LuaVM_RT,LuaObject[], LuaObject[]>) (vm, args) -> c.apply(vm, args[0], args[1]));
-//    }
+    public static AtomicLuaFunction forManyResults(LLBiMultiFunction c) {
+        return new AtomicLuaFunction((BiFunction<LuaVM_RT, LuaObject[], LuaObject[]>) (vm, args) -> c.apply(vm, args[0], args[1]));
+    }
     // ... more if necessary
 
     @Override
