@@ -1,22 +1,20 @@
 package dev.asdf00.jluavm.parsing.ir.controlflow;
 
-import dev.asdf00.jluavm.parsing.container.VarInfo;
-import dev.asdf00.jluavm.parsing.container.VarScope;
+import dev.asdf00.jluavm.parsing.ir.CompilationState;
+import dev.asdf00.jluavm.parsing.ir.IRBlock;
 import dev.asdf00.jluavm.parsing.ir.Node;
 
-public class BreakNode extends ClosingNode {
-    private final VarScope loopScope;
+public class BreakNode extends Node {
+    public final int scopeCount;
+    public int closeCnt;
 
-    public BreakNode(VarScope loopScope, VarInfo[] toClose) {
-        super(toClose);
-        this.loopScope = loopScope;
+    public BreakNode(int scopeCount, int closeCnt) {
+        this.scopeCount = scopeCount;
+        this.closeCnt = closeCnt;
     }
 
     @Override
-    public String generate() {
-        var sb = new StringBuilder();
-        genCloses(sb);
-        sb.append("break $loop_").append(loopScope.id).append(';');
-        return sb.toString();
+    public String generate(CompilationState cState) {
+        return IRBlock.genClose(cState, closeCnt) + "\nvm.internalBreak(" + scopeCount + ");\nreturn;";
     }
 }

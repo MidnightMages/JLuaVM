@@ -198,6 +198,14 @@ public class LuaVM_RT extends LuaVM {
 
     }
 
+    public void internalContinue() {
+
+    }
+
+    public void internalBreak(int scopeCnt) {
+
+    }
+
     public void returnValue() {
         returnValue(Singletons.EMPTY_LUA_OBJ_ARRAY);
     }

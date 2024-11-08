@@ -40,7 +40,8 @@ public class IRBlock extends Node {
                     %s
                     %s
                     if (%sRTUtils.isTruthy(%s)) {
-                        break resumeSwitch;
+                        vm.internalContinue();
+                        return;
                     } else {
                         vm.internalReturn();
                         return;

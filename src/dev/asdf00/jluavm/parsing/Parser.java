@@ -182,21 +182,11 @@ public class Parser {
             }
             case BREAK -> {
                 scan();
-                var ls = symTab.getNextLoop();
-                if (ls == null) {
+                var bNode = symTab.generateBreakNode();
+                if (bNode == null) {
                     throw new LuaSemanticException(cur.pos(), "'break' is not inside a loop");
                 }
-                VarInfo[][] loopScopeVars = ls.getDefinedVars();
-                VarInfo[][] breakDefinedVars = symTab.getDefinedVars();
-                int loopScopeDepth = loopScopeVars.length - 1;
-                var closableList = new ArrayList<VarInfo>();
-                for (int i = breakDefinedVars.length - 1; i >= loopScopeDepth; i--) {
-                    for (int j = breakDefinedVars[i].length - 1; i > 0; i--) {
-                        closableList.add(breakDefinedVars[i][j]);
-                    }
-                }
-                statement = new BreakNode(ls, closableList.toArray(VarInfo[]::new));
-                // TODO: break node
+                statement = bNode;
             }
             case GOTO -> {
                 scan();
