@@ -182,6 +182,7 @@ public class Parser {
             }
             case BREAK -> {
                 scan();
+                symTab.labelNotLast();
                 var bNode = symTab.generateBreakNode();
                 if (bNode == null) {
                     throw new LuaSemanticException(cur.pos(), "'break' is not inside a loop");
@@ -190,9 +191,9 @@ public class Parser {
             }
             case GOTO -> {
                 scan();
+                symTab.labelNotLast();
                 check(IDENT);
-                statement = generateGoto();
-                // TODO: goto node
+                statement = symTab.generateGoto(cur.stVal(), cur.pos());
             }
             case DCOLON -> {
                 // label
@@ -204,6 +205,7 @@ public class Parser {
             }
             case DO -> {
                 scan();
+                symTab.labelNotLast();
                 enterScope(false, false);
                 var innerStats = Block();
                 check(END);
@@ -212,6 +214,7 @@ public class Parser {
             }
             case WHILE -> {
                 scan();
+                symTab.labelNotLast();
                 Node entryCond = Exp();
                 check(DO);
                 enterScope(false, true);
@@ -222,6 +225,7 @@ public class Parser {
             }
             case REPEAT -> {
                 scan();
+                symTab.labelNotLast();
                 enterScope(false, true);
                 var innerStats = Block();
                 check(UNTIL);
@@ -231,6 +235,7 @@ public class Parser {
             }
             case IF -> {
                 scan();
+                symTab.labelNotLast();
                 Node condition = Exp();
                 check(THEN);
                 enterScope(false, false);
@@ -269,6 +274,7 @@ public class Parser {
             }
             case FOR -> {
                 scan();
+                symTab.labelNotLast();
                 enterScope(false, true);
                 check(IDENT);
                 SpecificVarInfo iterator = define(cur, 0);
@@ -330,6 +336,7 @@ public class Parser {
             }
             case FUNCTION -> {
                 scan();
+                symTab.labelNotLast();
                 check(IDENT);
                 define(cur, 0);
                 while (ltok == DOT) {
@@ -347,6 +354,7 @@ public class Parser {
             }
             case LOCAL -> {
                 scan();
+                symTab.labelNotLast();
                 if (ltok == FUNCTION) {
                     scan();
                     check(IDENT);
@@ -377,6 +385,7 @@ public class Parser {
                 }
             }
             case IDENT, LPAR -> {
+                symTab.labelNotLast();
                 statement = StatExp();
             }
         }

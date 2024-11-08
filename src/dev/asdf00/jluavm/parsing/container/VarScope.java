@@ -3,6 +3,7 @@ package dev.asdf00.jluavm.parsing.container;
 import dev.asdf00.jluavm.exceptions.loading.LuaSemanticException;
 import dev.asdf00.jluavm.parsing.ir.controlflow.GotoNode;
 import dev.asdf00.jluavm.parsing.ir.controlflow.LabelNode;
+import dev.asdf00.jluavm.utils.Tuple;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -123,14 +124,15 @@ public class VarScope {
         return lNode;
     }
 
-    public LabelInfo getLabel(String ident) {
+    public Tuple<LabelInfo, Integer> getLabel(String ident) {
         // upwards search until function border
-        var rVal = labels.get(ident);
-        if (rVal == null && !isFunctionBorder && parent != null) {
+        var rVal = new Tuple<>(labels.get(ident), 0);
+        if (rVal.x() == null && !isFunctionBorder && parent != null) {
             rVal = parent.getLabel(ident);
+            rVal = new Tuple<>(rVal.x(), rVal.y() + 1);
         }
-        if (rVal != null) {
-            rVal.isUsed = true;
+        if (rVal.x() != null) {
+            rVal.x().isUsed = true;
         }
         return rVal;
     }

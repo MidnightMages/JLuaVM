@@ -1,41 +1,35 @@
 package dev.asdf00.jluavm.parsing.ir.controlflow;
 
-import dev.asdf00.jluavm.parsing.container.LabelInfo;
-import dev.asdf00.jluavm.parsing.container.Position;
-import dev.asdf00.jluavm.parsing.container.VarInfo;
+import dev.asdf00.jluavm.parsing.ir.CompilationState;
+import dev.asdf00.jluavm.parsing.ir.IRBlock;
+import dev.asdf00.jluavm.parsing.ir.Node;
 
-public class GotoNode extends ClosingNode {
-    public final Position pos;
-    public final String stLabel;
-    public LabelInfo label;
-    public final VarInfo[][] definedVars;
+public class GotoNode extends Node {
+    public final String resumePatchLabel;
+    public int scopeExits;
+    public int closableCnt;
+    public int closePatchCnt;
 
-    protected GotoNode(Position pos, String stLabel, LabelInfo label, VarInfo[][] definedVars, VarInfo[] toClose) {
-        super(toClose);
-        this.pos = pos;
-        this.stLabel = stLabel;
-        this.label = label;
-        this.definedVars = definedVars;
-    }
-
-    public GotoNode(Position pos, String stLabel, VarInfo[][] definedVars) {
-        this(pos, stLabel, null, definedVars, null);
-    }
-
-    public GotoNode(Position pos, String stLabel, LabelInfo label, VarInfo[] toClose) {
-        this(pos, stLabel, label, null, toClose);
+    public GotoNode(String resumePatchLabel, int scopeExits, int closableCnt, int closePatchCnt) {
+        this.resumePatchLabel = resumePatchLabel;
+        this.scopeExits = scopeExits;
+        this.closableCnt = closableCnt;
+        this.closePatchCnt = closePatchCnt;
     }
 
     @Override
-    public String generate() {
-        var sb = new StringBuilder();
-        genCloses(sb);
-        if (label.isLast) {
-            sb.append("break $goto").append(label.scopeId).append("_jumpLoop;");
-        } else {
-            sb.append("$goto_").append(label.scopeId).append("_jumpLabel = ").append(label.jmpNo)
-                    .append(";\ncontinue $goto").append(label.scopeId).append("_jumpLoop;");
-        }
-        return sb.toString();
+    public String generate(CompilationState cState) {
+        assert cState.clearEStack() == 0 : "we expect the expression stack to be empty here";
+        String closings = IRBlock.genClose(cState, closableCnt);
+        assert cState.clearEStack() == 0 : "we expect the expression stack to be empty here";
+        String patches = "";
+        return """
+                %s
+                %s
+                vm.internalGoto(%d, %s);
+                return;
+                """.formatted(closings, patches, scopeExits, resumePatchLabel);
     }
+
+    // TODO: generate patches
 }

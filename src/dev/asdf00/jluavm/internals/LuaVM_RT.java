@@ -211,6 +211,11 @@ public class LuaVM_RT extends LuaVM {
 
     }
 
+    public void internalGoto(int scopeCnt, int resume) {
+
+    }
+
+
     public void returnValue() {
         returnValue(Singletons.EMPTY_LUA_OBJ_ARRAY);
     }
