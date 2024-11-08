@@ -2,6 +2,7 @@ package dev.asdf00.jluavm.internals;
 
 import dev.asdf00.jluavm.LuaVM;
 import dev.asdf00.jluavm.runtime.errors.AbstractLuaError;
+import dev.asdf00.jluavm.runtime.errors.LuaTypeError;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.LFunc;
@@ -158,11 +159,15 @@ public class LuaVM_RT extends LuaVM {
     }
 
     // =================================================================================================================
-    // lua vm call magic setup methods
+    // lua vm call magic setup methods (MUST be followed by return, and return must be preceded by exactly one of these, or throw internal lua error)
     // =================================================================================================================
 
     public void error(AbstractLuaError err) {
         // TODO: set error
+    }
+
+    public void errorArgType(int argumentIndex, String expectedType, LuaObject actualObject) {
+        error(new LuaTypeError("Expected argument #%s to be of type '%s', but it was of type '%s'!".formatted(argumentIndex+1, expectedType, actualObject.getTypeAsString())));
     }
 
     public void callExternal(int resume, LuaFunction externalTarget) {
