@@ -1,10 +1,8 @@
 package dev.asdf00.jluavm;
 
 import dev.asdf00.jluavm.internals.LuaVM_RT;
+import dev.asdf00.jluavm.runtime.stdlib.LGlobal;
 import dev.asdf00.jluavm.runtime.stdlib.LMath;
-import dev.asdf00.jluavm.runtime.types.AtomicLuaFunction;
-import dev.asdf00.jluavm.runtime.types.LuaFunction;
-import dev.asdf00.jluavm.runtime.types.LuaObject;
 
 public abstract class LuaVM {
 
@@ -13,7 +11,7 @@ public abstract class LuaVM {
     }
 
     public LuaVM withStdLib() {
-        var _G = LuaObject.table();
+        var _G = LGlobal.getTable();
         _G.set("math", LMath.getTable());
         return this;
     }

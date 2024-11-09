@@ -2,6 +2,7 @@ package dev.asdf00.jluavm.runtime.types;
 
 import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
 import dev.asdf00.jluavm.exceptions.loading.InternalLuaLexerError;
+import dev.asdf00.jluavm.parsing.Lexer;
 
 import java.text.DecimalFormat;
 
@@ -65,11 +66,26 @@ public final class LuaObject {
     }
 
     public String getTypeAsString() {
-        throw new UnsupportedOperationException();
+        return switch (type){
+            case Types.NIL -> "nil";
+            case Types.BOOLEAN-> "boolean";
+            case Types.DOUBLE,Types.LONG-> "number";
+            case Types.STRING-> "string";
+            case Types.FUNCTION-> "function";
+            case Types.USERDATA-> "userdata";
+            case Types.THREAD-> "thread";
+            case Types.TABLE, Types.ARRAY-> "table";
+            case Types.BOX-> throw new UnsupportedOperationException("tostring-box not implemented");
+            default -> throw new IllegalStateException("Unexpected case value: " + type);
+        };
     }
 
     public boolean isNaN() {
         return isDouble() && Double.isNaN(dVal);
+    }
+
+    public boolean isTruthy() {
+        return !isNil() && this != FALSE;
     }
 
     // =================================================================================================================
@@ -576,7 +592,7 @@ public final class LuaObject {
     // =================================================================================================================
 
     /**
-     * This method is directly taken from {@linkplain dev.asdf00.jluavm.parsing.Lexer}.
+     * This method is directly taken from {@linkplain Lexer}.
      * TODO: correctly coerce Long.MIN_VAL to long instead of double
      */
     private CoercedString coerceToNumber() {
@@ -842,6 +858,22 @@ public final class LuaObject {
         }
     }
 
+    public String asString() {
+        return switch (type){
+            case Types.NIL -> "nil";
+            case Types.BOOLEAN-> this == TRUE ? "true" : "false";
+            case Types.DOUBLE-> doubleToStringFormat.format(dVal);
+            case Types.LONG-> longToStringFormat.format(lVal);
+            case Types.STRING-> (String) refVal;
+            case Types.FUNCTION-> "function: 0xSOMEADDRESS";
+            case Types.USERDATA-> "userdata: 0xSOMEADDRESS";
+            case Types.THREAD-> "thread: 0xSOMEADDRESS";
+            case Types.TABLE, Types.ARRAY-> "table: 0xSOMEADDRESS";
+            case Types.BOX-> throw new UnsupportedOperationException("tostring-box not implemented");
+            default -> throw new IllegalStateException("Unexpected case value: " + type);
+        };
+    }
+
     // =================================================================================================================
     // easy type check methods
     // =================================================================================================================
@@ -951,5 +983,10 @@ public final class LuaObject {
     public static LuaObject table(LuaObject... val) {
 
         return new LuaObject(val, 0, 0, Types.TABLE);
+    }
+
+    @Override
+    public String toString() {
+        return asString();
     }
 }
