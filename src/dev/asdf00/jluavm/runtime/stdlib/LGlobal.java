@@ -112,7 +112,7 @@ public class LGlobal {
         })));
         rv.set("select", LuaObject.of(AtomicLuaFunction.vaForManyResults((vm, args) -> {
             if (args.length == 0){
-                vm.error(new LuaArgumentError(0, "select", "number or \"#\" expected, got no value");
+                vm.error(new LuaArgumentError(0, "select", "number or \"#\" expected, got no value"));
             }
 
             var idx = args[0];
@@ -130,7 +130,7 @@ public class LGlobal {
                     return null;
                 }
                 // must be "#" then
-                return LuaObject.of(args.length-1);
+                return new LuaObject[]{LuaObject.of(args.length-1)};
             }
         })));
         rv.set("setmetatable", LuaObject.of(AtomicLuaFunction.forOneResult((vm, tbl, mt) -> {
