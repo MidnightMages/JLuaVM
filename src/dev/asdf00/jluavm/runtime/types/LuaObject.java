@@ -56,6 +56,14 @@ public final class LuaObject {
     public LuaObject getMetaTable() {
         return metaTable;
     }
+    public void setMetatable(LuaObject mt) {
+        assert mt.get(LuaObject.of("__metatable")).isNil() ;
+        metaTable = mt;
+    }
+
+    public LuaObject getMetaTableValueOrNull(String mtKey) {
+        return metaTable != null ? metaTable.get(LuaObject.of(mtKey)) : NIL;
+    }
 
     public boolean isType(int types) {
         return (type & types) != 0;
@@ -92,10 +100,12 @@ public final class LuaObject {
     // lua object interactions
     // =================================================================================================================
 
-    public LuaObject len(LuaObject other) {
-        assert isType(Types.ARITHMETIC) && other.isType(Types.ARITHMETIC);
-        // TODO: always coerce to string then concat
-        return null;
+    // MUST return an integer (caller requirement)
+    public LuaObject len() {
+        assert isType(Types.STRING) || isType(Types.TABLE);
+        if (this.isString())
+            return LuaObject.of(getString().length());
+        throw new UnsupportedOperationException("table len not implemented");
     }
 
 
@@ -562,7 +572,7 @@ public final class LuaObject {
     }
 
     public LuaObject get(LuaObject other) {
-        return null;
+        return NIL;
     }
 
     public LuaObject set(LuaObject key, LuaObject value) {
