@@ -21,33 +21,57 @@ public class LMath {
     }
 
     public static LuaObject atan(LuaVM_RT vm, LuaObject y, LuaObject xOrNil) {
-        if (!y.isNumber()) vm.errorArgType(0, "number", y);
-        if (!(xOrNil.isNumber() || xOrNil.isNil())) vm.errorArgType(1, "number or nil", xOrNil);
+        if (!y.isNumber()) {
+            vm.errorArgType(0, "number", y);
+            return null;
+        }
+        if (!(xOrNil.isNumber() || xOrNil.isNil())) {
+            vm.errorArgType(1, "number or nil", xOrNil);
+            return null;
+        }
 
         return LuaObject.of(Math.atan2(y.asDouble(), xOrNil.isNil() ? 1 : xOrNil.asDouble()));
     }
 
     public static LuaObject ceil(LuaVM_RT vm, LuaObject x) {
-        if (!x.isNumber()) vm.errorArgType(0, "number", x);
+        if (!x.isNumber()) {
+            vm.errorArgType(0, "number", x);
+            return null;
+        }
         return getIntNumberIfFits(Math.ceil(x.asDouble()));
     }
 
     public static LuaObject floor(LuaVM_RT vm, LuaObject x) {
-        if (!x.isNumber()) vm.errorArgType(0, "number", x);
+        if (!x.isNumber()) {
+            vm.errorArgType(0, "number", x);
+            return null;
+        }
         return getIntNumberIfFits(Math.floor(x.asDouble()));
     }
 
     public static LuaObject fmod(LuaVM_RT vm, LuaObject x, LuaObject y) {
-        if (!x.isNumber()) vm.errorArgType(0, "number", x);
-        if (!y.isNumber()) vm.errorArgType(1, "number", y);
+        if (!x.isNumber()) {
+            vm.errorArgType(0, "number", x);
+            return null;
+        }
+        if (!y.isNumber()) {
+            vm.errorArgType(1, "number", y);
+            return null;
+        }
 
         var anyDouble = x.isDouble() || y.isDouble();
         return LuaObject.of(anyDouble ? (x.asDouble() % y.asDouble()) : (x.asLong() % y.asLong()));
     }
 
     private static LuaObject log(LuaVM_RT vm, LuaObject x, LuaObject baseOrNil) {
-        if (!x.isNumber()) vm.errorArgType(0, "number", x);
-        if (!(baseOrNil.isNumber() | baseOrNil.isNil())) vm.errorArgType(1, "number or nil", baseOrNil);
+        if (!x.isNumber()) {
+            vm.errorArgType(0, "number", x);
+            return null;
+        }
+        if (!(baseOrNil.isNumber() | baseOrNil.isNil())) {
+            vm.errorArgType(1, "number or nil", baseOrNil);
+            return null;
+        }
 
         return LuaObject.of(baseOrNil.isNil() ? Math.log(x.asDouble()) : (Math.log(x.asDouble()) / (Math.log(baseOrNil.asDouble()))));
     }
@@ -64,10 +88,14 @@ public class LMath {
     }
 
     public static LuaObject ult(LuaVM_RT vm, LuaObject m, LuaObject n) {
-        if (!m.isIntCoercible())
+        if (!m.isIntCoercible()) {
             vm.errorArgType(0, "integer", m);
-        if (!n.isIntCoercible())
+            return null;
+        }
+        if (!n.isIntCoercible()) {
             vm.errorArgType(0, "integer", n);
+            return null;
+        }
 
         return LuaObject.of(m.asLong() < n.asLong());
     }
