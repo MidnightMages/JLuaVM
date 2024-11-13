@@ -3,7 +3,10 @@ package dev.asdf00.jluavm.runtime.stdlib;
 import dev.asdf00.jluavm.api.lambdas.LLBiFunction;
 import dev.asdf00.jluavm.api.lambdas.LLFunction;
 import dev.asdf00.jluavm.api.lambdas.LLMultiFunction;
+import dev.asdf00.jluavm.api.lambdas.LLVaFunction;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
+import dev.asdf00.jluavm.runtime.errors.LuaArgumentError;
+import dev.asdf00.jluavm.runtime.errors.LuaUserError;
 import dev.asdf00.jluavm.runtime.types.AtomicLuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 
@@ -87,6 +90,58 @@ public class LMath {
         return null;
     }
 
+    public static LuaObject random(LuaVM_RT vm, LuaObject[] args) {
+        var rnd = vm.lMathRandom;
+        if (args.length == 0) {
+            return LuaObject.of(rnd.nextDouble()); // [0d, 1d)
+        }
+        // all args must be int coercible
+        for (int i = 0; i < args.length; i++) {
+            if (!args[i].isIntCoercible()) {
+                vm.errorArgType(i, "integer", args[i]);
+                return null;
+            }
+        }
+
+        long m = -1;
+        long n = -1;
+
+        if (args.length == 1) { // math.random(n) == math.random(1,n)
+            m = 1;
+            n = args[0].asLong();
+            if (n == 0){
+                return LuaObject.of(rnd.nextLong());
+            } else if (n < 0) {
+                vm.error(new LuaArgumentError(0, "random", "interval is empty"));
+                return null;
+            }
+        } else if (args.length == 2) {
+            m = args[0].asLong();
+            n = args[1].asLong();
+        } else {
+            vm.error(new LuaUserError("too many arguments"));
+            return null;
+        }
+        return LuaObject.of(rnd.nextLong(m, n+1)); // [m, n]
+    }
+
+    // SPEC DEVIATION: we just have one 64bit seed, not (1 to 2)*64-bit
+    public static LuaObject randomseed(LuaVM_RT vm, LuaObject[] args) {
+        var rnd = vm.lMathRandom;
+        long seed;
+        if (args.length == 0){ // no seed given, so generate a new one, seed it and return the seed
+            seed = rnd.nextLong();
+        } else { // extra args (2nd and beyond) are just ignored in luac 5.4 it seems
+            if (!args[0].isIntCoercible()) {
+                vm.errorArgType(0, "integer", args[0]);
+                return null;
+            }
+            seed = args[0].asLong();
+        }
+        rnd.setSeed(seed);
+        return LuaObject.of(seed);
+    }
+
     public static LuaObject ult(LuaVM_RT vm, LuaObject m, LuaObject n) {
         if (!m.isIntCoercible()) {
             vm.errorArgType(0, "integer", m);
@@ -118,8 +173,12 @@ public class LMath {
         table.set(name, AtomicLuaFunction.forOneResult(f).obj());
     }
 
-    private static void addDualRvFunc(LuaObject table, String name, LLMultiFunction f) {
+    private static void addMultiRvVaFunc(LuaObject table, String name, LLMultiFunction f) {
         table.set(name, AtomicLuaFunction.forManyResults(f).obj());
+    }
+
+    private static void addSingleRvVaFunc(LuaObject table, String name, LLVaFunction f) {
+        table.set(name, AtomicLuaFunction.vaForOneResult(f).obj());
     }
 
     // https://www.lua.org/manual/5.4/manual.html#6.7
@@ -141,11 +200,11 @@ public class LMath {
         rv.set("maxinteger", LuaObject.of(Long.MAX_VALUE));
         // TODO add min()
         rv.set("mininteger", LuaObject.of(Long.MIN_VALUE));
-        addDualRvFunc(rv, "modf", LMath::modf);
+        addMultiRvVaFunc(rv, "modf", LMath::modf);
         rv.set("pi", LuaObject.of(Math.PI));
         addSingleRvFunc1d1d(rv, "rad", Math::toRadians);
-        // TODO add random
-        // TODO add randomseed
+        addSingleRvVaFunc(rv, "random", LMath::random);
+        addSingleRvVaFunc(rv, "randomseed", LMath::randomseed);
         addSingleRvFunc1d1d(rv, "sin", Math::sin);
         addSingleRvFunc1d1d(rv, "sqrt", Math::sqrt);
         addSingleRvFunc1d1d(rv, "tan", Math::tan);

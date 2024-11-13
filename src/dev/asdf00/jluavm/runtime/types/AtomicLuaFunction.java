@@ -53,6 +53,10 @@ public class AtomicLuaFunction extends LuaFunction {
     public static AtomicLuaFunction forOneResult(LLTriFunction c) {
         return new AtomicLuaFunction((vm, args) -> new LuaObject[]{c.apply(vm, args[0], args[1], args[2])}, 3, false);
     }
+
+    public static AtomicLuaFunction vaForOneResult(LLVaFunction c) {
+        return new AtomicLuaFunction((vm, args) -> new LuaObject[]{c.apply(vm, args)}, 0, true);
+    }
     // ... more if necessary
 
     // helpers for lua functions of type F(a)->r[]; F(a,b)->r[]; F(a,b,...)->r[]

@@ -8,6 +8,7 @@ import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.LFunc;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 
+import java.util.Random;
 import java.util.Stack;
 
 public class LuaVM_RT extends LuaVM {
@@ -41,6 +42,7 @@ public class LuaVM_RT extends LuaVM {
     private LuaObject[] arguments;
     private LuaObject[] returnVals;
     private AbstractLuaError currentError;
+    public Random lMathRandom = new Random();
 
     private void runInternal() {
         for (;;) {
