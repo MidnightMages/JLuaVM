@@ -39,7 +39,7 @@ public class LGlobal {
         error
         ipairs
         load
-        next
+        next (partially implemented)
         pairs
         pcall
         print
@@ -69,6 +69,30 @@ public class LGlobal {
                 return mt;
 
             return mt.get(LuaObject.of("__metatable"));
+        })));
+        rv.set("next", LuaObject.of(AtomicLuaFunction.vaForManyResults((vm, args) -> {
+            if (args.length == 0){
+                vm.error(new LuaArgumentError(0, "next", "table expected, got no value"));
+                return null;
+            }
+
+            var tbl = args[0];
+            if (!tbl.isTable()){
+                vm.errorArgType(0, "table", tbl);
+                return null;
+            }
+            if (args.length == 1) // return first element
+            {
+                // if table is empty, return nil instead
+                // return idx, tbl[idx]
+            }
+            else {
+                // get next idx after the given one (args[1])
+                // return again dix, tbl[idx]
+                // if given index was invalid, throw error message "invalid key to 'next'"
+                // if called with the last index, return nil
+            }
+            throw new UnsupportedOperationException("not implemented");
         })));
         rv.set("rawequal", LuaObject.of(AtomicLuaFunction.forOneResult((vm, v1, v2) -> {
             var t1 = v1.getType();
