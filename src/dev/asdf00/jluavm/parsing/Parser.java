@@ -63,6 +63,21 @@ public class Parser {
         return info;
     }
 
+    private Node genAccess(SpecificVarInfo info, String ident) {
+        if (info != null) {
+            return new LocalAccessNode(info);
+        }
+        // lookup local definition for _ENV
+        var env = symTab.get("_ENV");
+        if (env != null) {
+            // we index the local _ENV value
+            return new DeRefNode(new LocalAccessNode(env), ConstantNode.ofIdent(ident));
+        } else {
+            // this seems to be a global value, therefore we index the environment
+            return new DeRefNode(ConstantNode.ofPlain("_ENV"), ConstantNode.ofIdent(ident));
+        }
+    }
+
     private void enterScope(boolean isFunctionBorder, boolean isLoop) {
         symTab.enterScope(isFunctionBorder, isLoop);
         if (isFunctionBorder) {
@@ -429,7 +444,7 @@ public class Parser {
         } else {
             check(IDENT);
             info = symTab.get(cur.stVal());
-            result = info == null ? new DeRefNode(ConstantNode.ofPlain("_ENV"), ConstantNode.ofIdent(cur.stVal())) : new LocalAccessNode(info);
+            result = genAccess(info, cur.stVal());
             onlyIdent = true;
         }
         loop:
@@ -489,7 +504,7 @@ public class Parser {
         } else {
             check(IDENT);
             info = symTab.get(cur.stVal());
-            result = info == null ? new DeRefNode(ConstantNode.ofPlain("_ENV"), ConstantNode.ofIdent(cur.stVal())) : new LocalAccessNode(info);
+            result = genAccess(info, cur.stVal());
             onlyIdent = true;
         }
         loop:
