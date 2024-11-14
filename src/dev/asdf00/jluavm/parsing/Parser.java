@@ -95,42 +95,11 @@ public class Parser {
     private int exitScope() {
         var exited = symTab.exitScope();
         if (exited.isFunctionBorder) {
-            if (funcCur.needFixup.size() > 0) {
-                GotoNode errGoto = funcCur.needFixup.entrySet().stream().findFirst().get().getValue().get(0);
-                throw new LuaSemanticException(errGoto.pos, "No jump target found for 'goto %s'".formatted(errGoto.stLabel));
-            }
             if (funcStack.size() > 0) {
                 funcCur = funcStack.pop();
             }
         }
         return exited.getClosableCount();
-    }
-
-    private GotoNode generateGoto() {
-        LabelInfo target = symTab.getLabel(cur.stVal());
-        if (target != null) {
-            // this is a back jump
-            target.isUsed = true;
-            var closableList = new ArrayList<VarInfo>();
-            // close all defined from inner scopes
-            int lblDepth = target.definedVars.length - 1;
-            var gotoDefined = symTab.getDefinedVars();
-            for (int i = gotoDefined.length - 1; i > lblDepth; i--) {
-                for (int j = gotoDefined[i].length - 1; i > 0; i--) {
-                    closableList.add(gotoDefined[i][j]);
-                }
-            }
-            // close surplus of variables in current scope
-            for (int i = gotoDefined[lblDepth].length; i >= target.definedVars[lblDepth].length; i--) {
-                closableList.add(gotoDefined[lblDepth][i]);
-            }
-            return new GotoNode(cur.pos(), cur.stVal(), target, closableList.toArray(VarInfo[]::new));
-        } else {
-            // this is a forward jump, and we do not know where this will lead us
-            var gt = new GotoNode(cur.pos(), cur.stVal(), symTab.getDefinedVars());
-            funcCur.needFixup.computeIfAbsent(cur.stVal(), ignore -> new ArrayList<>()).add(gt);
-            return gt;
-        }
     }
 
     // =================================================================================================================
@@ -214,9 +183,8 @@ public class Parser {
                 // label
                 scan();
                 check(IDENT);
-                statement = symTab.addLabel(cur, funcCur.needFixup);
+                statement = symTab.generateLabel(cur);
                 check(DCOLON);
-                // TODO: label definition
             }
             case DO -> {
                 scan();

@@ -47,14 +47,18 @@ public class CompilationState {
         return 0;
     }
 
-    public record EStackCallInfo(int resumeLabel, String saveEStack) {
-    }
-
     public String openInnerBlock(boolean loop) {
         return "blockName";
     }
 
     public void closeInnerBlock(String content) {
 
+    }
+
+    public void registerGotoPatch(String patch, int resume) {
+
+    }
+
+    public record EStackCallInfo(int resumeLabel, String saveEStack) {
     }
 }
