@@ -208,7 +208,7 @@ public class Parser {
                 scan();
                 symTab.labelNotLast();
                 check(IDENT);
-                statement = symTab.generateGoto(cur.stVal(), cur.pos());
+                statement = symTab.generateGoto(cur);
             }
             case DCOLON -> {
                 // label
