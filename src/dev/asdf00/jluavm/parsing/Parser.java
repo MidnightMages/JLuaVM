@@ -4,9 +4,14 @@ import dev.asdf00.jluavm.exceptions.LuaLoadingException;
 import dev.asdf00.jluavm.exceptions.loading.InternalLuaLoadingError;
 import dev.asdf00.jluavm.exceptions.loading.LuaParserException;
 import dev.asdf00.jluavm.exceptions.loading.LuaSemanticException;
-import dev.asdf00.jluavm.parsing.container.*;
+import dev.asdf00.jluavm.parsing.container.SpecificVarInfo;
+import dev.asdf00.jluavm.parsing.container.Token;
+import dev.asdf00.jluavm.parsing.container.TokenType;
 import dev.asdf00.jluavm.parsing.ir.*;
-import dev.asdf00.jluavm.parsing.ir.controlflow.*;
+import dev.asdf00.jluavm.parsing.ir.controlflow.DoEndNode;
+import dev.asdf00.jluavm.parsing.ir.controlflow.FunctionCallNode;
+import dev.asdf00.jluavm.parsing.ir.controlflow.IfNode;
+import dev.asdf00.jluavm.parsing.ir.controlflow.ReturnNode;
 import dev.asdf00.jluavm.parsing.ir.operations.*;
 import dev.asdf00.jluavm.parsing.ir.values.ConstantNode;
 import dev.asdf00.jluavm.parsing.ir.values.ConstructedTableNode;
@@ -16,6 +21,7 @@ import dev.asdf00.jluavm.utils.Triple;
 import dev.asdf00.jluavm.utils.Tuple;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Stack;
 import java.util.function.Supplier;
@@ -61,6 +67,18 @@ public class Parser {
             throw new LuaSemanticException(ident.pos(), "'%s' is defined twice!".formatted(cur.stVal()));
         }
         return info;
+    }
+
+    private SpecificVarInfo defineInternal(String name) {
+        return defineInternal(name, 0);
+    }
+
+    private SpecificVarInfo defineInternal(String name, int attributes) {
+        SpecificVarInfo res = symTab.get(name);
+        if (res == null) {
+            res = define(new Token(IDENT, cur.pos(), name), attributes);
+        }
+        return res;
     }
 
     private Node genAccess(SpecificVarInfo info, String ident) {
@@ -258,63 +276,92 @@ public class Parser {
             case FOR -> {
                 scan();
                 symTab.labelNotLast();
-                enterScope(false, true);
                 check(IDENT);
-                SpecificVarInfo iterator = define(cur, 0);
-                SpecificVarInfo internalIterator = define(new Token(IDENT, cur.pos(), "$internalIterator$"), 0);
+                Token ctrlToken = cur;
                 if (ltok == ASSIGN) {
                     scan();
                     // numerical for
+                    symTab.enterScope(false, false);
+                    SpecificVarInfo internalControlVar = defineInternal("$internalControlVar$");
                     // start
                     Node initialValue = Exp();
                     check(COMMA);
                     // end
                     Node upperBound = Exp();
-                    SpecificVarInfo ubVar = define(new Token(IDENT, cur.pos(), "$upperBound$"), 0);
+                    SpecificVarInfo ubVar = defineInternal("$upperBound$");
                     Node step;
                     SpecificVarInfo stepVar;
                     if (ltok == COMMA) {
                         scan();
                         // step
                         step = Exp();
-                        stepVar = define(new Token(IDENT, cur.pos(), "$forStep$"), 0);
+                        stepVar = defineInternal("$step$");
                     } else {
                         // default step width is 1
                         step = ConstantNode.ofLong(1);
-                        stepVar = define(new Token(IDENT, cur.pos(), "$forStep$"), 0);
+                        stepVar = defineInternal("$step$");
                     }
+                    enterScope(false, true);
+                    SpecificVarInfo controlVar = define(cur, 0);
                     check(DO);
                     var innerStats = Block();
                     int closableCnt = exitScope();
+                    int outerClosableCnt = exitScope();
+                    assert outerClosableCnt == 0;
                     check(END);
 
                     // we need to move the value of the internal iterator to the actual local iterator variable
-                    innerStats.add(0, new AssignmentNode(new Node[]{new LocalAccessNode(iterator)}, new Node[]{new LocalAccessNode(internalIterator)}));
+                    innerStats.add(0, new AssignmentNode(new Node[]{new LocalAccessNode(controlVar)}, new Node[]{new LocalAccessNode(internalControlVar)}));
                     // we add the for-step to the end of the internal statements
                     // the step might break the loop if an integer addition over/under-flows and must therefore close stuff in that case
-                    innerStats.add(new StepForNode(internalIterator, stepVar, closableCnt));
-                    Node entryCondition = new RelationalOpNode(LE.metatableFuncNameBinary, false, new LocalAccessNode(internalIterator), new LocalAccessNode(ubVar));
+                    innerStats.add(new StepForNode(internalControlVar, stepVar, closableCnt));
+                    Node entryCondition = new RelationalOpNode(LE.metatableFuncNameBinary, false, new LocalAccessNode(internalControlVar), new LocalAccessNode(ubVar));
 
                     // build for-loop
-                    statement = new SequenceNode(
-                            new AssignmentNode(new Node[]{new LocalAccessNode(internalIterator), new LocalAccessNode(ubVar), new LocalAccessNode(stepVar)},
+                    statement = new DoEndNode(new Node[]{
+                            new AssignmentNode(new Node[]{new LocalAccessNode(internalControlVar), new LocalAccessNode(ubVar), new LocalAccessNode(stepVar)},
                                     new Node[]{initialValue, upperBound, step}),
-                            new CoerceNumericForNode(internalIterator, ubVar, stepVar),
-                            new IfNode(entryCondition, new IRBlock(innerStats.toArray(Node[]::new), entryCondition, true, closableCnt))
-                    );
+                            new CoerceNumericForNode(internalControlVar, ubVar, stepVar),
+                            new IfNode(entryCondition, new IRBlock(innerStats.toArray(Node[]::new), entryCondition, true, closableCnt))}, 0);
                 } else {
                     // foreach
+                    var ltkList = new ArrayList<Token>();
+                    ltkList.add(ctrlToken);
                     while (ltok == COMMA) {
                         scan();
                         check(IDENT);
+                        ltkList.add(cur);
                     }
                     check(IN);
-                    ExpList();
+                    symTab.enterScope(false, false);
+                    SpecificVarInfo internalControlVar = defineInternal("$internalControlVar$");
+                    SpecificVarInfo itrFunc = defineInternal("$iteratorFunction$");
+                    SpecificVarInfo state = defineInternal("$state$");
+                    SpecificVarInfo closing = defineInternal("$closingVariable$", 3);
+                    Node[] initials = ExpList();
+                    Node setup = new AssignmentNode(new Node[]{new LocalAccessNode(itrFunc), new LocalAccessNode(state),
+                            new LocalAccessNode(internalControlVar), new LocalAccessNode(closing)}, initials);
                     check(DO);
-                    Block();
+                    symTab.enterScope(false, true);
+                    // the first one of these is the control variable accessible to lua
+                    SpecificVarInfo[] forVals = ltkList.stream().map(t -> define(t, 0)).toArray(SpecificVarInfo[]::new);
+                    Node step = new SequenceNode(
+                            new AssignmentNode(
+                                    Arrays.stream(forVals).map(v -> new LocalAccessNode(v)).toArray(LocalAccessNode[]::new),
+                                    new Node[]{new FunctionCallNode(
+                                            null, new LocalAccessNode(itrFunc), new Node[]{new LocalAccessNode(state), new LocalAccessNode(internalControlVar)})}),
+                            new AssignmentNode(
+                                    new Node[]{new LocalAccessNode(internalControlVar)},
+                                    new Node[]{new LocalAccessNode(forVals[0])}));
+                    Node entryCondition = new EqualsNode(new LocalAccessNode(internalControlVar), ConstantNode.ofNil());
+                    ArrayList<Node> inners = Block();
+                    inners.add(step);
                     int closableCnt = exitScope();
+                    IRBlock block = new IRBlock(inners.toArray(Node[]::new), entryCondition, false, closableCnt);
+                    int outerClosableCnt = exitScope();
+                    assert outerClosableCnt == 1;
+                    statement = new DoEndNode(new Node[]{setup, step, new IfNode(new LogicNotNode(entryCondition), block)}, outerClosableCnt);
                     check(END);
-                    // TODO: foreach loop
                 }
             }
             case FUNCTION -> {
