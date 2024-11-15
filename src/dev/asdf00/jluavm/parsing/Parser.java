@@ -29,7 +29,7 @@ import java.util.function.Supplier;
 
 import static dev.asdf00.jluavm.parsing.container.TokenType.*;
 
-public class Parser {
+public final class Parser {
     private final Supplier<String> fClassNameGenerator;
     private final SymTable symTab;
     private final Lexer lexer;
@@ -43,6 +43,10 @@ public class Parser {
         symTab = new SymTable();
         lexer = new Lexer(input);
     }
+
+    // =================================================================================================================
+    //           UTIL METHODS        UTIL METHODS        UTIL METHODS        UTIL METHODS        UTIL METHODS
+    // =================================================================================================================
 
     private void check(TokenType type) {
         if (ltok != type) {
@@ -75,11 +79,7 @@ public class Parser {
     }
 
     private SpecificVarInfo defineInternal(String name, int attributes) {
-        SpecificVarInfo res = symTab.get(name);
-        if (res == null) {
-            res = define(new Token(IDENT, cur.pos(), name), attributes);
-        }
-        return res;
+        return define(new Token(IDENT, cur.pos(), name), attributes);
     }
 
     private Node genAccess(SpecificVarInfo info, String ident) {
@@ -786,40 +786,49 @@ public class Parser {
     }
 
     private void FuncBody(boolean hasSelf) {
-        // TODO definition
-        symTab.enterFunctionScope(false);
         check(LPAR);
+        Token selfPlaceholder = null;
         if (hasSelf) {
-            define(new Token(IDENT, cur.pos(), "self"), 0);
+            selfPlaceholder = new Token(IDENT, cur.pos(), "self");
         }
+        ArrayList<Token> ps;
         if (ltok == TDOT || ltok == IDENT) {
-            ParList();
+            ps = ParList();
+        } else {
+            ps = new ArrayList<>();
+        }
+        if (selfPlaceholder != null) {
+            ps.add(0, selfPlaceholder);
         }
         check(RPAR);
+        boolean hasParamsArg = !ps.isEmpty() && ps.get(ps.size() - 1).type() == TDOT;
+        symTab.enterFunctionScope(hasParamsArg);
+        // TODO define args and construct function
         Block();
         symTab.exitScope();
         check(END);
     }
 
-    private void ParList() {
-        // TODO definition
+    private ArrayList<Token> ParList() {
+        var parameters = new ArrayList<Token>();
         if (ltok == TDOT) {
             scan();
-            // TODO define params
+            parameters.add(cur);
         } else {
             check(IDENT);
-            define(cur, 0);
+            parameters.add(cur);
             while (ltok == COMMA && lla.type() != TDOT) {
                 scan();
                 check(IDENT);
-                define(cur, 0);
+                parameters.add(cur);
             }
             if (ltok == COMMA) {
                 scan();
                 check(TDOT);
-                // TODO define params
+                parameters.add(cur);
             }
         }
+        return parameters;
     }
 
     private static final EnumSet<TokenType> ARGS_START = EnumSet.of(LPAR, LITERAL_STRING, LBRAC);
