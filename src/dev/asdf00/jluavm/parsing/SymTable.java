@@ -20,9 +20,21 @@ public class SymTable {
     private final Stack<HashMap<String, ArrayList<Quadruple<GotoNode, int[], int[], Position>>>> yetToFixGotos = new Stack<>();
     private final Stack<ArrayList<Tuple<GotoNode, Position>>> dangerZone = new Stack<>();
 
-    public void enterScope(boolean isFunctionBorder, boolean isLoop) {
+    public void enterPlainScope() {
+        enterScope(false, false, false);
+    }
+
+    public void enterLoopScope() {
+        enterScope(false, false, true);
+    }
+
+    public void enterFunctionScope(boolean hasParamsArg) {
+        enterScope(true, hasParamsArg, false);
+    }
+
+    private void enterScope(boolean isFunctionBorder, boolean hasParamsArg, boolean isLoop) {
         var prev = curScope;
-        curScope = new VarScope(curScope, idSupplier++, isFunctionBorder, isLoop);
+        curScope = new VarScope(curScope, idSupplier++, isFunctionBorder, hasParamsArg, isLoop);
         if (rootScope == null) {
             rootScope = curScope;
         }
@@ -66,6 +78,14 @@ public class SymTable {
             }
         }
         return rVal;
+    }
+
+    public boolean paramsDefined() {
+        var cur = curScope;
+        while (!cur.isFunctionBorder) {
+            cur = cur.parent;
+        }
+        return cur.hasParamsArg;
     }
 
     public int getCurFuncClosableCnt() {

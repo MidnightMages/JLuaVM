@@ -10,6 +10,8 @@ import java.util.LinkedHashMap;
 import java.util.stream.Collectors;
 
 public class VarScope {
+    public static final VarScope EMPTY_DUMMY = new VarScope(null, -1, false, false, false);
+
     public final VarScope parent;
     private final int baseIdx;
     public final ArrayList<VarScope> children = new ArrayList<>();
@@ -19,15 +21,17 @@ public class VarScope {
     private final LinkedHashMap<String, LabelInfo> labels = new LinkedHashMap<>();
 
     public final boolean isFunctionBorder;
+    public final boolean hasParamsArg;
     public final boolean isLoop;
     private int closableCnt;
 
     private final LinkedHashMap<VarInfo, Integer> captured;
 
-    public VarScope(VarScope parent, int id, boolean isFunctionBorder, boolean isLoop) {
+    public VarScope(VarScope parent, int id, boolean isFunctionBorder, boolean hasParamsArg, boolean isLoop) {
         this.parent = parent;
         this.id = id;
         this.isFunctionBorder = isFunctionBorder;
+        this.hasParamsArg = hasParamsArg;
         this.isLoop = isLoop;
         if (parent == null || isFunctionBorder) {
             baseIdx = 0;

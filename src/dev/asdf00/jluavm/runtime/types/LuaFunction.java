@@ -26,7 +26,7 @@ public abstract class LuaFunction {
 
     protected static <T extends LuaFunction> T newInnerFunction(Constructor<T> ctor, LuaObject... closures) {
         try {
-            return ctor.newInstance(closures);
+            return ctor.newInstance((Object[]) closures);
         } catch (ReflectiveOperationException e) {
             throw new InternalLuaRuntimeError("error on generating inner function reference (%s)".formatted(e));
         }
