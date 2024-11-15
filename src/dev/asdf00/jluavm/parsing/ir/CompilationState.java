@@ -47,11 +47,23 @@ public class CompilationState {
         return 0;
     }
 
-    public String openInnerBlock(boolean loop) {
+    public String openInnerBlock(int localsCnt, boolean loop) {
         return "blockName";
     }
 
     public void closeInnerBlock(String content) {
+
+    }
+
+    public String openFunction(int maxLocals, int argCnt, boolean hasParamsArg, int localsCnt) {
+        return "ClassNameOfLuaFunction";
+    }
+
+    public void closeFunction(String content) {
+
+    }
+
+    public void registerInnerClass(String name) {
 
     }
 

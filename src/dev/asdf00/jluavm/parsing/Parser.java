@@ -14,10 +14,7 @@ import dev.asdf00.jluavm.parsing.ir.controlflow.FunctionCallNode;
 import dev.asdf00.jluavm.parsing.ir.controlflow.IfNode;
 import dev.asdf00.jluavm.parsing.ir.controlflow.ReturnNode;
 import dev.asdf00.jluavm.parsing.ir.operations.*;
-import dev.asdf00.jluavm.parsing.ir.values.ConstantNode;
-import dev.asdf00.jluavm.parsing.ir.values.ConstructedTableNode;
-import dev.asdf00.jluavm.parsing.ir.values.DeRefNode;
-import dev.asdf00.jluavm.parsing.ir.values.LocalAccessNode;
+import dev.asdf00.jluavm.parsing.ir.values.*;
 import dev.asdf00.jluavm.utils.Triple;
 import dev.asdf00.jluavm.utils.Tuple;
 
@@ -111,10 +108,11 @@ public final class Parser {
 
     private IRFunction Chunk() {
         symTab.enterFunctionScope(true);
-        Block();
-        symTab.exitScope();
+        var innerStats = Block();
+        int maxLocalCnt = symTab.getMaxFuncLocals();
+        VarScope scp = symTab.exitScope();
         check(EOF);
-        return null;
+        return new IRFunction(innerStats.toArray(Node[]::new), scp.getLocalsCount(), scp.getClosableCount(), maxLocalCnt, 0, false);
     }
 
     private ArrayList<Node> Block() {
@@ -144,7 +142,7 @@ public final class Parser {
     private static final EnumSet<TokenType> STAT_START = EnumSet.of(SEMICOLON, IDENT, LPAR, DCOLON, BREAK, GOTO, DO, WHILE, REPEAT, IF, FOR, FUNCTION, LOCAL);
 
     private Node Stat() {
-        Node statement = null;
+        Node statement;
         switch (ltok) {
             case SEMICOLON -> {
                 // nop
@@ -339,19 +337,21 @@ public final class Parser {
                 scan();
                 symTab.labelNotLast();
                 check(IDENT);
-                define(cur, 0);
+                Node access = genAccess(symTab.get(cur.stVal()), cur.stVal());
                 while (ltok == DOT) {
                     scan();
                     check(IDENT);
+                    access = new DeRefNode(access, ConstantNode.ofIdent(cur.stVal()));
                 }
                 boolean hasSelf = false;
                 if (ltok == COLON) {
                     scan();
                     hasSelf = true;
                     check(IDENT);
+                    access = new DeRefNode(access, ConstantNode.ofIdent(cur.stVal()));
                 }
-                FuncBody(hasSelf);
-                // TODO: function definition
+                var func = FuncBody(hasSelf);
+                statement = new AssignmentNode(new Node[]{access}, new Node[]{func});
             }
             case LOCAL -> {
                 scan();
@@ -359,9 +359,9 @@ public final class Parser {
                 if (ltok == FUNCTION) {
                     scan();
                     check(IDENT);
-                    define(cur, 0);
-                    FuncBody(false);
-                    // TODO: function definition
+                    SpecificVarInfo target = define(cur, 0);
+                    var func = FuncBody(false);
+                    statement = new AssignmentNode(new Node[]{new LocalAccessNode(target)}, new Node[]{func});
                 } else {
                     check(IDENT);
                     var localList = new ArrayList<LocalAccessNode>();
@@ -389,6 +389,7 @@ public final class Parser {
                 symTab.labelNotLast();
                 statement = StatExp();
             }
+            default -> throw new InternalLuaLoadingError("unexpected statement start '%s'".formatted(ltok.name()));
         }
         return statement;
     }
@@ -772,8 +773,7 @@ public final class Parser {
             }
             case FUNCTION -> {
                 scan();
-                // TODO definition
-                FuncBody(false);
+                return FuncBody(false);
             }
             case LBRAC -> {
                 return TableConstructor();
@@ -782,10 +782,9 @@ public final class Parser {
                 return ValExp().x();
             }
         }
-        throw new UnsupportedOperationException("not implemented");
     }
 
-    private void FuncBody(boolean hasSelf) {
+    private FunctionDefinitionNode FuncBody(boolean hasSelf) {
         check(LPAR);
         Token selfPlaceholder = null;
         if (hasSelf) {
@@ -803,10 +802,13 @@ public final class Parser {
         check(RPAR);
         boolean hasParamsArg = !ps.isEmpty() && ps.get(ps.size() - 1).type() == TDOT;
         symTab.enterFunctionScope(hasParamsArg);
-        // TODO define args and construct function
-        Block();
-        symTab.exitScope();
+        SpecificVarInfo[] args = ps.stream().map(p -> define(p, 0)).toArray(SpecificVarInfo[]::new);
+        var innerStats = Block();
+        int maxLocalCnt = symTab.getMaxFuncLocals();
+        VarScope scp = symTab.exitScope();
         check(END);
+        return new FunctionDefinitionNode(scp.captured.keySet().stream().map(info -> new LocalAccessNode(info)).toArray(LocalAccessNode[]::new),
+                new IRFunction(innerStats.toArray(Node[]::new), scp.getLocalsCount(), scp.getClosableCount(), maxLocalCnt, args.length, hasParamsArg));
     }
 
     private ArrayList<Token> ParList() {

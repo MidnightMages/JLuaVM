@@ -99,7 +99,7 @@ public class SymTable {
         return cnt;
     }
 
-    public int[] getCurFuncClsCntPerScope() {
+    private int[] getCurFuncClsCntPerScope() {
         var closeDefList = new ArrayList<Integer>();
         var cs = curScope;
         while (!cs.isFunctionBorder) {
@@ -110,7 +110,7 @@ public class SymTable {
         return closeDefList.stream().mapToInt(i -> i).toArray();
     }
 
-    public int[] getCurFuncLocalsCntPerScope() {
+    private int[] getCurFuncLocalsCntPerScope() {
         var closeDefList = new ArrayList<Integer>();
         var cs = curScope;
         while (!cs.isFunctionBorder) {
@@ -119,6 +119,20 @@ public class SymTable {
         }
         closeDefList.add(cs.getLocalsCount());
         return closeDefList.stream().mapToInt(i -> i).toArray();
+    }
+
+    public int getMaxFuncLocals() {
+        return getMaxFuncLocalsRecursive(curScope);
+    }
+
+    private static int getMaxFuncLocalsRecursive(VarScope scope) {
+        int innerMax = 0;
+        for (var s : scope.children) {
+            if (!s.isFunctionBorder) {
+                innerMax = Math.max(innerMax, getMaxFuncLocalsRecursive(s));
+            }
+        }
+        return innerMax + scope.getLocalsCount();
     }
 
     public SpecificVarInfo add(Token ident, boolean isConst, boolean isClosable) {
