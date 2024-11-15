@@ -5,6 +5,7 @@ import dev.asdf00.jluavm.exceptions.loading.InternalLuaLexerError;
 import dev.asdf00.jluavm.parsing.Lexer;
 
 import java.text.DecimalFormat;
+import java.util.HashMap;
 
 import static dev.asdf00.jluavm.parsing.Lexer.isDecDigit;
 import static dev.asdf00.jluavm.parsing.Lexer.parseHexDouble;
@@ -16,6 +17,7 @@ public final class LuaObject {
 
     public static final class Types {
         // plain types
+        @SuppressWarnings("PointlessBitwiseExpression")
         public static final int NIL = 1 << 0;
         public static final int BOOLEAN = 1 << 1;
         public static final int DOUBLE = 1 << 2;
@@ -83,7 +85,7 @@ public final class LuaObject {
             case Types.USERDATA-> "userdata";
             case Types.THREAD-> "thread";
             case Types.TABLE, Types.ARRAY-> "table";
-            case Types.BOX-> throw new UnsupportedOperationException("tostring-box not implemented");
+            case Types.BOX -> "box<" + ((LuaObject) refVal).getTypeAsString() + ">";
             default -> throw new IllegalStateException("Unexpected case value: " + type);
         };
     }
@@ -101,11 +103,13 @@ public final class LuaObject {
     // =================================================================================================================
 
     // MUST return an integer (caller requirement)
+    @SuppressWarnings("unchecked")
     public LuaObject len() {
         assert isType(Types.STRING) || isType(Types.TABLE);
         if (this.isString())
             return LuaObject.of(getString().length());
-        throw new UnsupportedOperationException("table len not implemented");
+
+        return LuaObject.of(((HashMap<LuaObject, LuaObject>) refVal).size());
     }
 
 
@@ -567,20 +571,54 @@ public final class LuaObject {
         return LuaObject.of(sx.length() <= sy.length());
     }
 
+    @SuppressWarnings("unchecked")
     public boolean hasKey(LuaObject key) {
-        return false;
+        if (!isTable() && !isUserData())
+            throw new InternalLuaRuntimeError("This is not a table nor userdata!");
+
+        if (isTable()) {
+            return ((HashMap<LuaObject, LuaObject>) refVal).containsKey(key);
+        } else {
+            throw new UnsupportedOperationException("userdata get is not yet supported");
+        }
     }
 
-    public LuaObject get(LuaObject other) {
-        return NIL;
+    @SuppressWarnings("unchecked")
+    public LuaObject get(LuaObject key) {
+        if (!isTable() && !isUserData())
+            throw new InternalLuaRuntimeError("This is not a table nor userdata!");
+
+        if (isTable()) {
+            return ((HashMap<LuaObject, LuaObject>) refVal).getOrDefault(key, NIL);
+        } else {
+            throw new UnsupportedOperationException("userdata get is not yet supported");
+        }
     }
 
+    private boolean impl(boolean a, boolean b) {
+        return !a || b;
+    }
+
+    @SuppressWarnings("unchecked")
     public LuaObject set(LuaObject key, LuaObject value) {
-        return null;
+        assert !key.isNil();
+        assert impl(key.isDouble(), !key.isNaN());
+        if (!isTable() && !isUserData())
+            throw new InternalLuaRuntimeError("This is not a table nor userdata!");
+
+        if (isTable()) {
+            return ((HashMap<LuaObject, LuaObject>) refVal).put(key, value);
+        } else {
+            throw new UnsupportedOperationException("userdata get is not yet supported");
+        }
     }
 
     public LuaObject set(String key, LuaObject value) {
         return set(LuaObject.of(key), value);
+    }
+
+    public LuaObject get(String key) {
+        return get(LuaObject.of(key));
     }
 
     public void setBox(LuaObject val) {
@@ -719,7 +757,7 @@ public final class LuaObject {
 
         String number = nb.toString();
         if (!isValid) {
-            // fail to coerce
+            // failed to coerce
             return null;
         }
         try {
@@ -875,11 +913,11 @@ public final class LuaObject {
             case Types.DOUBLE-> doubleToStringFormat.format(dVal);
             case Types.LONG-> longToStringFormat.format(lVal);
             case Types.STRING-> (String) refVal;
-            case Types.FUNCTION-> "function: 0xSOMEADDRESS";
-            case Types.USERDATA-> "userdata: 0xSOMEADDRESS";
-            case Types.THREAD-> "thread: 0xSOMEADDRESS";
-            case Types.TABLE, Types.ARRAY-> "table: 0xSOMEADDRESS";
-            case Types.BOX-> throw new UnsupportedOperationException("tostring-box not implemented");
+            case Types.FUNCTION -> "function: 0x" + Integer.toHexString(System.identityHashCode(this));
+            case Types.USERDATA -> "userdata: 0x" + Integer.toHexString(System.identityHashCode(this));
+            case Types.THREAD -> "thread: 0x" + Integer.toHexString(System.identityHashCode(this));
+            case Types.TABLE, Types.ARRAY -> "table: 0x" + Integer.toHexString(System.identityHashCode(this));
+            case Types.BOX -> "box of " + ((LuaObject) refVal).asString();
             default -> throw new IllegalStateException("Unexpected case value: " + type);
         };
     }
@@ -991,8 +1029,49 @@ public final class LuaObject {
     }
 
     public static LuaObject table(LuaObject... val) {
+        assert (val.length & 1) == 0;
+        var rv = new HashMap<LuaObject, LuaObject>();
+        for (int i = 0; i < val.length; i += 2) {
+            rv.put(val[i], val[i + 1]);
+            assert !val[i].isDouble() || val[i].isDouble() && !val[i].isIntCoercible();
+        }
+        return table(rv);
+    }
 
+    public static LuaObject table(HashMap<LuaObject, LuaObject> val) {
         return new LuaObject(val, 0, 0, Types.TABLE);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o instanceof LuaObject other) {
+            return switch (type) {
+                case Types.NIL -> other.isNil();
+                case Types.BOOLEAN -> other.isBoolean() && (getBool() == other.getBool());
+                case Types.DOUBLE -> other.isDouble() && (dVal == other.dVal);
+                case Types.LONG -> other.isLong() && (lVal == other.lVal);
+                case Types.STRING -> other.isString() && (refVal.equals(other.refVal));
+                case Types.FUNCTION, Types.USERDATA, Types.THREAD, Types.TABLE, Types.ARRAY, Types.BOX -> this == other;
+                default -> throw new IllegalStateException("Unexpected case value: " + type);
+            };
+        } else {
+            return false;
+        }
+    }
+
+    @Override
+    public int hashCode() {
+        return switch (type) {
+            case Types.NIL -> 0;
+            case Types.BOOLEAN -> this == TRUE ? 1 : 2;
+            case Types.DOUBLE ->
+                    type * 31 + ((int) (Double.doubleToRawLongBits(dVal) >> 32)) * 31 + ((int) Double.doubleToRawLongBits(dVal));
+            case Types.LONG -> type * 31 + ((int) (lVal >> 32)) * 31 + ((int) lVal);
+            case Types.STRING, Types.FUNCTION, Types.USERDATA, Types.THREAD, Types.TABLE, Types.ARRAY ->
+                    type * 31 + refVal.hashCode();
+            case Types.BOX -> type * 31 + System.identityHashCode(this);
+            default -> throw new IllegalStateException("Unexpected case value: " + type);
+        };
     }
 
     @Override
