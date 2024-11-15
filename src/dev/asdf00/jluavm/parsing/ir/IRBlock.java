@@ -4,16 +4,18 @@ public class IRBlock extends Node {
     public final Node[] statements;
     public final Node continueCondition;
     public final boolean breakOnFalse;
+    public final int localCnt;
     public final int closableCnt;
 
-    public IRBlock(Node[] statements, int closableCnt) {
-        this(statements, null, false, closableCnt);
+    public IRBlock(Node[] statements, int localCnt, int closableCnt) {
+        this(statements, null, false, localCnt, closableCnt);
     }
 
-    public IRBlock(Node[] statements, Node continueCondition, boolean breakOnFalse, int closableCnt) {
+    public IRBlock(Node[] statements, Node continueCondition, boolean breakOnFalse, int localCnt, int closableCnt) {
         this.statements = statements;
         this.continueCondition = continueCondition;
         this.breakOnFalse = breakOnFalse;
+        this.localCnt = localCnt;
         this.closableCnt = closableCnt;
     }
 

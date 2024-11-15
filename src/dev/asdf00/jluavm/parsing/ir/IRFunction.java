@@ -5,7 +5,7 @@ public class IRFunction extends IRBlock {
     public boolean hasParams;
 
     public IRFunction(String jClassName) {
-        super(null, 0);
+        super(null, 0, 0);
         this.jClassName = jClassName;
         this.hasParams = false;
     }

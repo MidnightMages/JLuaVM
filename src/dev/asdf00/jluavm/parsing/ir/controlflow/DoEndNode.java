@@ -6,10 +6,12 @@ import dev.asdf00.jluavm.parsing.ir.Node;
 
 public class DoEndNode extends Node {
     public final Node[] block;
+    public final int localCnt;
     public final int toClose;
 
-    public DoEndNode(Node[] block, int toClose) {
+    public DoEndNode(Node[] block, int localCnt, int toClose) {
         this.block = block;
+        this.localCnt = localCnt;
         this.toClose = toClose;
     }
 

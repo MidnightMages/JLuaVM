@@ -4,9 +4,15 @@ import dev.asdf00.jluavm.exceptions.LuaLoadingException;
 import dev.asdf00.jluavm.exceptions.loading.InternalLuaLoadingError;
 import dev.asdf00.jluavm.exceptions.loading.LuaParserException;
 import dev.asdf00.jluavm.exceptions.loading.LuaSemanticException;
-import dev.asdf00.jluavm.parsing.container.*;
+import dev.asdf00.jluavm.parsing.container.SpecificVarInfo;
+import dev.asdf00.jluavm.parsing.container.Token;
+import dev.asdf00.jluavm.parsing.container.TokenType;
+import dev.asdf00.jluavm.parsing.container.VarScope;
 import dev.asdf00.jluavm.parsing.ir.*;
-import dev.asdf00.jluavm.parsing.ir.controlflow.*;
+import dev.asdf00.jluavm.parsing.ir.controlflow.DoEndNode;
+import dev.asdf00.jluavm.parsing.ir.controlflow.FunctionCallNode;
+import dev.asdf00.jluavm.parsing.ir.controlflow.IfNode;
+import dev.asdf00.jluavm.parsing.ir.controlflow.ReturnNode;
 import dev.asdf00.jluavm.parsing.ir.operations.*;
 import dev.asdf00.jluavm.parsing.ir.values.ConstantNode;
 import dev.asdf00.jluavm.parsing.ir.values.ConstructedTableNode;
@@ -16,13 +22,14 @@ import dev.asdf00.jluavm.utils.Triple;
 import dev.asdf00.jluavm.utils.Tuple;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Stack;
 import java.util.function.Supplier;
 
 import static dev.asdf00.jluavm.parsing.container.TokenType.*;
 
-public class Parser {
+public final class Parser {
     private final Supplier<String> fClassNameGenerator;
     private final SymTable symTab;
     private final Lexer lexer;
@@ -36,6 +43,10 @@ public class Parser {
         symTab = new SymTable();
         lexer = new Lexer(input);
     }
+
+    // =================================================================================================================
+    //           UTIL METHODS        UTIL METHODS        UTIL METHODS        UTIL METHODS        UTIL METHODS
+    // =================================================================================================================
 
     private void check(TokenType type) {
         if (ltok != type) {
@@ -63,6 +74,14 @@ public class Parser {
         return info;
     }
 
+    private SpecificVarInfo defineInternal(String name) {
+        return defineInternal(name, 0);
+    }
+
+    private SpecificVarInfo defineInternal(String name, int attributes) {
+        return define(new Token(IDENT, cur.pos(), name), attributes);
+    }
+
     private Node genAccess(SpecificVarInfo info, String ident) {
         if (info != null) {
             return new LocalAccessNode(info);
@@ -78,37 +97,6 @@ public class Parser {
         }
     }
 
-    private void enterScope(boolean isFunctionBorder, boolean isLoop) {
-        symTab.enterScope(isFunctionBorder, isLoop);
-        if (isFunctionBorder) {
-            var f = new IRFunction(fClassNameGenerator.get());
-            funcStack.push(f);
-            funcCur = f;
-        }
-    }
-
-    /**
-     * Closes current scope and returns the number of variables that need to be closed here
-     *
-     * @return
-     */
-    private int exitScope() {
-        var exited = symTab.exitScope();
-        if (exited.isFunctionBorder) {
-            if (funcStack.size() > 0) {
-                funcCur = funcStack.pop();
-            }
-        }
-        return exited.getClosableCount();
-    }
-
-    // =================================================================================================================
-    //    PARSE STATE     PARSE STATE     PARSE STATE     PARSE STATE     PARSE STATE     PARSE STATE     PARSE STATE
-    // =================================================================================================================
-
-    private final Stack<IRFunction> funcStack = new Stack<>();
-    private IRFunction funcCur;
-
     // =================================================================================================================
     //    PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING
     // =================================================================================================================
@@ -122,12 +110,11 @@ public class Parser {
     }
 
     private IRFunction Chunk() {
-        enterScope(true, false);
+        symTab.enterFunctionScope(true);
         Block();
-        var topLevelFunction = funcCur;
-        exitScope();
+        symTab.exitScope();
         check(EOF);
-        return topLevelFunction;
+        return null;
     }
 
     private ArrayList<Node> Block() {
@@ -189,132 +176,163 @@ public class Parser {
             case DO -> {
                 scan();
                 symTab.labelNotLast();
-                enterScope(false, false);
+                symTab.enterPlainScope();
                 var innerStats = Block();
                 check(END);
-                int closableCnt = exitScope();
-                statement = new DoEndNode(innerStats.toArray(Node[]::new), closableCnt);
+                VarScope scp = symTab.exitScope();
+                statement = new DoEndNode(innerStats.toArray(Node[]::new), scp.getLocalsCount(), scp.getClosableCount());
             }
             case WHILE -> {
                 scan();
                 symTab.labelNotLast();
                 Node entryCond = Exp();
                 check(DO);
-                enterScope(false, true);
+                symTab.enterLoopScope();
                 var innerStats = Block();
                 check(END);
-                int closableCnt = exitScope();
-                statement = new IfNode(entryCond, new IRBlock(innerStats.toArray(Node[]::new), entryCond, true, closableCnt));
+                VarScope scp = symTab.exitScope();
+                statement = new IfNode(entryCond, new IRBlock(innerStats.toArray(Node[]::new), entryCond, true,
+                        scp.getLocalsCount(), scp.getClosableCount()));
             }
             case REPEAT -> {
                 scan();
                 symTab.labelNotLast();
-                enterScope(false, true);
+                symTab.enterLoopScope();
                 var innerStats = Block();
                 check(UNTIL);
                 Node exitCond = Exp();
-                int closableCnt = exitScope();
-                statement = new PlainInnerBlockNode(new IRBlock(innerStats.toArray(Node[]::new), exitCond, false, closableCnt));
+                VarScope scp = symTab.exitScope();
+                statement = new PlainInnerBlockNode(new IRBlock(innerStats.toArray(Node[]::new), exitCond, false,
+                        scp.getLocalsCount(), scp.getClosableCount()));
             }
             case IF -> {
                 scan();
                 symTab.labelNotLast();
                 Node condition = Exp();
                 check(THEN);
-                enterScope(false, false);
+                symTab.enterPlainScope();
                 var thenBlock = Block();
-                int thenCCnt = exitScope();
+                VarScope thenScp = symTab.exitScope();
                 var elifConds = new ArrayList<Node>();
                 var elifBlocks = new ArrayList<ArrayList<Node>>();
-                var elifCCnts = new ArrayList<Integer>();
+                var elifScps = new ArrayList<VarScope>();
                 while (ltok == ELSEIF) {
                     scan();
                     var elifCond = Exp();
                     elifConds.add(elifCond);
                     check(THEN);
-                    enterScope(false, false);
+                    symTab.enterPlainScope();
                     var elifBlock = Block();
                     elifBlocks.add(elifBlock);
-                    int elifCCnt = exitScope();
-                    elifCCnts.add(elifCCnt);
+                    elifScps.add(symTab.exitScope());
                 }
                 ArrayList<Node> elseBlock = null;
-                int elseCCnt = 0;
+                VarScope elseScp = VarScope.EMPTY_DUMMY;
                 if (ltok == ELSE) {
                     scan();
-                    enterScope(false, false);
+                    symTab.enterLoopScope();
                     elseBlock = Block();
-                    elseCCnt = exitScope();
+                    elseScp = symTab.exitScope();
                 }
                 check(END);
                 IRBlock[] elifs = new IRBlock[elifBlocks.size()];
                 for (int i = 0; i < elifs.length; i++) {
-                    elifs[i] = new IRBlock(elifBlocks.get(i).toArray(Node[]::new), elifCCnts.get(i));
+                    elifs[i] = new IRBlock(elifBlocks.get(i).toArray(Node[]::new), elifScps.get(i).getLocalsCount(), elifScps.get(i).getClosableCount());
                 }
-                statement = new IfNode(condition, new IRBlock(thenBlock.toArray(Node[]::new), thenCCnt),
+                statement = new IfNode(condition, new IRBlock(thenBlock.toArray(Node[]::new), thenScp.getLocalsCount(), thenScp.getClosableCount()),
                         elifConds.toArray(Node[]::new), elifs,
-                        new IRBlock(elseBlock == null ? null : elseBlock.toArray(Node[]::new), elseCCnt));
+                        new IRBlock(elseBlock == null ? null : elseBlock.toArray(Node[]::new), elseScp.getLocalsCount(), elseScp.getClosableCount()));
             }
             case FOR -> {
                 scan();
                 symTab.labelNotLast();
-                enterScope(false, true);
                 check(IDENT);
-                SpecificVarInfo iterator = define(cur, 0);
-                SpecificVarInfo internalIterator = define(new Token(IDENT, cur.pos(), "$internalIterator$"), 0);
+                Token ctrlToken = cur;
                 if (ltok == ASSIGN) {
                     scan();
                     // numerical for
+                    symTab.enterPlainScope();
+                    SpecificVarInfo internalControlVar = defineInternal("$internalControlVar$");
                     // start
                     Node initialValue = Exp();
                     check(COMMA);
                     // end
                     Node upperBound = Exp();
-                    SpecificVarInfo ubVar = define(new Token(IDENT, cur.pos(), "$upperBound$"), 0);
+                    SpecificVarInfo ubVar = defineInternal("$upperBound$");
                     Node step;
                     SpecificVarInfo stepVar;
                     if (ltok == COMMA) {
                         scan();
                         // step
                         step = Exp();
-                        stepVar = define(new Token(IDENT, cur.pos(), "$forStep$"), 0);
+                        stepVar = defineInternal("$step$");
                     } else {
                         // default step width is 1
                         step = ConstantNode.ofLong(1);
-                        stepVar = define(new Token(IDENT, cur.pos(), "$forStep$"), 0);
+                        stepVar = defineInternal("$step$");
                     }
+                    symTab.enterLoopScope();
+                    SpecificVarInfo controlVar = define(cur, 0);
                     check(DO);
                     var innerStats = Block();
-                    int closableCnt = exitScope();
+                    VarScope innerLoopScp = symTab.exitScope();
+                    VarScope outerLoopScp = symTab.exitScope();
                     check(END);
 
                     // we need to move the value of the internal iterator to the actual local iterator variable
-                    innerStats.add(0, new AssignmentNode(new Node[]{new LocalAccessNode(iterator)}, new Node[]{new LocalAccessNode(internalIterator)}));
+                    innerStats.add(0, new AssignmentNode(new Node[]{new LocalAccessNode(controlVar)}, new Node[]{new LocalAccessNode(internalControlVar)}));
                     // we add the for-step to the end of the internal statements
                     // the step might break the loop if an integer addition over/under-flows and must therefore close stuff in that case
-                    innerStats.add(new StepForNode(internalIterator, stepVar, closableCnt));
-                    Node entryCondition = new RelationalOpNode(LE.metatableFuncNameBinary, false, new LocalAccessNode(internalIterator), new LocalAccessNode(ubVar));
+                    innerStats.add(new StepForNode(internalControlVar, stepVar, innerLoopScp.getClosableCount()));
+                    Node entryCondition = new RelationalOpNode(LE.metatableFuncNameBinary, false, new LocalAccessNode(internalControlVar), new LocalAccessNode(ubVar));
 
                     // build for-loop
-                    statement = new SequenceNode(
-                            new AssignmentNode(new Node[]{new LocalAccessNode(internalIterator), new LocalAccessNode(ubVar), new LocalAccessNode(stepVar)},
+                    statement = new DoEndNode(new Node[]{
+                            new AssignmentNode(new Node[]{new LocalAccessNode(internalControlVar), new LocalAccessNode(ubVar), new LocalAccessNode(stepVar)},
                                     new Node[]{initialValue, upperBound, step}),
-                            new CoerceNumericForNode(internalIterator, ubVar, stepVar),
-                            new IfNode(entryCondition, new IRBlock(innerStats.toArray(Node[]::new), entryCondition, true, closableCnt))
-                    );
+                            new CoerceNumericForNode(internalControlVar, ubVar, stepVar),
+                            new IfNode(entryCondition, new IRBlock(innerStats.toArray(Node[]::new), entryCondition, true,
+                                    innerLoopScp.getLocalsCount(), innerLoopScp.getClosableCount()))},
+                            outerLoopScp.getLocalsCount(), outerLoopScp.getClosableCount());
                 } else {
                     // foreach
+                    var ltkList = new ArrayList<Token>();
+                    ltkList.add(ctrlToken);
                     while (ltok == COMMA) {
                         scan();
                         check(IDENT);
+                        ltkList.add(cur);
                     }
                     check(IN);
-                    ExpList();
+                    symTab.enterPlainScope();
+                    SpecificVarInfo internalControlVar = defineInternal("$internalControlVar$");
+                    SpecificVarInfo itrFunc = defineInternal("$iteratorFunction$");
+                    SpecificVarInfo state = defineInternal("$state$");
+                    SpecificVarInfo closing = defineInternal("$closingVariable$", 3);
+                    Node[] initials = ExpList();
+                    Node setup = new AssignmentNode(new Node[]{new LocalAccessNode(itrFunc), new LocalAccessNode(state),
+                            new LocalAccessNode(internalControlVar), new LocalAccessNode(closing)}, initials);
                     check(DO);
-                    Block();
-                    int closableCnt = exitScope();
+                    symTab.enterLoopScope();
+                    // the first one of these is the control variable accessible to lua
+                    SpecificVarInfo[] forVals = ltkList.stream().map(t -> define(t, 0)).toArray(SpecificVarInfo[]::new);
+                    Node step = new SequenceNode(
+                            new AssignmentNode(
+                                    Arrays.stream(forVals).map(v -> new LocalAccessNode(v)).toArray(LocalAccessNode[]::new),
+                                    new Node[]{new FunctionCallNode(
+                                            null, new LocalAccessNode(itrFunc), new Node[]{new LocalAccessNode(state), new LocalAccessNode(internalControlVar)})}),
+                            new AssignmentNode(
+                                    new Node[]{new LocalAccessNode(internalControlVar)},
+                                    new Node[]{new LocalAccessNode(forVals[0])}));
+                    Node entryCondition = new EqualsNode(new LocalAccessNode(internalControlVar), ConstantNode.ofNil());
+                    ArrayList<Node> inners = Block();
+                    inners.add(step);
+                    VarScope innerLoopScope = symTab.exitScope();
+                    IRBlock block = new IRBlock(inners.toArray(Node[]::new), entryCondition, false, innerLoopScope.getLocalsCount(), innerLoopScope.getClosableCount());
+                    VarScope outerClosableCnt = symTab.exitScope();
+                    statement = new DoEndNode(new Node[]{setup, step, new IfNode(new LogicNotNode(entryCondition), block)},
+                            outerClosableCnt.getLocalsCount(), outerClosableCnt.getClosableCount());
                     check(END);
-                    // TODO: foreach loop
                 }
             }
             case FUNCTION -> {
@@ -747,7 +765,7 @@ public class Parser {
             }
             case TDOT -> {
                 scan();
-                if (!funcCur.hasParams) {
+                if (!symTab.paramsDefined()) {
                     throw new LuaSemanticException(cur.pos(), "cannot use '...' outside a vararg function");
                 }
                 return new LocalAccessNode(symTab.get("..."));
@@ -768,40 +786,49 @@ public class Parser {
     }
 
     private void FuncBody(boolean hasSelf) {
-        // TODO definition
-        enterScope(true, false);
         check(LPAR);
+        Token selfPlaceholder = null;
         if (hasSelf) {
-            define(new Token(IDENT, cur.pos(), "self"), 0);
+            selfPlaceholder = new Token(IDENT, cur.pos(), "self");
         }
+        ArrayList<Token> ps;
         if (ltok == TDOT || ltok == IDENT) {
-            ParList();
+            ps = ParList();
+        } else {
+            ps = new ArrayList<>();
+        }
+        if (selfPlaceholder != null) {
+            ps.add(0, selfPlaceholder);
         }
         check(RPAR);
+        boolean hasParamsArg = !ps.isEmpty() && ps.get(ps.size() - 1).type() == TDOT;
+        symTab.enterFunctionScope(hasParamsArg);
+        // TODO define args and construct function
         Block();
-        exitScope();
+        symTab.exitScope();
         check(END);
     }
 
-    private void ParList() {
-        // TODO definition
+    private ArrayList<Token> ParList() {
+        var parameters = new ArrayList<Token>();
         if (ltok == TDOT) {
             scan();
-            funcCur.hasParams = true;
+            parameters.add(cur);
         } else {
             check(IDENT);
-            define(cur, 0);
+            parameters.add(cur);
             while (ltok == COMMA && lla.type() != TDOT) {
                 scan();
                 check(IDENT);
-                define(cur, 0);
+                parameters.add(cur);
             }
             if (ltok == COMMA) {
                 scan();
                 check(TDOT);
-                funcCur.hasParams = true;
+                parameters.add(cur);
             }
         }
+        return parameters;
     }
 
     private static final EnumSet<TokenType> ARGS_START = EnumSet.of(LPAR, LITERAL_STRING, LBRAC);
