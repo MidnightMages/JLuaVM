@@ -10,7 +10,7 @@ import java.util.Stack;
 import java.util.function.Supplier;
 
 public final class CompilationState {
-    private final Supplier<String> jClassNameGenerator = null;
+    private final Supplier<String> jClassNameGenerator;
 
     public final ArrayList<String> functionJavaCode = new ArrayList<>();
     public final ArrayList<ArrayList<Integer>> innerFunctionDependencies = new ArrayList<>();
@@ -20,6 +20,10 @@ public final class CompilationState {
 
     private final Stack<FunctionScope> funcStack = new Stack<>();
     private FunctionScope curFunc = null;
+
+    public CompilationState(Supplier<String> jClassNameGenerator) {
+        this.jClassNameGenerator = jClassNameGenerator;
+    }
 
     // =================================================================================================================
     // scope building helpers manipulation

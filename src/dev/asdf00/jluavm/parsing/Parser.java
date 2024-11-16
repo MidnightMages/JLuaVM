@@ -27,7 +27,6 @@ import java.util.function.Supplier;
 import static dev.asdf00.jluavm.parsing.container.TokenType.*;
 
 public final class Parser {
-    private final Supplier<String> fClassNameGenerator;
     private final SymTable symTab;
     private final Lexer lexer;
     private TokenType ltok = EOF;  // TokenType of la
@@ -35,8 +34,7 @@ public final class Parser {
     private Token la;  // lookahead token
     private Token lla;  // lookahead token 2
 
-    public Parser(Supplier<String> fClassNameGenerator, String input) {
-        this.fClassNameGenerator = fClassNameGenerator;
+    public Parser(String input) {
         symTab = new SymTable();
         lexer = new Lexer(input);
     }
