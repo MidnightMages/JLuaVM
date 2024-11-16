@@ -24,7 +24,7 @@ public class LogicBinaryOpNode extends Node {
          * expression stack spot of the (non-)truthy variable is set to always trigger the if condition  on resume.
          * Inside the 'if', a second switch-case is placed that again jumps according to the value of the resume.
          */
-        int beforeMaxResume = cState.getMaxResumeLabel();
+        int beforeMaxResume = cState.getCurResumeLabel();
         var sb = new StringBuilder();
         sb.append("\nif (");
         if (isOr) {
@@ -46,7 +46,7 @@ public class LogicBinaryOpNode extends Node {
         sb.append("}\n").append(rSpot).append(" = ").append(ySpot).append(";\n}");
 
         String ifBlock = sb.toString();
-        int afterMaxResume = cState.getMaxResumeLabel();
+        int afterMaxResume = cState.getCurResumeLabel();
         if (afterMaxResume > beforeMaxResume) {
             // generate outer jump label before if
             var isb = new StringBuilder();

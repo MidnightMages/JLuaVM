@@ -152,6 +152,11 @@ public class LuaVM_RT extends LuaVM {
         return neStack;
     }
 
+    // to let the vm know how many local variables are used in this scope and need to be cleaned up afterward
+    public void registerLocals(int count) {
+
+    }
+
     public void addClosable(LuaObject obj) {
         curFrame.addClosable(obj);
     }

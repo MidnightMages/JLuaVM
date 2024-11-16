@@ -16,7 +16,6 @@ import java.util.Arrays;
 
 public abstract class LuaFunction {
     public final LuaObject[] closures;
-    public LuaObject _ENV;
 
     public LuaFunction(LuaObject[] closures) {
         this.closures = closures;
@@ -116,10 +115,6 @@ public abstract class LuaFunction {
             default:
                 throw new InternalLuaRuntimeError("unknown resume point " + resume);
         }
-    }
-
-    protected static void closeNext(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
-        // TODO
     }
 
     // =================================================================================================================

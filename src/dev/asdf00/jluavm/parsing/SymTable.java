@@ -186,7 +186,7 @@ public class SymTable {
             for (int lc : lbl.localsPerScope) {
                 localsForLabel += lc;
             }
-            return new GotoNode(gotoPatchFor(gttk.stVal()), perScopeCloseCnt.length - lcpsl, toClose, 0, localsForLabel, localDiff);
+            return new GotoNode(lbl, perScopeCloseCnt.length - lcpsl, toClose, 0, localsForLabel, localDiff);
         } else {
             // forward jump
             /*-
@@ -197,7 +197,7 @@ public class SymTable {
              */
             var cDefs = getCurFuncClsCntPerScope();
             var lDefs = getCurFuncLocalsCntPerScope();
-            var g = new GotoNode(gotoPatchFor(gttk.stVal()));
+            var g = new GotoNode();
             yetToFixGotos.peek().computeIfAbsent(gttk.stVal(), k -> new ArrayList<>()).add(new Quadruple<>(g, lDefs, cDefs, gttk.pos()));
             return g;
         }
@@ -229,6 +229,7 @@ public class SymTable {
                 // we jump into scopes of local variables which is only allowed if the label is the last statement in a block
                 dangerZone.peek().add(new Tuple<>(gtt.w(), gtt.z()));
             }
+            gtt.w().label = info;
             gtt.w().scopeExits = scopeExits;
             gtt.w().closableCnt = toClose;
             gtt.w().closePatchCnt = toPatch;
@@ -243,10 +244,5 @@ public class SymTable {
             var elem = dangerZone.peek().get(0);
             throw new LuaSemanticException(elem.y(), "jump into scope of local variable");
         }
-    }
-
-    public static String gotoPatchFor(String ident) {
-        // TODO: generate unique patch for each and every label info even if ident is the same
-        return "###labelpatch_" + ident + "###";
     }
 }

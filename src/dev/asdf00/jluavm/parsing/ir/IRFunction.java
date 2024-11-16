@@ -1,7 +1,5 @@
 package dev.asdf00.jluavm.parsing.ir;
 
-import dev.asdf00.jluavm.parsing.container.SpecificVarInfo;
-
 public class IRFunction extends Node {
     public final Node[] statements;
     public final int localCnt;
@@ -21,7 +19,7 @@ public class IRFunction extends Node {
 
     @Override
     public String generate(CompilationState cState) {
-        String jClassName = cState.openFunction(maxLocals, argCnt, hasParamsArg, localCnt);
+        int innerFunctionIdx = cState.openFunction(maxLocals, argCnt, hasParamsArg, localCnt);
         var sb = new StringBuilder();
         for (int i = 0; i < statements.length; i++) {
             sb.append(statements[i].generate(cState)).append('\n');
@@ -34,6 +32,6 @@ public class IRFunction extends Node {
                     return;
                     """);
         cState.closeFunction(sb.toString());
-        return jClassName;
+        return Integer.toString(innerFunctionIdx);
     }
 }

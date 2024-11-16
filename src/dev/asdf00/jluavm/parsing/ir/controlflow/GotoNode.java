@@ -1,5 +1,6 @@
 package dev.asdf00.jluavm.parsing.ir.controlflow;
 
+import dev.asdf00.jluavm.parsing.container.LabelInfo;
 import dev.asdf00.jluavm.parsing.ir.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.IRBlock;
 import dev.asdf00.jluavm.parsing.ir.Node;
@@ -7,19 +8,19 @@ import dev.asdf00.jluavm.parsing.ir.Node;
 import java.util.ArrayList;
 
 public class GotoNode extends Node {
-    public final String resumePatchLabel;
+    public LabelInfo label;
     public int scopeExits;
     public int closableCnt;
     public int closePatchCnt;
     public int firstLocalToDrop;
     public int dropLocalsCnt;
 
-    public GotoNode(String resumePatchLabel) {
-        this(resumePatchLabel, 0, 0, 0, 0, 0);
+    public GotoNode() {
+        this(null, 0, 0, 0, 0, 0);
     }
 
-    public GotoNode(String resumePatchLabel, int scopeExits, int closableCnt, int closePatchCnt, int firstLocalToDrop, int dropLocalsCnt) {
-        this.resumePatchLabel = resumePatchLabel;
+    public GotoNode(LabelInfo label, int scopeExits, int closableCnt, int closePatchCnt, int firstLocalToDrop, int dropLocalsCnt) {
+        this.label = label;
         this.scopeExits = scopeExits;
         this.closableCnt = closableCnt;
         this.closePatchCnt = closePatchCnt;
@@ -46,6 +47,6 @@ public class GotoNode extends Node {
                 %s
                 vm.internalGoto(%d, %s);
                 return;
-                """.formatted(closings, patches.toString(), scopeExits, resumePatchLabel);
+                """.formatted(closings, patches.toString(), scopeExits, cState.patchForLabel(label));
     }
 }

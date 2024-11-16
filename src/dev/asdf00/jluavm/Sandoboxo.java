@@ -28,7 +28,8 @@ import java.lang.reflect.Constructor;
  * </pre>
  */
 @SuppressWarnings({"IfStatementWithIdenticalBranches", "ConstantValue"})
-public class Sandoboxo extends LuaFunction {
+public class Sandoboxo extends LuaFunction {;
+    public static LuaObject _ENV;
     public static Constructor<? extends LuaFunction>[] innerFunctions; // populated on class load
 
     public Sandoboxo(LuaObject[] closures) {

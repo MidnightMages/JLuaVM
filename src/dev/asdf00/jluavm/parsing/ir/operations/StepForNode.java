@@ -24,9 +24,9 @@ public class StepForNode extends Node {
         String setDouble = CoerceNumericForNode.setLocalStatement(iteratorVar, "LuaObject.ofDouble(%s.getDouble() + %s.getDouble())".formatted(itr, sv));
         if (closableCnt > 0) {
             String closings;
-            int lower = cState.getMaxResumeLabel();
+            int lower = cState.getCurResumeLabel();
             closings = IRBlock.genClose(cState, closableCnt);
-            int upper = cState.getMaxResumeLabel();
+            int upper = cState.getCurResumeLabel();
             var sb = new StringBuilder();
             sb.append("case ").append(lower);
             for (int i = lower + 1; i <= upper; i++) {

@@ -16,7 +16,7 @@ public class LabelNode extends Node {
     public String generate(CompilationState cState) {
         assert cState.clearEStack() == 0 : "we expect the expression stack to be empty here";
         var res = cState.generateEStackCallInfo(0);
-        cState.registerGotoPatch(SymTable.gotoPatchFor(info.label), res.resumeLabel());
+        cState.registerLabelPatchResolution(cState.patchForLabel(info), res.resumeLabel());
         return "case %d:";
     }
 }
