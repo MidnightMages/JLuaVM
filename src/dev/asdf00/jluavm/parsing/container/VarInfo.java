@@ -9,11 +9,13 @@ public class VarInfo {
 
     public final int lVarIdx;
     private int flags;
-    public final int sourcePt;
+    public final Position sourcePt;
+    public final String name;
 
-    public VarInfo(int sourcePt, int lVarIdx, boolean isConst, boolean isClosable) {
+    public VarInfo(Position sourcePt, String name, int lVarIdx, boolean isConst, boolean isClosable) {
         this.lVarIdx = lVarIdx;
         this.sourcePt = sourcePt;
+        this.name = name;
         flags = 0;
         if (isConst) {
             flags |= CONSTANT;

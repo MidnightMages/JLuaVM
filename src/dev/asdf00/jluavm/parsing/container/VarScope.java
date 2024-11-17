@@ -49,7 +49,7 @@ public class VarScope {
         if (isClosable) {
             closableCnt++;
         }
-        VarInfo info = new VarInfo(ident.pos().sourcePt(), baseIdx + names.size(), isConst, isClosable);
+        VarInfo info = new VarInfo(ident.pos(), ident.stVal(), baseIdx + names.size(), isConst, isClosable);
         names.put(ident.stVal(), info);
         return new SpecificVarInfo(info, -1);
     }
