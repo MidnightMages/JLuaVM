@@ -247,7 +247,7 @@ public final class CompilationState {
                     }
                     }
                     """.formatted(scopeId, eStackDefinitions(),
-                    curResumeLabel >= 0 ? "vm.registerExpressionStack(%d)".formatted(maxEStackSavePos + 1) : "null",
+                    maxEStackSavePos >= 0 ? "vm.registerExpressionStack(%d)".formatted(maxEStackSavePos + 1) : "null",
                     localsCount, String.join("\n", restoreHeaders), content);
             return result;
         }
@@ -262,6 +262,7 @@ public final class CompilationState {
         private final int maxLocalSize;
         private final int argCnt;
         private final boolean hasParamsArg;
+        private int scopeCount=0;
 
         public FunctionScope(int localsCount, int maxLocalSize, int argCnt, boolean hasParamsArg) {
             super(localsCount);
@@ -279,7 +280,7 @@ public final class CompilationState {
         }
 
         public String pushInner(int localsCnt) {
-            return "innerScope" + innerScopes.push(new InternalScope(localsCnt, methodList.size())).scopeId;
+            return "innerScope" + innerScopes.push(new InternalScope(localsCnt, scopeCount++)).scopeId;
         }
 
         public String generateJIC(String jClassName, String content) {
@@ -294,7 +295,7 @@ public final class CompilationState {
             }
 
             String result = """
-                    package package dev.asdf00.jluavm.lualoaded;
+                    package dev.asdf00.jluavm.lualoaded;
                     
                     import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
                     import dev.asdf00.jluavm.exceptions.LuaRuntimeError;
@@ -302,7 +303,7 @@ public final class CompilationState {
                     import dev.asdf00.jluavm.runtime.errors.*;
                     import dev.asdf00.jluavm.runtime.types.*;
                     import dev.asdf00.jluavm.runtime.utils.*;
-                                        
+                    
                     import java.lang.reflect.Constructor;
                     
                     public class %s extends LuaFunction {
@@ -352,7 +353,7 @@ public final class CompilationState {
                     }
                     """.formatted(jClassName, jClassName,
                     maxLocalSize, argCnt, hasParamsArg ? "true" : "false",
-                    eStackDefinitions(), curResumeLabel >= 0 ? "vm.registerExpressionStack(%d)".formatted(maxEStackSavePos + 1) : "null", localsCount,
+                    eStackDefinitions(), maxEStackSavePos >= 0 ? "vm.registerExpressionStack(%d)".formatted(maxEStackSavePos + 1) : "null", localsCount,
                     String.join("\n", restoreHeaders),
                     content,
                     String.join("\n\n", methodList));

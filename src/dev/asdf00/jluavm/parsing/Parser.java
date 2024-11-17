@@ -9,10 +9,7 @@ import dev.asdf00.jluavm.parsing.container.Token;
 import dev.asdf00.jluavm.parsing.container.TokenType;
 import dev.asdf00.jluavm.parsing.container.VarScope;
 import dev.asdf00.jluavm.parsing.ir.*;
-import dev.asdf00.jluavm.parsing.ir.controlflow.DoEndNode;
-import dev.asdf00.jluavm.parsing.ir.controlflow.FunctionCallNode;
-import dev.asdf00.jluavm.parsing.ir.controlflow.IfNode;
-import dev.asdf00.jluavm.parsing.ir.controlflow.ReturnNode;
+import dev.asdf00.jluavm.parsing.ir.controlflow.*;
 import dev.asdf00.jluavm.parsing.ir.operations.*;
 import dev.asdf00.jluavm.parsing.ir.values.*;
 import dev.asdf00.jluavm.utils.Triple;
@@ -237,7 +234,7 @@ public final class Parser {
                 }
                 statement = new IfNode(condition, new IRBlock(thenBlock.toArray(Node[]::new), thenScp.getLocalsCount(), thenScp.getClosableCount()),
                         elifConds.toArray(Node[]::new), elifs,
-                        new IRBlock(elseBlock == null ? null : elseBlock.toArray(Node[]::new), elseScp.getLocalsCount(), elseScp.getClosableCount()));
+                        elseBlock == null ? null : new IRBlock(elseBlock.toArray(Node[]::new), elseScp.getLocalsCount(), elseScp.getClosableCount()));
             }
             case FOR -> {
                 scan();
@@ -268,7 +265,7 @@ public final class Parser {
                         stepVar = defineInternal("$step$");
                     }
                     symTab.enterLoopScope();
-                    SpecificVarInfo controlVar = define(cur, 0);
+                    SpecificVarInfo controlVar = define(ctrlToken, 0);
                     check(DO);
                     var innerStats = Block();
                     VarScope innerLoopScp = symTab.exitScope();
@@ -472,6 +469,13 @@ public final class Parser {
             });
             Node[] expressions = ExpList();
             result = new AssignmentNode(assignTargets.toArray(Node[]::new), expressions);
+        }
+        else {
+            if (result instanceof FunctionCallNode f){
+                result = new FunctionStatementNode(f);
+            } else {
+                throw new LuaParserException(cur.pos(), "(At %s) Expected <%s>, got <%s>".formatted(cur.pos(),EQ.rep, cur.type().rep));
+            }
         }
         return result;
     }

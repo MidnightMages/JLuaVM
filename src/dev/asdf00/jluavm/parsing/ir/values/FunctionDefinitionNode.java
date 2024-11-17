@@ -16,12 +16,13 @@ public class FunctionDefinitionNode extends Node {
     @Override
     public String generate(CompilationState cState) {
         String innerFuncIdx = function.generate(cState);
+        var spot = cState.pushEStack();
         var captSpots = new StringBuilder();
         var sb = new StringBuilder();
         for (int i = 0; i < captures.length; i++) {
             sb.append(captures[i].generate(cState)).append('\n');
             captSpots.append(", ").append(cState.peekEStack());
         }
-        return "LuaObject.of(newInnerFunction(innerFunctions[%s]%s))".formatted(innerFuncIdx, captSpots);
+        return "%s = LuaObject.of(newInnerFunction(innerFunctions[%s]%s));".formatted(spot, innerFuncIdx, captSpots);
     }
 }

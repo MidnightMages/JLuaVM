@@ -12,6 +12,7 @@ public class IRBlock extends Node {
     }
 
     public IRBlock(Node[] statements, Node continueCondition, boolean breakOnFalse, int localCnt, int closableCnt) {
+        assert statements != null;
         this.statements = statements;
         this.continueCondition = continueCondition;
         this.breakOnFalse = breakOnFalse;
@@ -119,8 +120,7 @@ public class IRBlock extends Node {
                             return;
                         }
                     }
-                    case %d:
-                    """.formatted(close,
+                    case %d:""".formatted(close,
                     mtGetCall.resumeLabel(),
                     close,
                     mtGetCall.resumeLabel(),

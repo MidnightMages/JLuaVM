@@ -80,8 +80,7 @@ public class FunctionCallNode extends Node {
                     vm.callInternal(%d, LuaFunction::callWithMeta, %s%s);
                     return;
                 }
-                case %d:
-                """.formatted(callInfo.saveEStack(),
+                case %d:""".formatted(callInfo.saveEStack(),
                 funcSpot,
                 callInfo.resumeLabel(), funcSpot, stringOfArgs,
                 callInfo.resumeLabel(), funcSpot, stringOfArgs,

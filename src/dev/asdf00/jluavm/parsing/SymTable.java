@@ -50,7 +50,7 @@ public class SymTable {
         curScope = curScope.parent;
 
         // make inner yet to fix gotos visible to later label definitions do final checks if we exit a function scope
-        if (curScope.isFunctionBorder) {
+        if (rVal.isFunctionBorder) {
             // function exit
             if (!yetToFixGotos.peek().isEmpty()) {
                 throw new LuaSemanticException(yetToFixGotos.peek().values().stream().findAny().get().stream().findAny().get().z(), "no goto target found");

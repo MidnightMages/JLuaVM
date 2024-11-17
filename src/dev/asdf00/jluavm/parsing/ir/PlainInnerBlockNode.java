@@ -15,7 +15,6 @@ public class PlainInnerBlockNode extends Node {
         return """
                 vm.callInternal(%d, this::%s);
                 return;
-                case %d:
-                """.formatted(info.resumeLabel(), bName, info.resumeLabel());
+                case %d:""".formatted(info.resumeLabel(), bName, info.resumeLabel());
     }
 }

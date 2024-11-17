@@ -16,7 +16,8 @@ public final class ConstantNode extends Node {
 
     @Override
     public String generate(CompilationState cState) {
-        return codeRepr;
+        var spot = cState.pushEStack();
+        return spot + " = " + codeRepr + ";";
     }
 
     public static ConstantNode ofLong(long lVal) {
@@ -45,7 +46,7 @@ public final class ConstantNode extends Node {
     public static ConstantNode ofB64(String literalString) {
         // literal strings can contain any number of weird characters like backslash, double quote or null characters.
         // therefore we effectively treat it as a list of raw UTF8 bytes and encode it with base 64 to be sure.
-        return new ConstantNode("LuaObject.ofB64(\"%s\")".formatted(Base64.getEncoder().encode(literalString.getBytes(StandardCharsets.UTF_8))));
+        return new ConstantNode("LuaObject.ofB64(\"%s\")".formatted(Base64.getEncoder().encodeToString(literalString.getBytes(StandardCharsets.UTF_8))));
     }
 
     public static ConstantNode ofPlain(String codeRepr) {

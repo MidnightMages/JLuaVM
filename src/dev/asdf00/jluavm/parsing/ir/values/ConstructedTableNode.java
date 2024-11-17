@@ -24,16 +24,17 @@ public class ConstructedTableNode extends Node {
         var spotList = new String[keyValEntries.length];
         for (int i = 0; i < keyValEntries.length; i++) {
             sb.append(keyValEntries[i]).append('\n');
-            spotList[i] = cState.peekEStack();
+            spotList[i] = cState.popEStack();
         }
-        sb.append("LuaObject.table(");
+        var spot = cState.pushEStack();
+        sb.append(spot).append(" = LuaObject.table(");
         if (spotList.length > 0) {
             sb.append(spotList[0]);
         }
         for (int i = 1; i < spotList.length; i++) {
             sb.append(", ").append(spotList[i]);
         }
-        sb.append(')');
+        sb.append(");");
         return sb.toString();
     }
 }

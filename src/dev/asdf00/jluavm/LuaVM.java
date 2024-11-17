@@ -8,6 +8,7 @@ import dev.asdf00.jluavm.runtime.stdlib.LGlobal;
 import dev.asdf00.jluavm.runtime.stdlib.LMath;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 
+import java.io.CharArrayWriter;
 import java.util.function.Supplier;
 
 public abstract class LuaVM {
@@ -40,6 +41,7 @@ public abstract class LuaVM {
         var javaIntermediateCode = new CompilationState(jClassNameGen);
         rootFunc.generate(javaIntermediateCode);
         // TODO load stuff in javaIntermediateCode into the JVM
+        System.out.println("bla");
     }
 
     public VmResult run() {

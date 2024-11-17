@@ -15,7 +15,7 @@ public class IfNode extends Node {
     public final IRBlock _else;
 
     public IfNode(Node cond, IRBlock then) {
-        this(cond, then, new Node[0], new IRBlock[0], null);
+        this(cond, then, new Node[0], null, null);
     }
 
     public IfNode(Node cond, IRBlock then, Node[] subConds, IRBlock[] elseIfs, IRBlock _else) {
@@ -50,7 +50,7 @@ public class IfNode extends Node {
                         vm.callInternal(%d, this::%s);
                         return;
                     }\n
-                    """.formatted(cc.x(), cc.y(), callInfo.saveEStack(), cc.z()));
+                    """.formatted(cc.x(), cc.y(), callInfo.resumeLabel(), cc.z()));
         }
         if (elseBlockName != null) {
             sb.append("""
