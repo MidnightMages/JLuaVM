@@ -12,6 +12,11 @@ public class LocalAccessNode extends Node {
     }
 
     @Override
+    public String toString() {
+        return info.baseInfo().toString();
+    }
+
+    @Override
     public String generate(CompilationState cState) {
         String spot = cState.pushEStack();
         String load;

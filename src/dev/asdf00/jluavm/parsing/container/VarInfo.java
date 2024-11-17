@@ -60,7 +60,9 @@ public class VarInfo {
     @Override
     public String toString() {
         return "VarInfo{" +
-                "lVarIdx='" + lVarIdx + '\'' +
+                "name=" + name +
+                ", sourcePt=" + sourcePt.toString() +
+                ", lVarIdx='" + lVarIdx + '\'' +
                 ", isGlobal=" + isGlobal() +
                 ", isConstant=" + isConstant() +
                 ", isClosable=" + isClosable() +
