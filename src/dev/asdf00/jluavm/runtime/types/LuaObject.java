@@ -648,6 +648,9 @@ public final class LuaObject {
         if ((markWord & 0b11) != 0) {
             // already coerced this string, only read cached result
             return new CoercedString((markWord & 1) != 0, dVal, lVal);
+        } else if ((markWord & 0b100) != 0) {
+            // already failed coercing this string
+            return null;
         }
 
         final String stVal = (String) refVal;
@@ -687,6 +690,7 @@ public final class LuaObject {
 
         if (!isDecDigit(cur[0]) && !(cur[0] == '.' && isDecDigit(la[0]))) {
             // fail to coerce
+            markWord |= 0b100;
             return null;
         }
 
@@ -742,6 +746,7 @@ public final class LuaObject {
                 // exponent?
                 if (!isValid) {
                     // fail to coerce
+                    markWord |= 0b100;
                     return null;
                 }
                 if (cur[0] == 'p' || cur[0] == 'P' || cur[0] == 'e' || cur[0] == 'E') {
@@ -758,6 +763,7 @@ public final class LuaObject {
         String number = nb.toString();
         if (!isValid) {
             // failed to coerce
+            markWord |= 0b100;
             return null;
         }
         try {
