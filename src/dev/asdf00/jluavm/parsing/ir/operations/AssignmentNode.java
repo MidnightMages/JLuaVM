@@ -61,7 +61,7 @@ public class AssignmentNode extends Node {
             var lv = values[values.length - 1];
             if (lv instanceof FunctionCallNode call) {
                 // unroll max(0, targets.length - values.length) return values
-                int aCnt = Math.max(0, targets.length - values.length);
+                int aCnt = Math.max(0, targets.length - (values.length - 1));
                 call.expectedResultCnt = aCnt;
                 sb.append(call.generate(cState));
                 vSpots.addAll(cState.peekEStack(aCnt));

@@ -49,7 +49,7 @@ public final class CompilationState {
     public ArrayList<String> peekEStack(int cnt) {
         var peeks = new ArrayList<String>(cnt);
         int curStackPos = curFunc.getTop().eStackPos;
-        if (curStackPos - cnt < 0) {
+        if (curStackPos - cnt < -1) {
             throw new InternalLuaLoadingError("peeking beyond lower expression stack bound");
         }
         for (int i = curStackPos + 1 - cnt; i <= curStackPos; i++) {

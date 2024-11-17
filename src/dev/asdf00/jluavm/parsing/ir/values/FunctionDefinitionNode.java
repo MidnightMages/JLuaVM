@@ -23,6 +23,9 @@ public class FunctionDefinitionNode extends Node {
             sb.append(captures[i].generate(cState)).append('\n');
             captSpots.append(", ").append(cState.peekEStack());
         }
+        for (int i = 0; i < captures.length; i++) {
+            cState.popEStack();
+        }
         return "%s = LuaObject.of(newInnerFunction(innerFunctions[%s]%s));".formatted(spot, innerFuncIdx, captSpots);
     }
 }
