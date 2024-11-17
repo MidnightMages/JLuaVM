@@ -113,9 +113,9 @@ public final class CompilationState {
         for (int i = 0; i < functionJavaCode.size(); i++) {
             String code = functionJavaCode.get(i);
             for (var r : patchResolutions) {
-                code = code.replace(r.x(), "%d".formatted(r.y().intValue()));
+                code = code.replace(r.x(), "%d".formatted(r.y()));
             }
-            functionJavaCode.set(0, code);
+            functionJavaCode.set(i, code);
         }
     }
 

@@ -40,6 +40,7 @@ public abstract class LuaVM {
         IRFunction rootFunc = new Parser(code).parse();
         var javaIntermediateCode = new CompilationState(jClassNameGen);
         rootFunc.generate(javaIntermediateCode);
+        javaIntermediateCode.resolveAllPatches();
         // TODO load stuff in javaIntermediateCode into the JVM
         System.out.println("bla");
     }

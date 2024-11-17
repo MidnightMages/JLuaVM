@@ -17,6 +17,6 @@ public class LabelNode extends Node {
         assert cState.clearEStack() == 0 : "we expect the expression stack to be empty here";
         var res = cState.generateEStackCallInfo(0);
         cState.registerLabelPatchResolution(cState.patchForLabel(info), res.resumeLabel());
-        return "case %d:";
+        return "case %d:".formatted(res.resumeLabel());
     }
 }
