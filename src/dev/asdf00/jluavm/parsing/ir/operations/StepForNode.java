@@ -51,8 +51,7 @@ public class StepForNode extends Node {
                         %s
                     } else {
                         throw new InternalLuaRuntimeError("incompatible for-step types '%%s' and '%%s'".formatted(%s.getType(), %s.getType()));
-                    }
-                    """.formatted(itr, sv,
+                    }""".formatted(itr, sv,
                     lower, upper,
                     sv, sv, itr, sv, itr,
                     closings,
@@ -73,8 +72,7 @@ public class StepForNode extends Node {
                         %s
                     } else {
                         throw new InternalLuaRuntimeError("incompatible for-step types '%%s' and '%%s'".formatted(%s.getType(), %s.getType()));
-                    }
-                    """.formatted(itr, sv,
+                    }""".formatted(itr, sv,
                     sv, sv, itr, sv, itr,
                     setLong,
                     itr, sv,

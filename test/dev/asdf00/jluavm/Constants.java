@@ -275,6 +275,5 @@ local function boot()
 end
 
 os.spawnCoroutine(boot)
-coroutineScheduler()
-""";
+coroutineScheduler()""";
 }

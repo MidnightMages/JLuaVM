@@ -53,8 +53,7 @@ public class DeRefNode extends Node {
                     vm.error(new LuaTypeError());
                     return;
                 }
-                case %d:
-                """.formatted(v, v, i, r, r, callInfo.saveEStack(), callInfo.resumeLabel(), v, r, v, i, callInfo.resumeLabel());
+                case %d:""".formatted(v, v, i, r, r, callInfo.saveEStack(), callInfo.resumeLabel(), v, r, v, i, callInfo.resumeLabel());
         return result;
     }
 }

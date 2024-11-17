@@ -72,8 +72,7 @@ public class LenghtOfNode extends Node {
                         }
                     }
                 }
-                case %d:
-                """.formatted(callGetMetaValue.resumeLabel(),
+                case %d:""".formatted(callGetMetaValue.resumeLabel(),
                 vSpot,
                 rSpot, vSpot,
                 callGetMetaValue.resumeLabel(),

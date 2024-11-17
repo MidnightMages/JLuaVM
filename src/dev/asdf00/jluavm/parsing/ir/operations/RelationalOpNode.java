@@ -43,8 +43,7 @@ public class RelationalOpNode extends Node {
                 case %d:
                 if (resume == %d && !%s.isBoolean()) {
                     %s = LuaObject.of(RTUtils.isTruthy(%s));
-                }
-                """.formatted(xSpot, ySpot, xSpot, ySpot,
+                }""".formatted(xSpot, ySpot, xSpot, ySpot,
                 rSpot, xSpot, op, ySpot,
                 callInfo.saveEStack(),
                 callInfo.resumeLabel(), op, xSpot, ySpot,

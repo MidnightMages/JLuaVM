@@ -245,8 +245,7 @@ public final class CompilationState {
                     %s
                     default: throw new InternalLuaRuntimeError("should not reach end of fall-through switch");
                     }
-                    }
-                    """.formatted(scopeId, eStackDefinitions(),
+                    }""".formatted(scopeId, eStackDefinitions(),
                     maxEStackSavePos >= 0 ? "vm.registerExpressionStack(%d)".formatted(maxEStackSavePos + 1) : "null",
                     localsCount, String.join("\n", restoreHeaders), content);
             return result;
@@ -350,8 +349,7 @@ public final class CompilationState {
                     
                     // inner scopes
                     %s
-                    }
-                    """.formatted(jClassName, jClassName,
+                    }""".formatted(jClassName, jClassName,
                     maxLocalSize, argCnt, hasParamsArg ? "true" : "false",
                     eStackDefinitions(), maxEStackSavePos >= 0 ? "vm.registerExpressionStack(%d)".formatted(maxEStackSavePos + 1) : "null", localsCount,
                     String.join("\n", restoreHeaders),

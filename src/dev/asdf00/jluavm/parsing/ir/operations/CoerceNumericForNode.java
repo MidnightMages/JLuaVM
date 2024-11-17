@@ -28,8 +28,7 @@ public class CoerceNumericForNode extends Node {
                     %s
                     %s
                     %s
-                }
-                """.formatted(sv, ub, itr,
+                }""".formatted(sv, ub, itr,
                 sv, ub, itr,
                 setLocalStatement(stepVar, "LuaObject.ofDouble(%s.asDouble())".formatted(sv)),
                 setLocalStatement(upperBoundVar, "LuaObject.ofDouble(%s.asDouble())".formatted(ub)),

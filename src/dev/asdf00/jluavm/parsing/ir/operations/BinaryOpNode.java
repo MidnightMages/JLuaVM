@@ -35,8 +35,7 @@ public class BinaryOpNode extends Node {
                     vm.callInternal(%d, LuaFunction::binaryOpWithMeta, Singletons.__%s, %s, %s);
                     return;
                 }
-                case %d:
-                """.formatted(sx, typeRestriction, sy, typeRestriction,
+                case %d:""".formatted(sx, typeRestriction, sy, typeRestriction,
                 sx, sx, op, sy,
                 callInfo.saveEStack(),
                 callInfo.resumeLabel(), op, sx, sy,

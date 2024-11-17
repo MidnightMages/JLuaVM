@@ -49,14 +49,12 @@ public class IfNode extends Node {
                     if (RTUtils.isTruthy(%s)) {
                         vm.callInternal(%d, this::%s);
                         return;
-                    }\n
-                    """.formatted(cc.x(), cc.y(), callInfo.resumeLabel(), cc.z()));
+                    }\n""".formatted(cc.x(), cc.y(), callInfo.resumeLabel(), cc.z()));
         }
         if (elseBlockName != null) {
             sb.append("""
                     vm.callInternal(%d, this::%s);
-                    return;\n
-                    """.formatted(callInfo.resumeLabel(), elseBlockName));
+                    return;\n""".formatted(callInfo.resumeLabel(), elseBlockName));
         }
         sb.append("case ").append(callInfo.resumeLabel()).append(':');
         return sb.toString();

@@ -140,8 +140,7 @@ public class AssignmentNode extends Node {
                     vm.error(new LuaTypeError());
                     return;
                 }
-                case %d:
-                """.formatted(obj,
+                case %d:""".formatted(obj,
                 obj,
                 idx,
                 val,
@@ -205,8 +204,7 @@ public class AssignmentNode extends Node {
                                     return;
                                 }
                             }
-                            vm.addClosable(%s);\n
-                            """.formatted(val,
+                            vm.addClosable(%s);\n""".formatted(val,
                             mtbl, val,
                             mtbl,
                             mtbl,

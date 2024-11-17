@@ -29,8 +29,7 @@ public class IRFunction extends Node {
         assert cState.clearEStack() == 0 : "we expect the expression stack to be empty here";
         sb.append("""
                     vm.returnValue();
-                    return;
-                    """);
+                    return;""");
         cState.closeFunction(sb.toString());
         return Integer.toString(innerFunctionIdx);
     }

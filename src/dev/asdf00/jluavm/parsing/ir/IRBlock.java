@@ -48,16 +48,14 @@ public class IRBlock extends Node {
                     } else {
                         vm.internalReturn();
                         return;
-                    }
-                    """.formatted(cBlock, closings, breakOnFalse ? "" : "!", cSpot));
+                    }""".formatted(cBlock, closings, breakOnFalse ? "" : "!", cSpot));
         } else {
             // this is not a loop, finish with standard internal return
             sb.append(genClose(cState, closableCnt)).append('\n');
             assert cState.clearEStack() == 0 : "we expect the expression stack to be empty here";
             sb.append("""
                     vm.internalReturn();
-                    return;
-                    """);
+                    return;""");
         }
         cState.closeInnerBlock(sb.toString());
         return blockName;
