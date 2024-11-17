@@ -38,12 +38,13 @@ public class LogicBinaryOpNode extends Node {
         }
         sb.append(":\n");
         String yGeneration = y.generate(cState);
+        sb.append(yGeneration);
         String ySpot = cState.popEStack();
         cState.popEStack(); // pop xSpot
         String rSpot = cState.pushEStack();
         assert xSpot.equals(rSpot) : "expression stack mismatch (%s vs %s)".formatted(xSpot, rSpot);
         // set result to
-        sb.append("}\n").append(rSpot).append(" = ").append(ySpot).append(";\n}");
+        sb.append("\n}\n").append(rSpot).append(" = ").append(ySpot).append(";\n}");
 
         String ifBlock = sb.toString();
         int afterMaxResume = cState.getCurResumeLabel();

@@ -24,6 +24,8 @@ public class ConstructedTableNode extends Node {
         var spotList = new String[keyValEntries.length];
         for (int i = 0; i < keyValEntries.length; i++) {
             sb.append(keyValEntries[i].generate(cState)).append('\n');
+        }
+        for (int i = keyValEntries.length - 1; i >= 0; i--) {
             spotList[i] = cState.popEStack();
         }
         var spot = cState.pushEStack();
