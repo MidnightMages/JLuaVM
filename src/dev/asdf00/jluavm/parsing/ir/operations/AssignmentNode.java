@@ -21,6 +21,7 @@ public class AssignmentNode extends Node {
         this.values = values;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public String generate(CompilationState cState) {
         var sb = new StringBuilder();

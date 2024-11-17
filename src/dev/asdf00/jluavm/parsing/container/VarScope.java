@@ -62,6 +62,9 @@ public class VarScope {
                 return null;
             }
             var sInfo = parent.get(ident, crossedFunctionBorder || isFunctionBorder);
+            if (sInfo == null) {
+                return null;
+            }
             if (isFunctionBorder) {
                 // capture from outside this function
                 int cIdx = captured.computeIfAbsent(sInfo, k -> captured.size());

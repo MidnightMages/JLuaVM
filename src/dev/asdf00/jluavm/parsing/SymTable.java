@@ -151,16 +151,17 @@ public class SymTable {
         return curScope.getLabel(ident);
     }
 
+
     public BreakNode generateBreakNode() {
         var cs = curScope;
         int escapeCnt = 0;
-        while (!cs.isFunctionBorder && cs.isLoop) {
+        while (!cs.isFunctionBorder && !cs.isLoop) {
+            cs = cs.parent;
             escapeCnt++;
         }
         if (cs.isFunctionBorder) {
             return null;
         }
-        assert cs.isLoop;
         escapeCnt++;
         var b = new BreakNode(escapeCnt, getCurFuncClosableCnt());
         breaksToPatch.computeIfAbsent(cs, s -> new Stack<>()).push(b);
