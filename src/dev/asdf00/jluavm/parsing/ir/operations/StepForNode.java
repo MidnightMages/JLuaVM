@@ -20,8 +20,8 @@ public class StepForNode extends Node {
     public String generate(CompilationState cState) {
         String itr = CoerceNumericForNode.getLocalExpression(iteratorVar);
         String sv = CoerceNumericForNode.getLocalExpression(stepVar);
-        String setLong = CoerceNumericForNode.setLocalStatement(iteratorVar, "LuaObject.ofLong(%s.getLong() + %s.getLong())".formatted(itr, sv));
-        String setDouble = CoerceNumericForNode.setLocalStatement(iteratorVar, "LuaObject.ofDouble(%s.getDouble() + %s.getDouble())".formatted(itr, sv));
+        String setLong = CoerceNumericForNode.setLocalStatement(iteratorVar, "LuaObject.of(%s.asLong() + %s.asLong())".formatted(itr, sv));
+        String setDouble = CoerceNumericForNode.setLocalStatement(iteratorVar, "LuaObject.of(%s.asDouble() + %s.asDouble())".formatted(itr, sv));
         if (closableCnt > 0) {
             String closings;
             int lower = cState.getCurResumeLabel();
@@ -36,7 +36,7 @@ public class StepForNode extends Node {
                     if (%s.isLong() && %s.isLong()) {
                         boolean overflow = resume >= %d && resume <= %d;
                         if (!overflow) {
-                            overflow = %s.getLong() > 0 ? Long.MAX_VALUE - %s < %s : Long.MIN_VALUE - %s > %s;
+                            overflow = %s.asLong() > 0 ? Long.MAX_VALUE - %s.asLong() < %s.asLong() : Long.MIN_VALUE - %s.asLong() > %s.asLong();
                         }
                         if (overflow) {
                             switch (resume) {
@@ -63,7 +63,7 @@ public class StepForNode extends Node {
         } else {
             return """
                     if (%s.isLong() && %s.isLong()) {
-                        if (%s.getLong() > 0 ? Long.MAX_VALUE - %s < %s : Long.MIN_VALUE - %s > %s) {
+                        if (%s.asLong() > 0 ? Long.MAX_VALUE - %s.asLong() < %s.asLong() : Long.MIN_VALUE - %s.asLong() > %s.asLong()) {
                             vm.internalReturn();
                             return;
                         }

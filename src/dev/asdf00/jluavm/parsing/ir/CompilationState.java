@@ -72,7 +72,6 @@ public final class CompilationState {
      *
      * @param expectedResultCnt this call generates as many e-stack elements as requested (missing elements are filled
      *                          with NIL). If -1 is passed, all returned values are packed into one LuaArray.
-     * @return
      */
     public EStackCallInfo generateEStackCallInfo(int expectedResultCnt) {
         return curFunc.getTop().genCallInfo(expectedResultCnt);
@@ -131,6 +130,7 @@ public final class CompilationState {
         }
     }
 
+    @SuppressWarnings("unchecked")
     public Constructor<? extends LuaFunction> loadAndLinkAllClasses(LuaObject _ENV) throws InternalLuaLoadingError {
         if (_ENV == null || !_ENV.isTable()) {
             throw new InternalLuaLoadingError("got invalid _ENV");
@@ -141,7 +141,7 @@ public final class CompilationState {
             var clsDef = functionJavaCode.get(i);
             try {
                 var clazz = Reflect.compile(COMPILED_CLASSES_MODULE_PREFIX + clsDef.x(), clsDef.y()).type();
-                if (!LuaFunction.class.isAssignableFrom(jClasses[i])) {
+                if (!LuaFunction.class.isAssignableFrom(clazz)) {
                     throw new InternalLuaLoadingError(clazz.getName() + " is not of type LuaFunction!");
                 }
                 jClasses[i] = (Class<? extends LuaFunction>) clazz;

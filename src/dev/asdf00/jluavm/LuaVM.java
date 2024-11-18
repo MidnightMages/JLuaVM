@@ -19,7 +19,7 @@ public abstract class LuaVM {
         return new LuaVM_RT();
     }
 
-    private LuaObject _G = LuaObject.nil(); // TODO more into LuaVM_RT
+    private LuaObject _G = LuaObject.nil();
 
     private static final Supplier<String> jClassNameGen = new Supplier<>() {
         private int cnt = 0;
@@ -40,7 +40,7 @@ public abstract class LuaVM {
         return _G;
     }
 
-    public LuaFunction load(String code) {
+    public LuaFunction load(String code) throws InternalLuaLoadingError {
         return load(code, _G);
     }
 
@@ -51,7 +51,7 @@ public abstract class LuaVM {
         javaIntermediateCode.resolveAllPatches();
         var rootCtor = javaIntermediateCode.loadAndLinkAllClasses(_ENV);
         try {
-            return rootCtor.newInstance(Singletons.EMPTY_LUA_OBJ_ARRAY);
+            return rootCtor.newInstance((Object) Singletons.EMPTY_LUA_OBJ_ARRAY);
         } catch (ReflectiveOperationException e) {
             throw new InternalLuaLoadingError(e);
         }

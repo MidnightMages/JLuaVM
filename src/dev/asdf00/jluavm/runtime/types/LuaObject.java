@@ -4,12 +4,15 @@ import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
 import dev.asdf00.jluavm.exceptions.loading.InternalLuaLexerError;
 import dev.asdf00.jluavm.parsing.Lexer;
 
+import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
+import java.util.Base64;
 import java.util.HashMap;
 
 import static dev.asdf00.jluavm.parsing.Lexer.isDecDigit;
 import static dev.asdf00.jluavm.parsing.Lexer.parseHexDouble;
 
+@SuppressWarnings("unused")
 public final class LuaObject {
     public static final LuaObject NIL = new LuaObject(null, 0, 0, Types.NIL);
     public static final LuaObject FALSE = new LuaObject(null, 0, 0, Types.BOOLEAN);
@@ -58,8 +61,9 @@ public final class LuaObject {
     public LuaObject getMetaTable() {
         return metaTable;
     }
+
     public void setMetatable(LuaObject mt) {
-        assert mt.get(LuaObject.of("__metatable")).isNil() ;
+        assert mt.get(LuaObject.of("__metatable")).isNil();
         metaTable = mt;
     }
 
@@ -76,15 +80,15 @@ public final class LuaObject {
     }
 
     public String getTypeAsString() {
-        return switch (type){
+        return switch (type) {
             case Types.NIL -> "nil";
-            case Types.BOOLEAN-> "boolean";
-            case Types.DOUBLE,Types.LONG-> "number";
-            case Types.STRING-> "string";
-            case Types.FUNCTION-> "function";
-            case Types.USERDATA-> "userdata";
-            case Types.THREAD-> "thread";
-            case Types.TABLE, Types.ARRAY-> "table";
+            case Types.BOOLEAN -> "boolean";
+            case Types.DOUBLE, Types.LONG -> "number";
+            case Types.STRING -> "string";
+            case Types.FUNCTION -> "function";
+            case Types.USERDATA -> "userdata";
+            case Types.THREAD -> "thread";
+            case Types.TABLE, Types.ARRAY -> "table";
             case Types.BOX -> "box<" + ((LuaObject) refVal).getTypeAsString() + ">";
             default -> throw new IllegalStateException("Unexpected case value: " + type);
         };
@@ -913,12 +917,12 @@ public final class LuaObject {
     }
 
     public String asString() {
-        return switch (type){
+        return switch (type) {
             case Types.NIL -> "nil";
-            case Types.BOOLEAN-> this == TRUE ? "true" : "false";
-            case Types.DOUBLE-> doubleToStringFormat.format(dVal);
-            case Types.LONG-> longToStringFormat.format(lVal);
-            case Types.STRING-> (String) refVal;
+            case Types.BOOLEAN -> this == TRUE ? "true" : "false";
+            case Types.DOUBLE -> doubleToStringFormat.format(dVal);
+            case Types.LONG -> longToStringFormat.format(lVal);
+            case Types.STRING -> (String) refVal;
             case Types.FUNCTION -> "function: 0x" + Integer.toHexString(System.identityHashCode(this));
             case Types.USERDATA -> "userdata: 0x" + Integer.toHexString(System.identityHashCode(this));
             case Types.THREAD -> "thread: 0x" + Integer.toHexString(System.identityHashCode(this));
@@ -1020,6 +1024,10 @@ public final class LuaObject {
 
     public static LuaObject of(String val) {
         return new LuaObject(val, 0, 0, Types.STRING);
+    }
+
+    public static LuaObject ofB64(String val) {
+        return new LuaObject(new String(Base64.getDecoder().decode(val), StandardCharsets.UTF_8), 0, 0, Types.STRING);
     }
 
     public static LuaObject of(LuaFunction val) {

@@ -30,9 +30,9 @@ public class CoerceNumericForNode extends Node {
                     %s
                 }""".formatted(sv, ub, itr,
                 sv, ub, itr,
-                setLocalStatement(stepVar, "LuaObject.ofDouble(%s.asDouble())".formatted(sv)),
-                setLocalStatement(upperBoundVar, "LuaObject.ofDouble(%s.asDouble())".formatted(ub)),
-                setLocalStatement(iteratorVar, "LuaObject.ofDouble(%s.asDouble())".formatted(itr)));
+                setLocalStatement(stepVar, "LuaObject.of(%s.asDouble())".formatted(sv)),
+                setLocalStatement(upperBoundVar, "LuaObject.of(%s.asDouble())".formatted(ub)),
+                setLocalStatement(iteratorVar, "LuaObject.of(%s.asDouble())".formatted(itr)));
     }
 
     public static String getLocalExpression(SpecificVarInfo info) {

@@ -15,6 +15,6 @@ public class BreakNode extends Node {
 
     @Override
     public String generate(CompilationState cState) {
-        return IRBlock.genClose(cState, closeCnt) + "\nvm.internalBreak(" + scopeCount + ");\nreturn;";
+        return IRBlock.genClose(cState, closeCnt) + "\nvm.internalBreak(" + scopeCount + ");\nif(true) return;";
     }
 }

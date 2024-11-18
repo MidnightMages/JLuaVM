@@ -70,7 +70,7 @@ public class FunctionCallNode extends Node {
             }
         }
 
-        String stringOfArgs = ", " + String.join(", ", argSpots);
+        String stringOfArgs = argSpots.length > 0 ? ", " + String.join(", ", argSpots) : "";
         String result = """
                 %s
                 if (%s.isFunction()) {

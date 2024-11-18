@@ -46,6 +46,6 @@ public class GotoNode extends Node {
                 %s
                 %s
                 vm.internalGoto(%d, %s);
-                return;""".formatted(closings, patches.toString(), scopeExits, cState.patchForLabel(label));
+                if(true) return;""".formatted(closings, patches.toString(), scopeExits, cState.patchForLabel(label));
     }
 }
