@@ -229,4 +229,16 @@ public class ParserTest {
         })
             assertThrows(LuaParserException.class, () -> parse(src), () -> "Code: " + src);
     }
+
+    @Test
+    void simpleCall() {
+        Parser ps = new Parser("""
+                print("hi")
+                --some comment""");
+        try {
+            ps.parse();
+        } catch (Exception e) {
+            int i = 0;
+        }
+    }
 }

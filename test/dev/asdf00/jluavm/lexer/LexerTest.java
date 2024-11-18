@@ -460,4 +460,13 @@ public class LexerTest {
             assertThrows(LuaLexerException.class, () -> lexAndCollectTokens(s), ()->"Code was "+s );
         }
     }
+
+    @Test
+    void simpleCall() {
+        var test = lexAndCollectTokens("""
+                print("hi")
+                -- some comment
+                """);
+        int a = 0;
+    }
 }

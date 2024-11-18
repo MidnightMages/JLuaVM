@@ -1,5 +1,6 @@
 package dev.asdf00.jluavm;
 
+import dev.asdf00.jluavm.exceptions.LuaLoadingException;
 import dev.asdf00.jluavm.exceptions.loading.InternalLuaLoadingError;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.parsing.Parser;
@@ -19,7 +20,8 @@ public abstract class LuaVM {
         return new LuaVM_RT();
     }
 
-    private LuaObject _G = LuaObject.nil();
+    protected LuaObject _G = LuaObject.nil();
+    protected LuaFunction rootFunc = null;
 
     private static final Supplier<String> jClassNameGen = new Supplier<>() {
         private int cnt = 0;
@@ -40,11 +42,16 @@ public abstract class LuaVM {
         return _G;
     }
 
-    public LuaFunction load(String code) throws InternalLuaLoadingError {
+    public LuaVM withRootFunc(String code) throws LuaLoadingException, InternalLuaLoadingError {
+        rootFunc = load(code);
+        return this;
+    }
+
+    public LuaFunction load(String code) throws LuaLoadingException, InternalLuaLoadingError {
         return load(code, _G);
     }
 
-    public LuaFunction load(String code, LuaObject _ENV) throws InternalLuaLoadingError {
+    public LuaFunction load(String code, LuaObject _ENV) throws LuaLoadingException, InternalLuaLoadingError {
         IRFunction rootFunc = new Parser(code).parse();
         var javaIntermediateCode = new CompilationState(jClassNameGen);
         rootFunc.generate(javaIntermediateCode);
@@ -57,9 +64,7 @@ public abstract class LuaVM {
         }
     }
 
-    public VmResult run() {
-        return new VmResult(VmRunState.SUCCESS, new Object[]{});
-    }
+    public abstract VmResult run();
 
     public record VmResult(VmRunState state, Object[] returnVars) {
     }

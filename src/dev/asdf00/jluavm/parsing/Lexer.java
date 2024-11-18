@@ -57,7 +57,9 @@ public class Lexer {
                     while (cur != '\n' && cur != CEOF) {
                         advance();
                     }
-                    advance();
+                    if (cur != CEOF) {
+                        advance();
+                    }
                 }
                 continue;  // goto skipWhitespace;
             }

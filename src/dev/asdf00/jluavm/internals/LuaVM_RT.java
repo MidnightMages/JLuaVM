@@ -17,6 +17,15 @@ public class LuaVM_RT extends LuaVM {
 
     }
 
+    @Override
+    public VmResult run() {
+        // TODO: do some setup, then execute root function
+
+        execLoop();
+
+        return null;
+    }
+
     // =================================================================================================================
     // main runtime methods
     // =================================================================================================================
@@ -44,7 +53,7 @@ public class LuaVM_RT extends LuaVM {
     private AbstractLuaError currentError;
     public Random lMathRandom = new Random();
 
-    private void runInternal() {
+    private void execLoop() {
         for (;;) {
             switch (callState) {
                 case ERROR -> {
