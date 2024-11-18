@@ -1,18 +1,27 @@
 package dev.asdf00.jluavm.parsing.ir;
 
+import dev.asdf00.jluavm.exceptions.loading.InternalJavaCompilerError;
 import dev.asdf00.jluavm.exceptions.loading.InternalLuaLoadingError;
 import dev.asdf00.jluavm.parsing.container.LabelInfo;
+import dev.asdf00.jluavm.runtime.types.LuaFunction;
+import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.utils.Tuple;
+import org.joor.Reflect;
+import org.joor.ReflectException;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Stack;
 import java.util.function.Supplier;
 
 public final class CompilationState {
+    private final String COMPILED_CLASSES_MODULE_PREFIX = "dev.asdf00.jluavm.lualoaded.";
+
     private final Supplier<String> jClassNameGenerator;
 
-    public final ArrayList<String> functionJavaCode = new ArrayList<>();
+    public final ArrayList<Tuple<String, String>> functionJavaCode = new ArrayList<>();
     public final ArrayList<ArrayList<Integer>> innerFunctionDependencies = new ArrayList<>();
 
     private final HashMap<LabelInfo, String> patches = new HashMap<>();
@@ -60,6 +69,7 @@ public final class CompilationState {
 
     /**
      * Generate call, either external or internal.
+     *
      * @param expectedResultCnt this call generates as many e-stack elements as requested (missing elements are filled
      *                          with NIL). If -1 is passed, all returned values are packed into one LuaArray.
      * @return
@@ -91,9 +101,10 @@ public final class CompilationState {
     }
 
     public void closeFunction(String content) {
-        String result = curFunc.generateJIC(jClassNameGenerator.get(), content);
+        String name = jClassNameGenerator.get();
+        String result = curFunc.generateJIC(name, content);
         int dept = functionJavaCode.size();
-        functionJavaCode.add(result);
+        functionJavaCode.add(new Tuple<>(name, result));
         innerFunctionDependencies.add(curFunc.innerFuncs);
         curFunc = funcStack.pop();
         if (curFunc != null) {
@@ -111,12 +122,62 @@ public final class CompilationState {
 
     public void resolveAllPatches() {
         for (int i = 0; i < functionJavaCode.size(); i++) {
-            String code = functionJavaCode.get(i);
+            var clazz = functionJavaCode.get(i);
+            String code = clazz.y();
             for (var r : patchResolutions) {
                 code = code.replace(r.x(), "%d".formatted(r.y()));
             }
-            functionJavaCode.set(i, code);
+            functionJavaCode.set(i, new Tuple<>(clazz.x(), code));
         }
+    }
+
+    public Constructor<? extends LuaFunction> loadAndLinkAllClasses(LuaObject _ENV) throws InternalLuaLoadingError {
+        if (_ENV == null || !_ENV.isTable()) {
+            throw new InternalLuaLoadingError("got invalid _ENV");
+        }
+        // compile and load generated classes
+        var jClasses = (Class<? extends LuaFunction>[]) new Class<?>[functionJavaCode.size()];
+        for (int i = 0; i < jClasses.length; i++) {
+            var clsDef = functionJavaCode.get(i);
+            try {
+                var clazz = Reflect.compile(COMPILED_CLASSES_MODULE_PREFIX + clsDef.x(), clsDef.y()).type();
+                if (!LuaFunction.class.isAssignableFrom(jClasses[i])) {
+                    throw new InternalLuaLoadingError(clazz.getName() + " is not of type LuaFunction!");
+                }
+                jClasses[i] = (Class<? extends LuaFunction>) clazz;
+            } catch (ReflectException e) {
+                throw new InternalJavaCompilerError(e.getMessage(), clsDef.y());
+            }
+        }
+        // resolve linking related stuff via reflection
+        var constructors = (Constructor<? extends LuaFunction>[]) new Constructor<?>[jClasses.length];
+        var envs = new Field[jClasses.length];
+        var depts = new Field[jClasses.length];
+        for (int i = 0; i < constructors.length; i++) {
+            try {
+                constructors[i] = jClasses[i].getDeclaredConstructor(LuaObject[].class);
+                envs[i] = jClasses[i].getDeclaredField("_ENV");
+                depts[i] = jClasses[i].getDeclaredField("innerFunctions");
+            } catch (ReflectiveOperationException e) {
+                throw new InternalLuaLoadingError(e);
+            }
+        }
+        // link classes
+        for (int i = 0; i < constructors.length; i++) {
+            try {
+                envs[i].set(null, _ENV);
+                var innerDepts = innerFunctionDependencies.get(i);
+                var ds = (Constructor<? extends LuaFunction>[]) new Constructor<?>[innerDepts.size()];
+                for (int j = 0; j < innerDepts.size(); j++) {
+                    ds[j] = constructors[innerDepts.get(j)];
+                }
+                depts[i].set(null, ds);
+            } catch (ReflectiveOperationException e) {
+                throw new InternalLuaLoadingError(e);
+            }
+        }
+        // return constructor for root function
+        return constructors[constructors.length - 1];
     }
 
     // =================================================================================================================
@@ -261,7 +322,7 @@ public final class CompilationState {
         private final int maxLocalSize;
         private final int argCnt;
         private final boolean hasParamsArg;
-        private int scopeCount=0;
+        private int scopeCount = 0;
 
         public FunctionScope(int localsCount, int maxLocalSize, int argCnt, boolean hasParamsArg) {
             super(localsCount);
@@ -295,39 +356,39 @@ public final class CompilationState {
 
             String result = """
                     package dev.asdf00.jluavm.lualoaded;
-                    
+                                        
                     import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
                     import dev.asdf00.jluavm.exceptions.LuaRuntimeError;
                     import dev.asdf00.jluavm.internals.LuaVM_RT;
                     import dev.asdf00.jluavm.runtime.errors.*;
                     import dev.asdf00.jluavm.runtime.types.*;
                     import dev.asdf00.jluavm.runtime.utils.*;
-                    
+                                        
                     import java.lang.reflect.Constructor;
-                    
-                    public class %s extends LuaFunction {
+                                        
+                    public final class %s extends LuaFunction {
                     public static LuaObject _ENV;
                     public static Constructor<? extends LuaFunction>[] innerFunctions;
-                    
+                                        
                     public %s(LuaObject[] closures) {
                         super(closures);
                     }
-                    
+                                        
                     @Override
                     public int getMaxLocalsSize() {
                         return %d;
                     }
-                    
+                                        
                     @Override
                     public int getArgCount() {
                         return %d;
                     }
-                    
+                                        
                     @Override
                     public boolean hasParamsArg() {
                         return %s;
                     }
-                    
+                                        
                     @Override
                     public void invoke(LuaVM_RT vm, LuaObject[] stackFrame, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
                     %s
@@ -346,7 +407,7 @@ public final class CompilationState {
                     default: throw new InternalLuaRuntimeError("should not reach end of fall-through switch");
                     }
                     }
-                    
+                                        
                     // inner scopes
                     %s
                     }""".formatted(jClassName, jClassName,

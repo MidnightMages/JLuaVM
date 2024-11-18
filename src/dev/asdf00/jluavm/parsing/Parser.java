@@ -19,7 +19,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Stack;
-import java.util.function.Supplier;
 
 import static dev.asdf00.jluavm.parsing.container.TokenType.*;
 
@@ -469,12 +468,11 @@ public final class Parser {
             });
             Node[] expressions = ExpList();
             result = new AssignmentNode(assignTargets.toArray(Node[]::new), expressions);
-        }
-        else {
-            if (result instanceof FunctionCallNode f){
+        } else {
+            if (result instanceof FunctionCallNode f) {
                 result = new FunctionStatementNode(f);
             } else {
-                throw new LuaParserException(cur.pos(), "(At %s) Expected <%s>, got <%s>".formatted(cur.pos(),EQ.rep, cur.type().rep));
+                throw new LuaParserException(cur.pos(), "(At %s) Expected <%s>, got <%s>".formatted(cur.pos(), EQ.rep, cur.type().rep));
             }
         }
         return result;
