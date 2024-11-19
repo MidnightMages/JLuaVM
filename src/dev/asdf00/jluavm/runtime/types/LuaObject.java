@@ -796,7 +796,7 @@ public final class LuaObject {
                         double a = epos < 0 ? 2 : 10;
                         int splitter = epos < 0 ? ppos : epos;
                         doubleValue = parseHexDouble(number.substring(2, point)) + Double.parseDouble(number.substring(point, splitter))
-                                                                                   * Math.pow(a, Double.parseDouble(number.substring(splitter + 1)));
+                                * Math.pow(a, Double.parseDouble(number.substring(splitter + 1)));
                     }
                 }
             } else {
@@ -841,8 +841,7 @@ public final class LuaObject {
                 dVal = doubleValue;
             }
             return new CoercedString(!isInteger, doubleValue, longValue);
-        }
-        catch (NumberFormatException e) {
+        } catch (NumberFormatException e) {
             throw new InternalLuaLexerError("Unexpected failure while reading number '%s'".formatted(number), e);
         }
     }
@@ -900,9 +899,10 @@ public final class LuaObject {
             var cres = coerceToNumber();
             if (cres != null) {
                 if (cres.isDouble) {
-                    var lv = (long) cres.dVal;
-                    if ((double) lv == cres.dVal)
+                    long lv = (long) cres.dVal;
+                    if ((double) lv == cres.dVal) {
                         return lv;
+                    }
                 } else {
                     return cres.lVal;
                 }
@@ -911,6 +911,8 @@ public final class LuaObject {
             throw new InternalLuaRuntimeError("long-coersion of uncoercable string '%s'".formatted(getString()));
         } else if (isLong()) {
             return lVal;
+        } else if (isDouble() && (double) ((long) dVal) == dVal) {
+            return (long) dVal;
         } else {
             throw new InternalLuaRuntimeError("long-coersion of uncoercable object of type '%s'".formatted(getType()));
         }
@@ -990,6 +992,17 @@ public final class LuaObject {
 
     public boolean isIntCoercible() { // TODO rename to isLongCoercible
         return isLong() || (isDouble() && (double) ((long) dVal) == dVal);
+    }
+
+    public boolean hasLongRepr() {
+        if (isIntCoercible()) {
+            return true;
+        } else if (isString()) {
+            var cres = coerceToNumber();
+            return cres != null && (!cres.isDouble || (double) ((long) cres.dVal) == cres.dVal);
+        } else {
+            return false;
+        }
     }
 
     public boolean isNumberCoercible() {
