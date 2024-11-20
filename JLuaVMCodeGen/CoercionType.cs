@@ -1,8 +1,0 @@
-﻿namespace JLuaVMCodeGen;
-
-internal enum CoercionType {
-    None,
-    ToNum,
-    ToStr,
-    ToBitwise
-}
