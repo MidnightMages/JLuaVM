@@ -107,13 +107,12 @@ public final class LuaObject {
     // =================================================================================================================
 
     // MUST return an integer (caller requirement)
-    @SuppressWarnings("unchecked")
     public LuaObject len() {
         assert isType(Types.STRING) || isType(Types.TABLE);
         if (this.isString())
             return LuaObject.of(getString().length());
 
-        return LuaObject.of(((HashMap<LuaObject, LuaObject>) refVal).size());
+        return LuaObject.of(((LuaHashMap) refVal).luaLen());
     }
 
 
@@ -1057,16 +1056,12 @@ public final class LuaObject {
 
     public static LuaObject table(LuaObject... val) {
         assert (val.length & 1) == 0;
-        var rv = new HashMap<LuaObject, LuaObject>();
+        var rv = new LuaHashMap();
         for (int i = 0; i < val.length; i += 2) {
             rv.put(val[i], val[i + 1]);
             assert !val[i].isDouble() || val[i].isDouble() && !val[i].isIntCoercible();
         }
-        return table(rv);
-    }
-
-    public static LuaObject table(HashMap<LuaObject, LuaObject> val) {
-        return new LuaObject(val, 0, 0, Types.TABLE);
+        return new LuaObject(rv, -1, -1, Types.TABLE);
     }
 
     @Override

@@ -31,10 +31,15 @@ public class ConstructedTableNode extends Node {
         var spot = cState.pushEStack();
         sb.append(spot).append(" = LuaObject.table(");
         if (spotList.length > 0) {
-            sb.append(spotList[0]);
+            sb.append("RTUtils.tryCoerceFloatToInt(").append(spotList[0]).append(')');
         }
         for (int i = 1; i < spotList.length; i++) {
-            sb.append(", ").append(spotList[i]);
+            sb.append(", ");
+            if (i % 2 == 0) {
+                sb.append("RTUtils.tryCoerceFloatToInt(").append(spotList[i]).append(')');
+            } else {
+                sb.append(spotList[i]);
+            }
         }
         sb.append(");");
         return sb.toString();
