@@ -54,13 +54,16 @@ public abstract class LuaVM {
     }
 
     public LuaFunction load(String code, LuaObject _ENV) throws LuaLoadingException, InternalLuaLoadingError {
+        if (_ENV == null) {
+            throw new InternalLuaLoadingError("got invalid _ENV");
+        }
         IRFunction rootFunc = new Parser(code).parse();
         var javaIntermediateCode = new CompilationState(jClassNameGen);
         rootFunc.generate(javaIntermediateCode);
         javaIntermediateCode.resolveAllPatches();
-        var rootCtor = javaIntermediateCode.loadAndLinkAllClasses(_ENV);
+        var rootCtor = javaIntermediateCode.loadAndLinkAllClasses();
         try {
-            return rootCtor.newInstance((Object) Singletons.EMPTY_LUA_OBJ_ARRAY);
+            return rootCtor.newInstance(new LuaObject[]{_ENV}, Singletons.EMPTY_LUA_OBJ_ARRAY);
         } catch (ReflectiveOperationException e) {
             throw new InternalLuaLoadingError(e);
         }

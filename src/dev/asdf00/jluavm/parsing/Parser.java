@@ -83,8 +83,13 @@ public final class Parser {
             // we index the local _ENV value
             return new DeRefNode(new LocalAccessNode(env), ConstantNode.ofIdent(ident));
         } else {
-            // this seems to be a global value, therefore we index the environment
-            return new DeRefNode(ConstantNode.ofPlain("_ENV"), ConstantNode.ofIdent(ident));
+            if ("_ENV".equals(ident)) {
+                // here we access _ENV itself
+                return new EnvAccessNode();
+            } else {
+                // this seems to be a global value, therefore we index the environment
+                return new DeRefNode(new EnvAccessNode(), ConstantNode.ofIdent(ident));
+            }
         }
     }
 

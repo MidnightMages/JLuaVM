@@ -26,6 +26,6 @@ public class FunctionDefinitionNode extends Node {
         for (int i = 0; i < captures.length; i++) {
             cState.popEStack();
         }
-        return "%s = LuaObject.of(newInnerFunction(innerFunctions[%s]%s));".formatted(spot, innerFuncIdx, captSpots);
+        return "%s = LuaObject.of(newInnerFunction(innerFunctions[%s], _ENV%s));".formatted(spot, innerFuncIdx, captSpots);
     }
 }

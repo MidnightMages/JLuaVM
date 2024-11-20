@@ -15,17 +15,19 @@ import java.lang.reflect.Constructor;
 import java.util.Arrays;
 
 public abstract class LuaFunction {
+    public final LuaObject[] _ENV;
     public final LuaObject[] closures;
 
-    public LuaFunction(LuaObject[] closures) {
+    public LuaFunction(LuaObject[] _ENV, LuaObject[] closures) {
+        this._ENV = _ENV;
         this.closures = closures;
     }
 
     public abstract void invoke(LuaVM_RT vm, LuaObject[] stackFrame, int resume, LuaObject[] expressionStack, LuaObject[] returned);
 
-    protected static <T extends LuaFunction> T newInnerFunction(Constructor<T> ctor, LuaObject... closures) {
+    protected static <T extends LuaFunction> T newInnerFunction(Constructor<T> ctor, LuaObject[] _ENV, LuaObject... closures) {
         try {
-            return ctor.newInstance((Object[]) closures);
+            return ctor.newInstance(_ENV, closures);
         } catch (ReflectiveOperationException e) {
             throw new InternalLuaRuntimeError("error on generating inner function reference (%s)".formatted(e));
         }
@@ -386,8 +388,8 @@ public abstract class LuaFunction {
                     vm.tailCall(t2.getFunc(), t0, t1);
                     return;
                 } else {
-                vm.callInternal(1, LuaFunction::callWithMeta, t2, t0, t1);
-                return;
+                    vm.callInternal(1, LuaFunction::callWithMeta, t2, t0, t1);
+                    return;
                 }
             case 1:
                 vm.internalReturn(t0);

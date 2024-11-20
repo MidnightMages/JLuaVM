@@ -131,10 +131,7 @@ public final class CompilationState {
     }
 
     @SuppressWarnings("unchecked")
-    public Constructor<? extends LuaFunction> loadAndLinkAllClasses(LuaObject _ENV) throws InternalLuaLoadingError {
-        if (_ENV == null || !_ENV.isTable()) {
-            throw new InternalLuaLoadingError("got invalid _ENV");
-        }
+    public Constructor<? extends LuaFunction> loadAndLinkAllClasses() throws InternalLuaLoadingError {
         // compile and load generated classes
         var jClasses = (Class<? extends LuaFunction>[]) new Class<?>[functionJavaCode.size()];
         for (int i = 0; i < jClasses.length; i++) {
@@ -151,12 +148,10 @@ public final class CompilationState {
         }
         // resolve linking related stuff via reflection
         var constructors = (Constructor<? extends LuaFunction>[]) new Constructor<?>[jClasses.length];
-        var envs = new Field[jClasses.length];
         var depts = new Field[jClasses.length];
         for (int i = 0; i < constructors.length; i++) {
             try {
-                constructors[i] = jClasses[i].getDeclaredConstructor(LuaObject[].class);
-                envs[i] = jClasses[i].getDeclaredField("_ENV");
+                constructors[i] = jClasses[i].getDeclaredConstructor(LuaObject[].class, LuaObject[].class);
                 depts[i] = jClasses[i].getDeclaredField("innerFunctions");
             } catch (ReflectiveOperationException e) {
                 throw new InternalLuaLoadingError(e);
@@ -165,7 +160,6 @@ public final class CompilationState {
         // link classes
         for (int i = 0; i < constructors.length; i++) {
             try {
-                envs[i].set(null, _ENV);
                 var innerDepts = innerFunctionDependencies.get(i);
                 var ds = (Constructor<? extends LuaFunction>[]) new Constructor<?>[innerDepts.size()];
                 for (int j = 0; j < innerDepts.size(); j++) {
@@ -367,11 +361,10 @@ public final class CompilationState {
                     import java.lang.reflect.Constructor;
                                         
                     public final class %s extends LuaFunction {
-                    public static LuaObject _ENV;
                     public static Constructor<? extends LuaFunction>[] innerFunctions;
                                         
-                    public %s(LuaObject[] closures) {
-                        super(closures);
+                    public %s(LuaObject[] _ENV, LuaObject[] closures) {
+                        super(_ENV, closures);
                     }
                                         
                     @Override

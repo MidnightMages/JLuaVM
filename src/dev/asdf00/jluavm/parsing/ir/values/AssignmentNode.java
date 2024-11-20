@@ -1,4 +1,4 @@
-package dev.asdf00.jluavm.parsing.ir.operations;
+package dev.asdf00.jluavm.parsing.ir.values;
 
 import dev.asdf00.jluavm.exceptions.loading.InternalLuaLoadingError;
 import dev.asdf00.jluavm.parsing.container.SpecificVarInfo;
@@ -6,8 +6,6 @@ import dev.asdf00.jluavm.parsing.ir.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.CompilationState.EStackCallInfo;
 import dev.asdf00.jluavm.parsing.ir.Node;
 import dev.asdf00.jluavm.parsing.ir.controlflow.FunctionCallNode;
-import dev.asdf00.jluavm.parsing.ir.values.DeRefNode;
-import dev.asdf00.jluavm.parsing.ir.values.LocalAccessNode;
 import dev.asdf00.jluavm.utils.Tuple;
 
 import java.util.ArrayList;
@@ -30,6 +28,8 @@ public class AssignmentNode extends Node {
         for (int i = 0; i < tTars.length; i++) {
             if (targets[i] instanceof LocalAccessNode access) {
                 tTars[i] = access.info;
+            } else if (targets[i] instanceof EnvAccessNode eacc) {
+                tTars[i] = eacc;
             } else if (targets[i] instanceof DeRefNode deRef) {
                 if (!sb.isEmpty()) {
                     sb.append('\n');
@@ -93,6 +93,8 @@ public class AssignmentNode extends Node {
             if (tTars[i] instanceof SpecificVarInfo info) {
                 // local assignment
                 sb.append(genLocalSet(cState, info, vSpots.get(i)));
+            } else if (tTars[i] instanceof EnvAccessNode) {
+                sb.append("_ENV[0] = ").append(vSpots.get(i)).append(';');
             } else {
                 var spots = (Tuple<String, String>) tTars[i];
                 sb.append(genIndexedSet(cState, spots.x(), spots.y(), vSpots.get(i)));

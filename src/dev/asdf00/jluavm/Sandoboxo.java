@@ -28,12 +28,11 @@ import java.lang.reflect.Constructor;
  * </pre>
  */
 @SuppressWarnings({"IfStatementWithIdenticalBranches", "ConstantValue"})
-public class Sandoboxo extends LuaFunction {;
-    public static LuaObject _ENV;
+public class Sandoboxo extends LuaFunction {
     public static Constructor<? extends LuaFunction>[] innerFunctions; // populated on class load
 
-    public Sandoboxo(LuaObject[] closures) {
-        super(closures);
+    public Sandoboxo(LuaObject[] _ENV, LuaObject[] closures) {
+        super(_ENV, closures);
     }
 
     @Override
@@ -98,7 +97,7 @@ public class Sandoboxo extends LuaFunction {;
         switch (resume) {
             case -1:
                 // load constant
-                t0 = _ENV;
+                t0 = _ENV[0];
                 // load constant
                 t1 = LuaObject.of("x");
                 // getExpression index
@@ -134,7 +133,7 @@ public class Sandoboxo extends LuaFunction {;
                 t0 = null;
 
                 // load constant
-                t0 = _ENV;
+                t0 = _ENV[0];
                 // load constant
                 t1 = LuaObject.of("x");
                 // load local
@@ -190,14 +189,14 @@ public class Sandoboxo extends LuaFunction {;
                 // load t
                 t0 = stackFrame[2];
                 // declare inner function with closure
-                t0 = LuaObject.of(newInnerFunction(innerFunctions[0], t0));
+                t0 = LuaObject.of(newInnerFunction(innerFunctions[0], _ENV, t0));
                 // assign to local variable f
                 stackFrame[3] = t0;
                 t0 = null;
 
                 // reserve t0 for assignment 0
                 // load _ENV
-                t1 = _ENV;
+                t1 = _ENV[0];
                 // load "y"
                 t2 = LuaObject.of("y");
                 // reserve t3 for assignment 1
@@ -291,7 +290,7 @@ public class Sandoboxo extends LuaFunction {;
                     switch (resume) {
                         case -1, 0, 1, 2, 3, 4, 5:
                             // load constant
-                            t1 = _ENV;
+                            t1 = _ENV[0];
                             // load constant
                             t2 = LuaObject.of("x");
                             // getExpression index
@@ -397,8 +396,8 @@ public class Sandoboxo extends LuaFunction {;
     public static class InnerFunction extends LuaFunction {
         public static Constructor<? extends LuaFunction>[] innerFunctions; // populated on class load
 
-        public InnerFunction(LuaObject... closures) {
-            super(closures);
+        public InnerFunction(LuaObject[] _ENV, LuaObject... closures) {
+            super(_ENV, closures);
         }
 
         @Override
