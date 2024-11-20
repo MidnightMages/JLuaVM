@@ -22,7 +22,6 @@ public class LGlobal {
         return false;
     }
 
-    @SuppressWarnings("ResultOfMethodCallIgnored")
     public static LuaObject getTable(boolean includeUnconstrainedFunctions) {
         var rv = LuaObject.table();
 
@@ -47,7 +46,7 @@ public class LGlobal {
         warn
         xpcall
          */
-        rv.set("assert", LuaObject.of(AtomicLuaFunction.vaForManyResults((vm, params) -> {
+        rv.set("assert", AtomicLuaFunction.vaForManyResults((vm, params) -> {
             if (params.length == 0) {
                 vm.error(new LuaArgumentError(0, "assert", "value expected"));
                 return null;
@@ -59,8 +58,8 @@ public class LGlobal {
             // LUAC DEVIATION. Our assertion returns tostring(msg) instead of just the type of that argument for nil and boolean
             vm.error(new LuaUserError(params.length < 2 ? "assertion failed!" : params[1].asString()));
             return null;
-        })));
-        rv.set("getmetatable", LuaObject.of(AtomicLuaFunction.forOneResult((vm, t) -> {
+        }).obj());
+        rv.set("getmetatable", AtomicLuaFunction.forOneResult((vm, t) -> {
             if (!t.isTable())
                 return LuaObject.NIL;
 
@@ -69,8 +68,8 @@ public class LGlobal {
                 return mt;
 
             return mt.get(LuaObject.of("__metatable"));
-        })));
-        rv.set("next", LuaObject.of(AtomicLuaFunction.vaForManyResults((vm, args) -> {
+        }).obj());
+        rv.set("next", AtomicLuaFunction.vaForManyResults((vm, args) -> {
             if (args.length == 0){
                 vm.error(new LuaArgumentError(0, "next", "table expected, got no value"));
                 return null;
@@ -93,8 +92,8 @@ public class LGlobal {
                 // if called with the last index, return nil
             }
             throw new UnsupportedOperationException("not implemented");
-        })));
-        rv.set("rawequal", LuaObject.of(AtomicLuaFunction.forOneResult((vm, v1, v2) -> {
+        }).obj());
+        rv.set("rawequal", AtomicLuaFunction.forOneResult((vm, v1, v2) -> {
             var t1 = v1.getType();
             if (t1 == LuaObject.Types.LONG || t1 == LuaObject.Types.DOUBLE)
                 t1 = LuaObject.Types.NUMBER;
@@ -104,8 +103,8 @@ public class LGlobal {
                 t2 = LuaObject.Types.NUMBER;
 
             return LuaObject.of(t1 == t2 && ((t1 == LuaObject.Types.NUMBER || t1 == LuaObject.Types.STRING) ? v1.eq(v2).getBool() : v1 == v2));
-        })));
-        rv.set("rawget", LuaObject.of(AtomicLuaFunction.forOneResult((vm, tbl, k) -> {
+        }).obj());
+        rv.set("rawget", AtomicLuaFunction.forOneResult((vm, tbl, k) -> {
             if (!tbl.isTable()) {
                 vm.error(new LuaArgumentError(0, "rawget", "table expected, got %s".formatted(tbl.getTypeAsString())));
                 return null;
@@ -115,15 +114,15 @@ public class LGlobal {
 
             tbl.get(k); // dont call a metamethod, this is a 'raw' function
             return tbl;
-        })));
-        rv.set("rawlen", LuaObject.of(AtomicLuaFunction.forOneResult((vm, v) -> {
+        }).obj());
+        rv.set("rawlen", AtomicLuaFunction.forOneResult((vm, v) -> {
             if (!v.isTable() && !v.isString()) {
                 vm.error(new LuaArgumentError(0, "rawlen", "table or string expected, got %s".formatted(v.getTypeAsString())));
                 return null;
             }
             return v.len();
-        })));
-        rv.set("rawset", LuaObject.of(AtomicLuaFunction.forOneResult((vm, tbl, k, v) -> {
+        }).obj());
+        rv.set("rawset", AtomicLuaFunction.forOneResult((vm, tbl, k, v) -> {
             if (!tbl.isTable()) {
                 vm.error(new LuaArgumentError(0, "rawset", "table expected, got %s".formatted(tbl.getTypeAsString())));
                 return null;
@@ -133,8 +132,8 @@ public class LGlobal {
 
             tbl.set(k, v); // dont call a metamethod, this is a 'raw' function
             return tbl;
-        })));
-        rv.set("select", LuaObject.of(AtomicLuaFunction.vaForManyResults((vm, args) -> {
+        }).obj());
+        rv.set("select", AtomicLuaFunction.vaForManyResults((vm, args) -> {
             if (args.length == 0){
                 vm.error(new LuaArgumentError(0, "select", "number or \"#\" expected, got no value"));
             }
@@ -156,8 +155,8 @@ public class LGlobal {
                 // must be "#" then
                 return new LuaObject[]{LuaObject.of(args.length-1)};
             }
-        })));
-        rv.set("setmetatable", LuaObject.of(AtomicLuaFunction.forOneResult((vm, tbl, mt) -> {
+        }).obj());
+        rv.set("setmetatable", AtomicLuaFunction.forOneResult((vm, tbl, mt) -> {
             if (!tbl.isTable()) {
                 vm.error(new LuaArgumentError(0, "setmetatable", "table expected, got %s".formatted(tbl.getTypeAsString())));
                 return null;
@@ -177,12 +176,12 @@ public class LGlobal {
             tbl.setMetatable(mt);
 
             return tbl;
-        })));
+        }).obj());
 //        rv.set("tostring", LuaObject.of(AtomicLuaFunction.forOneResult((vm, x) -> {
 //            var mtFunc = x.getMetaTableValueOrNull("__tostring");
 //            return LuaObject.of(mtFunc != null ? mtFunc.invoke() : x.asString());
 //        }))); // TODO rewrite this to make it work with the vm logic as it is not an atomic function
-        rv.set("type", LuaObject.of(AtomicLuaFunction.forOneResult((vm, x) -> LuaObject.of(x.getTypeAsString()))));
+        rv.set("type", AtomicLuaFunction.forOneResult((vm, x) -> LuaObject.of(x.getTypeAsString())).obj());
 
         rv.set("_VERSION", LuaObject.of("Lua 5.4"));
         rv.set("_G", rv);
