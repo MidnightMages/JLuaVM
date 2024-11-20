@@ -14,7 +14,7 @@ public class AtomicLuaFunction extends LuaFunction {
     private final boolean hasVararg;
 
     public AtomicLuaFunction(BiFunction<LuaVM_RT, LuaObject[], LuaObject[]> c, int nonVaArgCount, boolean hasVararg) {
-        super(Singletons.EMPTY_LUA_OBJ_ARRAY);
+        super(Singletons.EMPTY_LUA_OBJ_ARRAY, Singletons.EMPTY_LUA_OBJ_ARRAY);
         backing = c;
         this.hasVararg = hasVararg;
         argCount = nonVaArgCount + (hasVararg ? 1 : 0);
@@ -22,7 +22,7 @@ public class AtomicLuaFunction extends LuaFunction {
 
     public AtomicLuaFunction(BiConsumer<LuaVM_RT, LuaObject[]> c, int nonVaArgCount, boolean hasVararg) {
         this((vm, args) -> {
-            c.accept(vm,args);
+            c.accept(vm, args);
             return Singletons.EMPTY_LUA_OBJ_ARRAY;
         }, nonVaArgCount, hasVararg);
     }
@@ -75,7 +75,7 @@ public class AtomicLuaFunction extends LuaFunction {
 
     @Override
     public void invoke(LuaVM_RT vm, LuaObject[] stackFrame, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
-        vm.returnValue(backing.apply(vm,stackFrame));
+        vm.returnValue(backing.apply(vm, stackFrame));
     }
 
     @Override
@@ -93,7 +93,7 @@ public class AtomicLuaFunction extends LuaFunction {
         return hasVararg;
     }
 
-    public LuaObject obj(){
+    public LuaObject obj() {
         return LuaObject.of(this);
     }
 }

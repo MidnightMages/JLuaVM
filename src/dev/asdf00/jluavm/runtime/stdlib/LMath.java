@@ -8,7 +8,9 @@ import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.runtime.errors.LuaArgumentError;
 import dev.asdf00.jluavm.runtime.errors.LuaUserError;
 import dev.asdf00.jluavm.runtime.types.AtomicLuaFunction;
+import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
+import dev.asdf00.jluavm.runtime.utils.Singletons;
 
 import java.util.function.Function;
 
@@ -109,7 +111,7 @@ public class LMath {
         if (args.length == 1) { // math.random(n) == math.random(1,n)
             m = 1;
             n = args[0].asLong();
-            if (n == 0){
+            if (n == 0) {
                 return LuaObject.of(rnd.nextLong());
             } else if (n < 0) {
                 vm.error(new LuaArgumentError(0, "random", "interval is empty"));
@@ -122,14 +124,14 @@ public class LMath {
             vm.error(new LuaUserError("too many arguments"));
             return null;
         }
-        return LuaObject.of(rnd.nextLong(m, n+1)); // [m, n]
+        return LuaObject.of(rnd.nextLong(m, n + 1)); // [m, n]
     }
 
     // SPEC DEVIATION: we just have one 64bit seed, not (1 to 2)*64-bit
     public static LuaObject randomseed(LuaVM_RT vm, LuaObject[] args) {
         var rnd = vm.lMathRandom;
         long seed;
-        if (args.length == 0){ // no seed given, so generate a new one, seed it and return the seed
+        if (args.length == 0) { // no seed given, so generate a new one, seed it and return the seed
             seed = rnd.nextLong();
         } else { // extra args (2nd and beyond) are just ignored in luac 5.4 it seems
             if (!args[0].isIntCoercible()) {
@@ -181,24 +183,88 @@ public class LMath {
         table.set(name, AtomicLuaFunction.vaForOneResult(f).obj());
     }
 
+    private static LuaObject getMinMaxFunc(boolean isMax) {
+        return LuaObject.of(new LuaFunction(Singletons.EMPTY_LUA_OBJ_ARRAY, Singletons.EMPTY_LUA_OBJ_ARRAY) {
+            @Override
+            public void invoke(LuaVM_RT vm, LuaObject[] stackFrame, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
+                LuaObject min;
+                int i = resume;
+                if (resume == -1) { // initial call
+                    vm.registerExpressionStack(1);
+                    i = 1;
+                    min = stackFrame[0];
+                } else {
+                    assert resume > 0; // should never be 0 and also not negative except -1
+                    min = expressionStack[0];
+
+                    // if we were resumed, we must have a bool inside returned[0] representing whether arg[resume-1] was better than min
+                    assert returned.length == 1;
+                    assert returned[0].isBoolean();
+                    if (returned[0].getBool())
+                        min = stackFrame[resume - 1];
+                }
+                while (i < stackFrame.length) {
+                    var arg = stackFrame[i];
+                    if (min.isString() && arg.isString() || min.isNumber() && arg.isNumber()) {
+                        if ((isMax ? min.lt(arg) : arg.lt(min)).isTruthy()) {
+                            min = arg;
+                        }
+                    } else if (min.isTable() || arg.isTable()) {
+                        var mtf = isMax ? (min.isTable() ? min : arg) : (arg.isTable() ? arg : min);
+                        var ltf = mtf.getMetaTableValueOrNull("__lt");
+                        if (ltf == null) {
+                            vm.error(new LuaUserError("attempt to compare number with table"));
+                            return;
+                        } else if (!ltf.isFunction()) {
+                            vm.error(new LuaUserError("attempt to call a %s value".formatted(ltf.getTypeAsString())));
+                            return;
+                        }
+                        expressionStack[0] = min;
+                        vm.callExternal(i + 1, ltf.getFunc(), isMax ? new LuaObject[]{min, arg} : new LuaObject[]{arg, min});
+                        return;
+                    }
+                    i++;
+                }
+                vm.returnValue(min);
+            }
+
+            @Override
+            public int getMaxLocalsSize() {
+                return 1 + 1; // storedValue + params arg
+            }
+
+            @Override
+            public int getArgCount() {
+                return 0;
+            }
+
+            @Override
+            public boolean hasParamsArg() {
+                return true;
+            }
+        });
+    }
+
     // https://www.lua.org/manual/5.4/manual.html#6.7
     public static LuaObject getTable() {
         var rv = LuaObject.table();
         addSingleRvFunc(rv, "abs", LMath::abs);
         addSingleRvFunc1d1d(rv, "acos", Math::acos);
         addSingleRvFunc1d1d(rv, "asin", Math::asin);
-        addSingleRvFunc2(rv,"atan", LMath::atan);
+        addSingleRvFunc2(rv, "atan", LMath::atan);
         addSingleRvFunc(rv, "ceil", LMath::ceil);
         addSingleRvFunc1d1d(rv, "cos", Math::cos);
         addSingleRvFunc1d1d(rv, "deg", Math::toDegrees);
         addSingleRvFunc1d1d(rv, "exp", Math::exp);
         addSingleRvFunc(rv, "floor", LMath::floor);
-        addSingleRvFunc2(rv,"fmod", LMath::fmod);
+        addSingleRvFunc2(rv, "fmod", LMath::fmod);
         rv.set("huge", LuaObject.of(Double.POSITIVE_INFINITY));
         addSingleRvFunc2(rv, "log", LMath::log);
         // TODO add max()
+        rv.set("max", getMinMaxFunc(true));
         rv.set("maxinteger", LuaObject.of(Long.MAX_VALUE));
         // TODO add min()
+        rv.set("min", getMinMaxFunc(false));
         rv.set("mininteger", LuaObject.of(Long.MIN_VALUE));
         addMultiRvVaFunc(rv, "modf", LMath::modf);
         rv.set("pi", LuaObject.of(Math.PI));
