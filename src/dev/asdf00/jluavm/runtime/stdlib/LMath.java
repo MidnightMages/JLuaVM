@@ -189,22 +189,22 @@ public class LMath {
             public void invoke(LuaVM_RT vm, LuaObject[] stackFrame, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
                 LuaObject min;
                 int i = resume;
+                var params = stackFrame[0].asArray();
                 if (resume == -1) { // initial call
-                    vm.registerExpressionStack(1);
                     i = 1;
-                    min = stackFrame[0];
+                    min = params[0];
                 } else {
                     assert resume > 0; // should never be 0 and also not negative except -1
-                    min = expressionStack[0];
+                    min = stackFrame[1];
 
                     // if we were resumed, we must have a bool inside returned[0] representing whether arg[resume-1] was better than min
                     assert returned.length == 1;
                     assert returned[0].isBoolean();
                     if (returned[0].getBool())
-                        min = stackFrame[resume - 1];
+                        min = params[resume - 1];
                 }
-                while (i < stackFrame.length) {
-                    var arg = stackFrame[i];
+                while (i < params.length) {
+                    var arg = params[i];
                     if (min.isString() && arg.isString() || min.isNumber() && arg.isNumber()) {
                         if ((isMax ? min.lt(arg) : arg.lt(min)).isTruthy()) {
                             min = arg;
@@ -260,10 +260,8 @@ public class LMath {
         addSingleRvFunc2(rv, "fmod", LMath::fmod);
         rv.set("huge", LuaObject.of(Double.POSITIVE_INFINITY));
         addSingleRvFunc2(rv, "log", LMath::log);
-        // TODO add max()
         rv.set("max", getMinMaxFunc(true));
         rv.set("maxinteger", LuaObject.of(Long.MAX_VALUE));
-        // TODO add min()
         rv.set("min", getMinMaxFunc(false));
         rv.set("mininteger", LuaObject.of(Long.MIN_VALUE));
         addMultiRvVaFunc(rv, "modf", LMath::modf);
