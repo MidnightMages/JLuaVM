@@ -8,6 +8,7 @@ import dev.asdf00.jluavm.parsing.ir.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.IRFunction;
 import dev.asdf00.jluavm.runtime.stdlib.LGlobal;
 import dev.asdf00.jluavm.runtime.stdlib.LMath;
+import dev.asdf00.jluavm.runtime.stdlib.LTable;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
@@ -35,6 +36,7 @@ public abstract class LuaVM {
     public LuaVM withStdLib() {
         _G = LGlobal.getTable(false);
         _G.set("math", LMath.getTable());
+        _G.set("table", LTable.getTable());
         return this;
     }
 
