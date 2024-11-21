@@ -13,6 +13,7 @@ import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 
+import java.util.Arrays;
 import java.util.function.Supplier;
 
 public abstract class LuaVM {
@@ -40,12 +41,17 @@ public abstract class LuaVM {
         return this;
     }
 
+    public LuaVM withEmptyEnv() {
+        _G = LuaObject.table();
+        return this;
+    }
+
     public LuaObject get_G() {
         return _G;
     }
 
     public LuaVM withRootFunc(String code) throws LuaLoadingException, InternalLuaLoadingError {
-        rootFunc = load(code);
+        rootFunc = load(code, _G);
         return this;
     }
 
@@ -72,6 +78,13 @@ public abstract class LuaVM {
     public abstract VmResult run();
 
     public record VmResult(VmRunState state, Object[] returnVars) {
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof VmResult other) {
+                return state == other.state && Arrays.equals(returnVars, other.returnVars);
+            }
+            return false;
+        }
     }
 
     public enum VmRunState {

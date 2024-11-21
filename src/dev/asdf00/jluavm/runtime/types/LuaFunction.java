@@ -13,6 +13,7 @@ import dev.asdf00.jluavm.runtime.utils.Singletons;
 import java.lang.reflect.Constructor;
 import java.util.Arrays;
 
+@SuppressWarnings("unused")
 public abstract class LuaFunction {
     public final LuaObject[] _ENV;
     public final LuaObject[] closures;
@@ -86,7 +87,7 @@ public abstract class LuaFunction {
         }
     }
 
-    protected static boolean indexedSet(LuaVM_RT vm, int resumeLabel, LuaObject obj, LuaObject idx, LuaObject val) {
+    protected boolean indexedSet(LuaVM_RT vm, int resumeLabel, LuaObject obj, LuaObject idx, LuaObject val) {
         if (obj.isTable()) {
             LuaObject key = RTUtils.tryCoerceFloatToInt(idx);
             if (key.isNil() || key.isNaN()) {

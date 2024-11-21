@@ -1014,8 +1014,8 @@ public final class LuaObject {
     // construction methods
     // =================================================================================================================
 
-    public static LuaObject box() {
-        return new LuaObject(null, 0, 0, Types.BOX);
+    public static LuaObject box(LuaObject obj) {
+        return new LuaObject(obj, 0, 0, Types.BOX);
     }
 
     public static LuaObject nil() {

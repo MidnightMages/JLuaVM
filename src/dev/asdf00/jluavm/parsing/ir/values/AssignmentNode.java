@@ -125,7 +125,11 @@ public class AssignmentNode extends Node {
         String assignment;
         if (info.closureIdx() < 0) {
             if (info.baseInfo().sitsInBox()) {
-                assignment = "stackFrame[%d].setBox(%s);".formatted(info.baseInfo().lVarIdx, val);
+                assignment = """
+                        if (stackFrame[%d] == null) stackFrame[%d] = LuaObject.box(%s);
+                        else stackFrame[%d].setBox(%s);""".formatted(
+                        info.baseInfo().lVarIdx, info.baseInfo().lVarIdx, val,
+                        info.baseInfo().lVarIdx, val);
             } else {
                 // this could be a local definition, therefore we need to insert a closability check for all closable variables
                 if (info.baseInfo().isClosable()) {

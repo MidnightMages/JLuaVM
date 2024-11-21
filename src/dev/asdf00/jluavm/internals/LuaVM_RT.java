@@ -14,135 +14,39 @@ import java.util.Stack;
 public class LuaVM_RT extends LuaVM {
 
     public LuaVM_RT() {
-
+        luaCallStack = new Stack<>();
+        curFuncFrame = null;
+        returnVals = null;
     }
 
     @Override
     public VmResult run() {
-        // TODO: do some setup, then execute root function
-
+        if (rootFunc == null) {
+            return new VmResult(VmRunState.EXECUTION_ERROR, new Object[]{"Invalid root function"});
+        }
+        curFuncFrame = luaCallStack.push(new FunctionCallFrame(new LuaObject[rootFunc.getMaxLocalsSize()], rootFunc));
         execLoop();
-
-        return null;
+        return new VmResult(VmRunState.SUCCESS, returnVals);
     }
 
     // =================================================================================================================
     // main runtime methods
     // =================================================================================================================
 
-    public LuaFunction rootFunction;
-    public Stack<LuaStackFrame> luaStack;
-    private LuaStackFrame curFrame;
-
-    private enum MagicState {
-        ERROR,
-        CALL_EXTERNAL,
-        TAIL_CALL,
-        CALL_INTERNAL,
-        RETURNING,
-        INTERNAL_RETURNING,
-        GOTO,
-        BREAK,
-    }
     // magic state
-    private MagicState callState;
-    private LuaFunction nextExternalCall;
-    private LFunc nextInternalCall;
-    private LuaObject[] arguments;
-    private LuaObject[] returnVals;
-    private AbstractLuaError currentError;
     public Random lMathRandom = new Random();
+
+    Stack<FunctionCallFrame> luaCallStack;
+    FunctionCallFrame curFuncFrame;
+    private LuaObject[] returnVals;
 
     private void execLoop() {
         for (;;) {
-            switch (callState) {
-                case ERROR -> {
-                    // TODO
-                }
-                case CALL_EXTERNAL -> {
-                    // create new locals
-                    var locals = new LuaObject[nextExternalCall.getMaxLocalsSize()];
-                    // setup args
-                    setupArgsInLocals(locals);
-                    // create new LuaStackFrame
-                    curFrame = luaStack.push(new LuaStackFrame(locals, nextExternalCall));
-                    // call lua function
-                    nextExternalCall.invoke(this, curFrame.locals, -1, null, null);
-                }
-                case TAIL_CALL -> {
-                    if (nextExternalCall != curFrame.lFunction) {
-                        // no tail call possible but this function is not resumable beyond this point and just passes
-                        // through the return values of the called function
-                        curFrame.resumable = false;
-                        // create new locals
-                        var locals = new LuaObject[nextExternalCall.getMaxLocalsSize()];
-                        // setup args
-                        setupArgsInLocals(locals);
-                        // create new LuaStackFrame
-                        curFrame = luaStack.push(new LuaStackFrame(locals, nextExternalCall));
-                        // call lua function
-                        nextExternalCall.invoke(this, curFrame.locals, -1, null, null);
-                    } else {
-                        // tail callable, prepare stack frame
-                        curFrame.clear();
-                        // setup args
-                        setupArgsInLocals(curFrame.locals);
-                        // call lua function
-                        nextExternalCall.invoke(this, curFrame.locals, -1, null, null);
-                    }
-                }
-                case CALL_INTERNAL -> {
-                    curFrame.pushJFrame(nextInternalCall);
-                    nextInternalCall.invoke(this, curFrame.locals, arguments, -1, null, null);
-                }
-                case RETURNING -> {
-                    luaStack.pop();
-                    if (luaStack.isEmpty()) {
-                        // outermost lua function has exited
-                        return;
-                    }
-                    curFrame = luaStack.peek();
-                    if (curFrame.internalCallStack.isEmpty()) {
-                        // resume lua function
-                        curFrame.lFunction.invoke(this, curFrame.locals, curFrame.resume, curFrame.eStack, returnVals);
-                    } else {
-                        // resume internal java function
-                        LuaStackFrame.JStackFrame jFrame = curFrame.internalCallStack.peek();
-                        jFrame.jMethod.invoke(this, curFrame.locals, null, jFrame.resume, jFrame.eStack, returnVals);
-                    }
-                }
-                case INTERNAL_RETURNING -> {
-                    curFrame.internalCallStack.pop();
-                    if (curFrame.internalCallStack.isEmpty()) {
-                        // resume lua function
-                        curFrame.lFunction.invoke(this, curFrame.locals, curFrame.resume, curFrame.eStack, returnVals);
-                    } else {
-                        // resume internal java function
-                        LuaStackFrame.JStackFrame jFrame = curFrame.internalCallStack.peek();
-                        jFrame.jMethod.invoke(this, curFrame.locals, null, jFrame.resume, jFrame.eStack, returnVals);
-                    }
-                }
+            if (curFuncFrame != null) {
+                curFuncFrame.execute(this);
+            } else {
+                break;
             }
-        }
-    }
-
-    private void setupArgsInLocals(LuaObject[] locals) {
-        int argCnt = nextExternalCall.getArgCount();
-        for (int i = 0; i < argCnt; i++) {
-            if (i >= arguments.length) {
-                // append nil
-                locals[i] = LuaObject.nil();
-                continue;
-            }
-            locals[i] = arguments[i];
-        }
-        if (nextExternalCall.hasParamsArg()) {
-            // pack all remaining arguments into params
-            var packedParams = new LuaObject[Math.max(0, arguments.length - argCnt)];
-            for (int i = argCnt; i < arguments.length; i++) {
-                packedParams[i - argCnt] = arguments[i];
-            }
-            locals[argCnt] = LuaObject.of(packedParams);
         }
     }
 
@@ -151,27 +55,22 @@ public class LuaVM_RT extends LuaVM {
     // =================================================================================================================
 
     public LuaObject[] registerExpressionStack(int size) {
-        var neStack = size == 0 ? Singletons.EMPTY_LUA_OBJ_ARRAY : new LuaObject[size];
-        if (curFrame.internalCallStack.isEmpty()) {
-            // lua function setup
-            curFrame.eStack = neStack;
-        } else {
-            curFrame.internalCallStack.peek().eStack = neStack;
-        }
-        return neStack;
+        var eStack = size == 0 ? Singletons.EMPTY_LUA_OBJ_ARRAY : new LuaObject[size];
+        curFuncFrame.getTopFrame().expressionStack = eStack;
+        return eStack;
     }
 
     // to let the vm know how many local variables are used in this scope and need to be cleaned up afterward
     public void registerLocals(int count) {
-
+        curFuncFrame.getTopFrame().localCnt = count;
     }
 
     public void addClosable(LuaObject obj) {
-        curFrame.addClosable(obj);
+        curFuncFrame.getTopFrame().closables.push(obj);
     }
 
     public LuaObject getNextClosable() {
-        return curFrame.getNextClosable();
+        return curFuncFrame.getTopFrame().closables.pop();
     }
 
     // =================================================================================================================
@@ -179,7 +78,7 @@ public class LuaVM_RT extends LuaVM {
     // =================================================================================================================
 
     public void error(AbstractLuaError err) {
-        // TODO: set error
+        throw new UnsupportedOperationException("errors not supported yet");
     }
 
     public void errorArgType(int argumentIndex, String expectedType, LuaObject actualObject) {
@@ -191,7 +90,22 @@ public class LuaVM_RT extends LuaVM {
     }
 
     public void callExternal(int resume, LuaFunction externalTarget, LuaObject... args) {
-        // TODO: flatten LuaArray into args array
+        // set resume point for current function
+        curFuncFrame.getTopFrame().resume = resume;
+        // setup new stack frame for call
+        LuaObject[] nuStackFrame = new LuaObject[externalTarget.getMaxLocalsSize()];
+        for (int i = 0, j = 0; i < externalTarget.getArgCount(); j++) {
+            if (args[j].isArray()) {
+                LuaObject[] inner = args[j].asArray();
+                for (int k = 0; k < inner.length && i < externalTarget.getArgCount(); i++, k++) {
+                    nuStackFrame[i] = inner[k];
+                }
+            } else {
+                nuStackFrame[i] = args[j];
+                i++;
+            }
+        }
+        curFuncFrame = luaCallStack.push(new FunctionCallFrame(nuStackFrame, externalTarget));
     }
 
     public void tailCall(LuaFunction externalTarget) {
@@ -199,8 +113,42 @@ public class LuaVM_RT extends LuaVM {
     }
 
     public void tailCall(LuaFunction externalTarget, LuaObject... args) {
-        // TODO: even if a tailcall is not possible, this function does not expect to be resumed but just to pass
-        //  through the returned values of the inner function.
+        if (curFuncFrame.lFunc != externalTarget) {
+            // this is sadly not a tail call
+            // TODO: handle unsuccessful tailcall
+            throw new UnsupportedOperationException("unsuccessful tailcall not implemented yet");
+        }
+        // do tailcall
+        curFuncFrame.reset();
+        LuaObject[] nuStackFrame = curFuncFrame.locals;
+        for (int i = 0, j = 0; i < externalTarget.getArgCount(); j++) {
+            if (args[j].isArray()) {
+                LuaObject[] inner = args[j].asArray();
+                for (int k = 0; k < inner.length && i < externalTarget.getArgCount(); i++, k++) {
+                    nuStackFrame[i] = inner[k];
+                }
+            } else {
+                nuStackFrame[i] = args[j];
+                i++;
+            }
+        }
+    }
+
+    public void returnValue() {
+        returnValue(Singletons.EMPTY_LUA_OBJ_ARRAY);
+    }
+
+    public void returnValue(LuaObject... values) {
+        // function exit
+        luaCallStack.pop();
+        if (luaCallStack.isEmpty()) {
+            // root function returned
+            returnVals = values;
+            curFuncFrame = null;
+        } else {
+            curFuncFrame = luaCallStack.peek();
+            curFuncFrame.getTopFrame().rvals = values;
+        }
     }
 
     public void callInternal(int resume, LFunc localTarget) {
@@ -208,7 +156,9 @@ public class LuaVM_RT extends LuaVM {
     }
 
     public void callInternal(int resume, LFunc localTarget, LuaObject... args) {
-
+        // we trust that the caller knows what they are doing and that the args are already in the correct format
+        curFuncFrame.getTopFrame().resume = resume;
+        curFuncFrame.enterScope(localTarget, args);
     }
 
     public void internalReturn() {
@@ -216,27 +166,18 @@ public class LuaVM_RT extends LuaVM {
     }
 
     public void internalReturn(LuaObject... values) {
-
+        curFuncFrame.exitScope(values);
     }
 
     public void internalContinue() {
-
+        throw new UnsupportedOperationException("continue not supported yet");
     }
 
     public void internalBreak(int scopeCnt) {
-
+        throw new UnsupportedOperationException("break not supported yet");
     }
 
     public void internalGoto(int scopeCnt, int resume) {
-
-    }
-
-
-    public void returnValue() {
-        returnValue(Singletons.EMPTY_LUA_OBJ_ARRAY);
-    }
-
-    public void returnValue(LuaObject... values) {
-
+        throw new UnsupportedOperationException("goto is not supported yet");
     }
 }

@@ -812,7 +812,7 @@ public final class Parser {
         int maxLocalCnt = symTab.getMaxFuncLocals();
         VarScope scp = symTab.exitScope();
         check(END);
-        return new FunctionDefinitionNode(scp.captured.keySet().stream().map(info -> new LocalAccessNode(info)).toArray(LocalAccessNode[]::new),
+        return new FunctionDefinitionNode(scp.captured.keySet().stream().map(info -> new PossiblyBoxedLocalAccessNode(info)).toArray(PossiblyBoxedLocalAccessNode[]::new),
                 new IRFunction(innerStats.toArray(Node[]::new), scp.getLocalsCount(), scp.getClosableCount(), maxLocalCnt, args.length, hasParamsArg));
     }
 

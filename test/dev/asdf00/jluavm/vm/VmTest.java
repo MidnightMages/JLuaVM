@@ -2,10 +2,12 @@ package dev.asdf00.jluavm.vm;
 
 import dev.asdf00.jluavm.LuaVM;
 import dev.asdf00.jluavm.exceptions.loading.LuaParserException;
+import dev.asdf00.jluavm.runtime.types.LuaObject;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import static dev.asdf00.jluavm.Util.expandOptions;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class VmTest {
     @Test
@@ -15,7 +17,7 @@ public class VmTest {
                 var vm = LuaVM.create();
                 vm.load(src);
                 var res = vm.run();
-                Assertions.assertEquals(LuaVM.VmRunState.SUCCESS, res.state());
+                assertEquals(LuaVM.VmRunState.SUCCESS, res.state());
                 Assertions.assertArrayEquals(new Object[]{4 - 1 + b}, res.returnVars());
             }
         }
@@ -26,7 +28,7 @@ public class VmTest {
             var vm = LuaVM.create();
             vm.load(expanded);
             var res = vm.run();
-            Assertions.assertEquals(LuaVM.VmRunState.SUCCESS, res.state());
+            assertEquals(LuaVM.VmRunState.SUCCESS, res.state());
             Assertions.assertArrayEquals(expectedRets, res.returnVars());
         }
     }
@@ -321,11 +323,11 @@ public class VmTest {
                 var vm = LuaVM.create();
                 vm.load("return %s//%s".formatted((float) a, (float) b));
                 var res = vm.run();
-                Assertions.assertEquals(LuaVM.VmRunState.SUCCESS, res.state());
+                assertEquals(LuaVM.VmRunState.SUCCESS, res.state());
                 var rvs = res.returnVars();
-                Assertions.assertEquals(1, rvs.length);
+                assertEquals(1, rvs.length);
                 var rv = (float) rvs[0];
-                Assertions.assertEquals(expected, rv, 0.000001f);
+                assertEquals(expected, rv, 0.000001f);
             }
         }
     }
@@ -414,5 +416,28 @@ public class VmTest {
                 b()
                 return a
                 """, new Object[]{2});
+    }
+
+    @Test
+    public void simpleAddition() {
+        var vm = LuaVM.create().withEmptyEnv().withRootFunc("return 1 + 2");
+        var result = vm.run();
+        assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS, new LuaObject[]{LuaObject.of(3)}), result);
+    }
+
+
+    @Test
+    public void simpleInnerFunctionWithClosure() {
+        var vm = LuaVM.create().withEmptyEnv().withRootFunc("""
+                local a = 1
+                x = 2
+                local function f()
+                    a = a + x
+                end
+                f()
+                return a
+                """);
+        var result = vm.run();
+        assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS, new LuaObject[]{LuaObject.of(3)}), result);
     }
 }
