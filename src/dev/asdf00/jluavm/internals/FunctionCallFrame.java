@@ -38,8 +38,10 @@ public final class FunctionCallFrame extends AbstractCallStackFrame {
     @Override
     public void execute(LuaVM_RT vm) {
         lFunc.invoke(vm, locals, resume, expressionStack, rvals);
+        rvals = null;
     }
 
+    @Override
     public void reset() {
         if (!closables.isEmpty()) {
             throw new InternalLuaRuntimeError("not all closable values were closed");

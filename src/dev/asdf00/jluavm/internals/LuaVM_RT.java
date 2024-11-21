@@ -85,13 +85,7 @@ public class LuaVM_RT extends LuaVM {
         error(new LuaTypeError("Expected argument #%s to be of type '%s', but it was of type '%s'!".formatted(argumentIndex+1, expectedType, actualObject.getTypeAsString())));
     }
 
-    public void callExternal(int resume, LuaFunction externalTarget) {
-        callExternal(resume, externalTarget, Singletons.EMPTY_LUA_OBJ_ARRAY);
-    }
-
-    public void callExternal(int resume, LuaFunction externalTarget, LuaObject... args) {
-        // set resume point for current function
-        curFuncFrame.getTopFrame().resume = resume;
+    private void setupCall(LuaFunction externalTarget, LuaObject... args) {
         // setup new stack frame for call
         LuaObject[] nuStackFrame = new LuaObject[externalTarget.getMaxLocalsSize()];
         for (int i = 0, j = 0; i < externalTarget.getArgCount(); j++) {
@@ -108,15 +102,28 @@ public class LuaVM_RT extends LuaVM {
         curFuncFrame = luaCallStack.push(new FunctionCallFrame(nuStackFrame, externalTarget));
     }
 
+    public void callExternal(int resume, LuaFunction externalTarget) {
+        callExternal(resume, externalTarget, Singletons.EMPTY_LUA_OBJ_ARRAY);
+    }
+
+    public void callExternal(int resume, LuaFunction externalTarget, LuaObject... args) {
+        // set resume point for current function
+        curFuncFrame.getTopFrame().resume = resume;
+        // setup new stack frame for call
+        setupCall(externalTarget, args);
+    }
+
     public void tailCall(LuaFunction externalTarget) {
         tailCall(externalTarget, Singletons.EMPTY_LUA_OBJ_ARRAY);
     }
 
     public void tailCall(LuaFunction externalTarget, LuaObject... args) {
         if (curFuncFrame.lFunc != externalTarget) {
-            // this is sadly not a tail call
-            // TODO: handle unsuccessful tailcall
-            throw new UnsupportedOperationException("unsuccessful tailcall not implemented yet");
+            // this is sadly not a tail call, replace current stack frame with new call,
+            // thereby forwarding the return value
+            luaCallStack.pop();
+            setupCall(externalTarget, args);
+            return;
         }
         // do tailcall
         curFuncFrame.reset();
@@ -170,14 +177,19 @@ public class LuaVM_RT extends LuaVM {
     }
 
     public void internalContinue() {
-        throw new UnsupportedOperationException("continue not supported yet");
+        curFuncFrame.getTopFrame().reset();
     }
 
     public void internalBreak(int scopeCnt) {
-        throw new UnsupportedOperationException("break not supported yet");
+        for (int i = 0; i < scopeCnt; i++) {
+            curFuncFrame.exitScope(Singletons.EMPTY_LUA_OBJ_ARRAY);
+        }
     }
 
     public void internalGoto(int scopeCnt, int resume) {
-        throw new UnsupportedOperationException("goto is not supported yet");
+        for (int i = 0; i < scopeCnt; i++) {
+            curFuncFrame.exitScope(Singletons.EMPTY_LUA_OBJ_ARRAY);
+        }
+        curFuncFrame.getTopFrame().resume = resume;
     }
 }

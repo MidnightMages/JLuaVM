@@ -228,6 +228,9 @@ public final class CompilationState {
             curResumeLabel++;
             if (expectedReturns > 0) {
                 shouldHit = eStackPos + expectedReturns;
+            } else if (expectedReturns == -1) {
+                // returns lua object array
+                shouldHit = eStackPos + 1;
             }
 
             var saving = new StringBuilder();

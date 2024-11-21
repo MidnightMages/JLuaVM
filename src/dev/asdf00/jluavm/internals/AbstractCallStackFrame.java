@@ -27,4 +27,6 @@ public abstract sealed class AbstractCallStackFrame permits FunctionCallFrame, I
     }
 
     public abstract void execute(LuaVM_RT vm);
+
+    public abstract void reset();
 }

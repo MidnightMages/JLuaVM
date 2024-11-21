@@ -132,7 +132,11 @@ public final class Parser {
             if (ltok == SEMICOLON) {
                 scan();
             }
-            statements.add(new ReturnNode(pos, returnValues, symTab.getCurFuncClosableCnt()));
+            if (symTab.getCurFuncClosableCnt() == 0 && returnValues.length == 1 && returnValues[0] instanceof FunctionCallNode tailCall) {
+                statements.add(new TailCallNode(pos, tailCall));
+            } else {
+                statements.add(new ReturnNode(pos, returnValues, symTab.getCurFuncClosableCnt()));
+            }
         }
         return statements;
     }
