@@ -1,6 +1,5 @@
 package dev.asdf00.jluavm.runtime.types;
 
-import dev.asdf00.jluavm.Sandoboxo;
 import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
 import dev.asdf00.jluavm.exceptions.LuaRuntimeError;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
@@ -197,7 +196,7 @@ public abstract class LuaFunction {
                         } else {
                             // save expression stack
                             expressionStack[0] = t0;
-                            vm.callInternal(0, Sandoboxo::getWithMeta, table, key, mtbl);
+                            vm.callInternal(0, LuaFunction::getWithMeta, table, key, mtbl);
                             return;
                         }
                     }
@@ -272,7 +271,7 @@ public abstract class LuaFunction {
                         // save expresion stack
                         expressionStack[0] = t0;
                         expressionStack[1] = t1;
-                        vm.callInternal(0, Sandoboxo::getWithMeta, metatable, key, mmtbl);
+                        vm.callInternal(0, LuaFunction::getWithMeta, metatable, key, mmtbl);
                         return;
                     }
                 } else {
@@ -296,7 +295,7 @@ public abstract class LuaFunction {
                         if (mtbl == null) {
                             t2 = LuaObject.nil();
                         } else {
-                            vm.callInternal(0, Sandoboxo::getWithMeta, table, key, mtbl);
+                            vm.callInternal(0, LuaFunction::getWithMeta, table, key, mtbl);
                             return;
                         }
                     }
@@ -366,7 +365,7 @@ public abstract class LuaFunction {
                             expressionStack[0] = t0;
                             expressionStack[1] = t1;
                             expressionStack[2] = t2;
-                            vm.callInternal(0, Sandoboxo::getWithMeta, table, key, mtbl);
+                            vm.callInternal(0, LuaFunction::getWithMeta, table, key, mtbl);
                             return;
                         }
                     }
@@ -402,7 +401,7 @@ public abstract class LuaFunction {
                         if (mtbl == null) {
                             table.set(key, t2);
                         } else {
-                            vm.callInternal(1, Sandoboxo::setWithMeta, table, key, t2, mtbl);
+                            vm.callInternal(1, LuaFunction::setWithMeta, table, key, t2, mtbl);
                             return;
                         }
                     }
@@ -475,7 +474,7 @@ public abstract class LuaFunction {
                             // save expression stack
                             expressionStack[0] = t0;
                             expressionStack[1] = t1;
-                            vm.callInternal(0, Sandoboxo::getWithMeta, table, key, mtbl);
+                            vm.callInternal(0, LuaFunction::getWithMeta, table, key, mtbl);
                             return;
                         }
                     }
@@ -559,7 +558,7 @@ public abstract class LuaFunction {
                                 expressionStack[0] = t0;
                                 expressionStack[1] = t1;
                                 expressionStack[2] = t2;
-                                vm.callInternal(0, Sandoboxo::getWithMeta, table, key, mtbl);
+                                vm.callInternal(0, LuaFunction::getWithMeta, table, key, mtbl);
                                 return;
                             }
                         }
@@ -599,7 +598,7 @@ public abstract class LuaFunction {
                                 expressionStack[0] = t0;
                                 expressionStack[1] = t1;
                                 expressionStack[2] = t2;
-                                vm.callInternal(1, Sandoboxo::getWithMeta, table, key, mtbl);
+                                vm.callInternal(1, LuaFunction::getWithMeta, table, key, mtbl);
                                 return;
                             }
                         }
@@ -676,7 +675,7 @@ public abstract class LuaFunction {
                             // save expression stack
                             expressionStack[0] = t0;
                             expressionStack[1] = t1;
-                            vm.callInternal(0, Sandoboxo::getWithMeta, table, key, mtbl);
+                            vm.callInternal(0, LuaFunction::getWithMeta, table, key, mtbl);
                             return;
                         }
                     }
