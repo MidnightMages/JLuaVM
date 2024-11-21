@@ -267,7 +267,7 @@ public final class CompilationState {
                     labels.append(vals.get(i));
                 }
 
-                restoring.append("case ").append(labels).append("->{\n    ")
+                restoring.append("\ncase ").append(labels).append(" -> {\n    ")
                         .append(body).append("\n}");
             }
             return restoring.toString();
