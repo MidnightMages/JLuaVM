@@ -75,11 +75,10 @@ public class FunctionCallNode extends Node {
                 %s
                 if (%s.isFunction()) {
                     vm.callExternal(%d, %s.getFunc()%s);
-                    return;
                 } else {
                     vm.callInternal(%d, LuaFunction::callWithMeta, %s%s);
-                    return;
                 }
+                return;
                 case %d:""".formatted(callInfo.saveEStack(),
                 funcSpot,
                 callInfo.resumeLabel(), funcSpot, stringOfArgs,
