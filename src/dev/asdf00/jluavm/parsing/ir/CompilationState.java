@@ -11,7 +11,10 @@ import org.joor.ReflectException;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Stack;
 import java.util.function.Supplier;
 
 public final class CompilationState {
@@ -229,13 +232,12 @@ public final class CompilationState {
 
             var saving = new StringBuilder();
             var restoring = new StringBuilder();
-            //restoring.append("case ").append(curResumeLabel).append(" -> {\n    ");
             if (eStackPos > -1) {
                 saving.append("expressionStack[0] = t0;");
                 restoring.append("t0 = expressionStack[0];");
             } else {
-                saving.append("// expression stack is empty, nothing to save");
-                restoring.append("// expression stack is empty, nothing to restore");
+                saving.append("// nothing to save");
+                restoring.append("// nothing to restore");
             }
             for (int i = 1; i <= eStackPos; i++) {
                 saving.append("\nexpressionStack[").append(i).append("] = t").append(i).append(';');
@@ -247,9 +249,7 @@ public final class CompilationState {
             }
             var bucket = restoreHeaders.computeIfAbsent(restoring.toString(), k -> new ArrayList<>());
             bucket.add(curResumeLabel);
-            //restoring.append("\n}");
 
-            //restoreHeaders.add(restoring.toString());
             String stackSaver = saving.toString();
             return new EStackCallInfo(curResumeLabel, stackSaver);
         }
@@ -368,6 +368,7 @@ public final class CompilationState {
                 throw new InternalLuaLoadingError("trying to generate java intermediate code with inner scopes still unfinished");
             }
 
+            // @formatter:off
             String result = """
                     package dev.asdf00.jluavm.lualoaded;
                     
@@ -429,6 +430,7 @@ public final class CompilationState {
                     buildRestoreHeaders(),
                     content,
                     String.join("\n\n", methodList));
+            // @formatter:on
             return result;
         }
     }

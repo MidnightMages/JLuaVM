@@ -27,33 +27,12 @@ public class DeRefNode extends Node {
         String r = cState.pushEStack();
 
         String result = """
-                if (%s.isTable()) {
-                    LuaObject table = %s;
-                    LuaObject key = RTUtils.tryCoerceFloatToInt(%s);
-                    if (table.hasKey(key)) {
-                        %s = table.get(key);
-                    } else {
-                        LuaObject mtbl = table.getMetaTable();
-                        if (mtbl == null) {
-                            %s = LuaObject.nil();
-                        } else {
-                            %s
-                            vm.callInternal(%d, LuaFunction::getWithMeta, table, key, mtbl);
-                            return;
-                        }
-                    }
-                } else if (%s.isUserData()) {
-                    try {
-                        %s = %s.get(%s);
-                    } catch (LuaRuntimeError ex) {
-                        vm.error(new LuaForeignCallError());
-                        return;
-                    }
-                } else {
-                    vm.error(new LuaTypeError());
+                %s = indexedGet(vm, %d, %s, %s);
+                if (%s == null) {
+                    %s
                     return;
                 }
-                case %d:""".formatted(v, v, i, r, r, callInfo.saveEStack(), callInfo.resumeLabel(), v, r, v, i, callInfo.resumeLabel());
+                case %d:""".formatted(r, callInfo.resumeLabel(), v, i, r, callInfo.saveEStack(), callInfo.resumeLabel());
         return result;
     }
 }

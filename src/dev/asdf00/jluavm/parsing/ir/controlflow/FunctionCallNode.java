@@ -73,11 +73,8 @@ public class FunctionCallNode extends Node {
         String stringOfArgs = argSpots.length > 0 ? ", " + String.join(", ", argSpots) : "";
         String result = """
                 %s
-                if (%s.isFunction()) {
-                    vm.callExternal(%d, %s.getFunc()%s);
-                } else {
-                    vm.callInternal(%d, LuaFunction::callWithMeta, %s%s);
-                }
+                if (%s.isFunction()) vm.callExternal(%d, %s.getFunc()%s);
+                else vm.callInternal(%d, LuaFunction::callWithMeta, %s%s);
                 return;
                 case %d:""".formatted(callInfo.saveEStack(),
                 funcSpot,

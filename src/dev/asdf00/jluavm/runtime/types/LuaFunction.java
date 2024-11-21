@@ -53,6 +53,107 @@ public abstract class LuaFunction {
     public abstract boolean hasParamsArg();
 
     // =================================================================================================================
+    // helper ops for generated code
+    // =================================================================================================================
+
+    /**
+     * Performs an indexed GET operation. If {@code null} is returned, the VM is set up and the caller is expected to
+     * return to the VM.
+     */
+    protected static LuaObject indexedGet(LuaVM_RT vm, int resumeLabel, LuaObject obj, LuaObject idx) {
+        if (obj.isTable()) {
+            LuaObject key = RTUtils.tryCoerceFloatToInt(idx);
+            if (obj.hasKey(key)) {
+                return obj.get(key);
+            } else {
+                LuaObject mtbl = obj.getMetaTable();
+                if (mtbl == null) {
+                    return LuaObject.nil();
+                } else {
+                    vm.callInternal(resumeLabel, LuaFunction::getWithMeta, obj, key, mtbl);
+                    return null;
+                }
+            }
+        } else if (obj.isUserData()) {
+            try {
+                return obj.get(idx);
+            } catch (LuaRuntimeError ex) {
+                vm.error(new LuaForeignCallError());
+                return null;
+            }
+        } else {
+            vm.error(new LuaTypeError());
+            return null;
+        }
+    }
+
+    protected static boolean indexedSet(LuaVM_RT vm, int resumeLabel, LuaObject obj, LuaObject idx, LuaObject val) {
+        if (obj.isTable()) {
+            LuaObject key = RTUtils.tryCoerceFloatToInt(idx);
+            if (key.isNil() || key.isNaN()) {
+                vm.error(new LuaArgumentError());
+                return true;
+            }
+            if (obj.hasKey(key)) {
+                obj.set(key, val);
+                return false;
+            } else {
+                LuaObject mtbl = obj.getMetaTable();
+                if (mtbl == null) {
+                    obj.set(key, val);
+                    return false;
+                } else {
+                    vm.callInternal(resumeLabel, LuaFunction::setWithMeta, obj, key, val, mtbl);
+                    return true;
+                }
+            }
+        } else if (obj.isUserData()) {
+            try {
+                obj.set(idx, val);
+                return false;
+            } catch (LuaRuntimeError ex) {
+                vm.error(new LuaForeignCallError());
+                return true;
+            }
+        } else {
+            vm.error(new LuaTypeError());
+            return true;
+        }
+    }
+
+    protected static LuaObject getMetaClose(LuaVM_RT vm, int resumeLabel, LuaObject closable) {
+        if (RTUtils.isTruthy(closable)) {
+            LuaObject metaTable = closable.getMetaTable();
+            if (metaTable.isTable()) {
+                LuaObject key = Singletons.__close;
+                if (metaTable.hasKey(key)) {
+                    return metaTable.get(key);
+                } else {
+                    LuaObject mtbl = metaTable.getMetaTable();
+                    if (mtbl == null) {
+                        return LuaObject.nil();
+                    } else {
+                        vm.callInternal(resumeLabel, LuaFunction::getWithMeta, metaTable, key, mtbl);
+                        return null;
+                    }
+                }
+            } else if (metaTable.isUserData()) {
+                try {
+                    return metaTable.get(Singletons.__close);
+                } catch (LuaRuntimeError ex) {
+                    vm.error(new LuaForeignCallError());
+                    return null;
+                }
+            } else {
+                vm.error(new LuaTypeError());
+                return null;
+            }
+        } else {
+            return LuaObject.nil();
+        }
+    }
+
+    // =================================================================================================================
     // closable magic
     // =================================================================================================================
 

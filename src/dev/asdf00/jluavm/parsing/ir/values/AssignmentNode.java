@@ -113,46 +113,11 @@ public class AssignmentNode extends Node {
     private static String genIndexedSet(CompilationState cState, String obj, String idx, String val) {
         EStackCallInfo sInfo = cState.generateEStackCallInfo(0);
         String assignment = """
-                if (%s.isTable()) {
-                    LuaObject table = %s;
-                    LuaObject key = RTUtils.tryCoerceFloatToInt(%s);
-                    if (key.isNil() || key.isNaN()) {
-                        vm.error(new LuaArgumentError());
-                        return;
-                    }
-                    if (table.hasKey(key)) {
-                        table.set(key, %s);
-                    } else {
-                        LuaObject mtbl = table.getMetaTable();
-                        if (mtbl == null) {
-                            table.set(key, %s);
-                        } else {
-                            %s
-                            vm.callInternal(%d, LuaFunction::setWithMeta, table, key, %s, mtbl);
-                            return;
-                        }
-                    }
-                } else if (%s.isUserData()) {
-                    try {
-                        %s.set(%s, %s);
-                    } catch (LuaRuntimeError ex) {
-                        vm.error(new LuaForeignCallError());
-                        return;
-                    }
-                } else {
-                    vm.error(new LuaTypeError());
+                if (indexedSet(vm, %d, %s, %s, %s) {
+                    %s
                     return;
                 }
-                case %d:""".formatted(obj,
-                obj,
-                idx,
-                val,
-                val,
-                sInfo.saveEStack(),
-                sInfo.resumeLabel(), val,
-                obj,
-                obj, idx, val,
-                sInfo.resumeLabel());
+                case %d:""".formatted(sInfo.resumeLabel(), obj, idx, val, sInfo.saveEStack(), sInfo.resumeLabel());
         return assignment;
     }
 
@@ -165,40 +130,14 @@ public class AssignmentNode extends Node {
                 // this could be a local definition, therefore we need to insert a closability check for all closable variables
                 if (info.baseInfo().isClosable()) {
                     // insert closability check
-                    String mtbl = cState.pushEStack();
-                    cState.popEStack();
                     var callInfo = cState.generateEStackCallInfo(1);
                     String mval = cState.pushEStack();
                     cState.popEStack();
                     assignment = """
-                            if (RTUtils.isTruthy(%s)) {
-                                %s = %s.getMetaTable();
-                                if (%s.isTable()) {
-                                    LuaObject table = %s;
-                                    LuaObject key = Singletons.__close;
-                                    if (table.hasKey(key)) {
-                                        %s = table.get(key);
-                                    } else {
-                                        LuaObject mtbl = table.getMetaTable();
-                                        if (mtbl == null) {
-                                            %s = LuaObject.nil();
-                                        } else {
-                                            %s
-                                            vm.callInternal(%d, LuaFunction::getWithMeta, table, key, mtbl);
-                                            return;
-                                        }
-                                    }
-                                } else if (%s.isUserData()) {
-                                    try {
-                                        %s = %s.get(Singletons.__close);
-                                    } catch (LuaRuntimeError ex) {
-                                        vm.error(new LuaForeignCallError());
-                                        return;
-                                    }
-                                } else {
-                                    vm.error(new LuaTypeError());
-                                    return;
-                                }
+                            %s = getMetaClose(vm, %d, %s);
+                            if (%s == null) {
+                                %s
+                                return;
                             }
                             case %d:
                             if (RTUtils.isTruthy(%s)) {
@@ -207,20 +146,12 @@ public class AssignmentNode extends Node {
                                     return;
                                 }
                             }
-                            vm.addClosable(%s);\n""".formatted(val,
-                            mtbl, val,
-                            mtbl,
-                            mtbl,
-                            mval,
+                            vm.addClosable(%s);""".formatted(mval, callInfo.resumeLabel(), val,
                             mval,
                             callInfo.saveEStack(),
                             callInfo.resumeLabel(),
-                            mtbl,
-                            mval, mtbl,
-                            callInfo.resumeLabel(),
                             val,
-                            mval,
-                            val);
+                            mval);
                 } else {
                     assignment = "";
                 }
