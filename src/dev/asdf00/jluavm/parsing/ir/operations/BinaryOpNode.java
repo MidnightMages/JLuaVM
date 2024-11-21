@@ -1,5 +1,6 @@
 package dev.asdf00.jluavm.parsing.ir.operations;
 
+import dev.asdf00.jluavm.parsing.container.Position;
 import dev.asdf00.jluavm.parsing.ir.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.CompilationState.EStackCallInfo;
 import dev.asdf00.jluavm.parsing.ir.Node;
@@ -10,7 +11,8 @@ public class BinaryOpNode extends Node {
     public final Node x;
     public final Node y;
 
-    protected BinaryOpNode(String typeRestriction, String op, Node x, Node y) {
+    protected BinaryOpNode(Position sourcePos, String typeRestriction, String op, Node x, Node y) {
+        super(sourcePos);
         this.typeRestriction = typeRestriction;
         this.op = op;
         this.x = x;
@@ -43,15 +45,15 @@ public class BinaryOpNode extends Node {
         return prev + result;
     }
 
-    public static BinaryOpNode arithmetic(String op, Node x, Node y) {
-        return new BinaryOpNode("isNumberCoercible", op, x, y);
+    public static BinaryOpNode arithmetic(Position pos, String op, Node x, Node y) {
+        return new BinaryOpNode(pos, "isNumberCoercible", op, x, y);
     }
 
-    public static BinaryOpNode stringConcat(Node x, Node y) {
-        return new BinaryOpNode("isArithmetic", "concat", x, y);
+    public static BinaryOpNode stringConcat(Position pos, Node x, Node y) {
+        return new BinaryOpNode(pos, "isArithmetic", "concat", x, y);
     }
 
-    public static BinaryOpNode bitwise(String op, Node x, Node y) {
-        return new BinaryOpNode("isIntCoercible", op, x, y);
+    public static BinaryOpNode bitwise(Position pos, String op, Node x, Node y) {
+        return new BinaryOpNode(pos, "isIntCoercible", op, x, y);
     }
 }

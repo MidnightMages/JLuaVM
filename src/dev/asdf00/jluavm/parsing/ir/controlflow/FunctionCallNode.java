@@ -1,5 +1,6 @@
 package dev.asdf00.jluavm.parsing.ir.controlflow;
 
+import dev.asdf00.jluavm.parsing.container.Position;
 import dev.asdf00.jluavm.parsing.ir.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.CompilationState.EStackCallInfo;
 import dev.asdf00.jluavm.parsing.ir.Node;
@@ -16,7 +17,8 @@ public class FunctionCallNode extends Node {
     public final Node[] args;
     public int expectedResultCnt;
 
-    public FunctionCallNode(Node object, Node func, Node[] args) {
+    public FunctionCallNode(Position sourcePos, Node object, Node func, Node[] args) {
+        super(sourcePos);
         this.object = object;
         this.func = func;
         this.args = args;

@@ -1,5 +1,6 @@
 package dev.asdf00.jluavm.parsing.ir.operations;
 
+import dev.asdf00.jluavm.parsing.container.Position;
 import dev.asdf00.jluavm.parsing.ir.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.Node;
 
@@ -7,7 +8,8 @@ public class EqualsNode extends Node {
     public final Node x;
     public final Node y;
 
-    public EqualsNode(Node x, Node y) {
+    public EqualsNode(Position sourcePos, Node x, Node y) {
+        super(sourcePos);
         this.x = x;
         this.y = y;
     }

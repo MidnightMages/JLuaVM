@@ -1,5 +1,7 @@
 package dev.asdf00.jluavm.parsing.ir;
 
+import dev.asdf00.jluavm.parsing.container.Position;
+
 public class IRFunction extends Node {
     public final Node[] statements;
     public final int localCnt;
@@ -8,7 +10,8 @@ public class IRFunction extends Node {
     public final int argCnt;
     public final boolean hasParamsArg;
 
-    public IRFunction(Node[] statements, int localCnt, int closableCnt, int maxLocals, int argCnt, boolean hasParamsArg) {
+    public IRFunction(Position sourcePos, Node[] statements, int localCnt, int closableCnt, int maxLocals, int argCnt, boolean hasParamsArg) {
+        super(sourcePos);
         this.statements = statements;
         this.localCnt = localCnt;
         this.closableCnt = closableCnt;

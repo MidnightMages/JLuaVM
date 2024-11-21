@@ -1,5 +1,6 @@
 package dev.asdf00.jluavm.parsing.ir.controlflow;
 
+import dev.asdf00.jluavm.parsing.container.Position;
 import dev.asdf00.jluavm.parsing.ir.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.IRBlock;
 import dev.asdf00.jluavm.parsing.ir.Node;
@@ -14,11 +15,12 @@ public class IfNode extends Node {
     public final IRBlock[] elseIfs;
     public final IRBlock _else;
 
-    public IfNode(Node cond, IRBlock then) {
-        this(cond, then, new Node[0], null, null);
+    public IfNode(Position sourcePos, Node cond, IRBlock then) {
+        this(sourcePos, cond, then, new Node[0], null, null);
     }
 
-    public IfNode(Node cond, IRBlock then, Node[] subConds, IRBlock[] elseIfs, IRBlock _else) {
+    public IfNode(Position sourcePos, Node cond, IRBlock then, Node[] subConds, IRBlock[] elseIfs, IRBlock _else) {
+        super(sourcePos);
         this.cond = cond;
         this.then = then;
         this.subConds = subConds;

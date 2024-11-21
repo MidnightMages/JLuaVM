@@ -1,5 +1,6 @@
 package dev.asdf00.jluavm.parsing.ir.operations;
 
+import dev.asdf00.jluavm.parsing.container.Position;
 import dev.asdf00.jluavm.parsing.ir.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.CompilationState.EStackCallInfo;
 import dev.asdf00.jluavm.parsing.ir.Node;
@@ -7,7 +8,8 @@ import dev.asdf00.jluavm.parsing.ir.Node;
 public class LenghtOfNode extends Node {
     public final Node value;
 
-    public LenghtOfNode(Node value) {
+    public LenghtOfNode(Position sourcePos, Node value) {
+        super(sourcePos);
         this.value = value;
     }
 
@@ -21,6 +23,7 @@ public class LenghtOfNode extends Node {
         cState.popEStack();
         cState.popEStack();
         String rSpot = cState.pushEStack();
+        // TODO: minify
         String block = """
                 case %d:
                 if (%s.isString()) {

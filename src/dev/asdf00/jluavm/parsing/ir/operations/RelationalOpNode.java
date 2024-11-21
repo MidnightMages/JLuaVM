@@ -1,5 +1,6 @@
 package dev.asdf00.jluavm.parsing.ir.operations;
 
+import dev.asdf00.jluavm.parsing.container.Position;
 import dev.asdf00.jluavm.parsing.ir.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.CompilationState.EStackCallInfo;
 import dev.asdf00.jluavm.parsing.ir.Node;
@@ -10,7 +11,8 @@ public class RelationalOpNode extends Node {
     public final Node x;
     public final Node y;
 
-    public RelationalOpNode(String op, boolean invertOperands, Node x, Node y) {
+    public RelationalOpNode(Position sourcePos, String op, boolean invertOperands, Node x, Node y) {
+        super(sourcePos);
         this.op = op;
         this.invertOperands = invertOperands;
         this.x = x;

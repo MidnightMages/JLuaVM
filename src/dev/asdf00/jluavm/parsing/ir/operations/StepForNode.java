@@ -1,5 +1,6 @@
 package dev.asdf00.jluavm.parsing.ir.operations;
 
+import dev.asdf00.jluavm.parsing.container.Position;
 import dev.asdf00.jluavm.parsing.container.SpecificVarInfo;
 import dev.asdf00.jluavm.parsing.ir.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.IRBlock;
@@ -10,7 +11,8 @@ public class StepForNode extends Node {
     public final SpecificVarInfo stepVar;
     public final int closableCnt;
 
-    public StepForNode(SpecificVarInfo iteratorVar, SpecificVarInfo stepVar, int closableCnt) {
+    public StepForNode(Position sourcePos, SpecificVarInfo iteratorVar, SpecificVarInfo stepVar, int closableCnt) {
+        super(sourcePos);
         this.iteratorVar = iteratorVar;
         this.stepVar = stepVar;
         this.closableCnt = closableCnt;

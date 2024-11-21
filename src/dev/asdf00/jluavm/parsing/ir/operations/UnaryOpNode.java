@@ -1,5 +1,6 @@
 package dev.asdf00.jluavm.parsing.ir.operations;
 
+import dev.asdf00.jluavm.parsing.container.Position;
 import dev.asdf00.jluavm.parsing.ir.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.CompilationState.EStackCallInfo;
 import dev.asdf00.jluavm.parsing.ir.Node;
@@ -9,7 +10,8 @@ public class UnaryOpNode extends Node {
     public final String op;
     public final Node value;
 
-    protected UnaryOpNode(String typeRestriction, String op, Node value) {
+    protected UnaryOpNode(Position sourcePos, String typeRestriction, String op, Node value) {
+        super(sourcePos);
         this.typeRestriction = typeRestriction;
         this.op = op;
         this.value = value;
@@ -33,11 +35,11 @@ public class UnaryOpNode extends Node {
         return prev + block;
     }
 
-    public static UnaryOpNode negate(Node value) {
-        return new UnaryOpNode("isArithmetic", "unm", value);
+    public static UnaryOpNode negate(Position pos, Node value) {
+        return new UnaryOpNode(pos, "isArithmetic", "unm", value);
     }
 
-    public static UnaryOpNode invert(Node value) {
-        return new UnaryOpNode("isIntCoercible", "bnot", value);
+    public static UnaryOpNode invert(Position pos, Node value) {
+        return new UnaryOpNode(pos, "isIntCoercible", "bnot", value);
     }
 }

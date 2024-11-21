@@ -1,5 +1,7 @@
 package dev.asdf00.jluavm.parsing.ir;
 
+import dev.asdf00.jluavm.parsing.container.Position;
+
 public class IRBlock extends Node {
     public final Node[] statements;
     public final Node continueCondition;
@@ -7,11 +9,12 @@ public class IRBlock extends Node {
     public final int localCnt;
     public final int closableCnt;
 
-    public IRBlock(Node[] statements, int localCnt, int closableCnt) {
-        this(statements, null, false, localCnt, closableCnt);
+    public IRBlock(Position sourcePos, Node[] statements, int localCnt, int closableCnt) {
+        this(sourcePos, statements, null, false, localCnt, closableCnt);
     }
 
-    public IRBlock(Node[] statements, Node continueCondition, boolean breakOnFalse, int localCnt, int closableCnt) {
+    public IRBlock(Position sourcePos, Node[] statements, Node continueCondition, boolean breakOnFalse, int localCnt, int closableCnt) {
+        super(sourcePos);
         assert statements != null;
         this.statements = statements;
         this.continueCondition = continueCondition;

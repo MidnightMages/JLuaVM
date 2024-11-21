@@ -1,5 +1,6 @@
 package dev.asdf00.jluavm.parsing.ir.values;
 
+import dev.asdf00.jluavm.parsing.container.Position;
 import dev.asdf00.jluavm.parsing.container.SpecificVarInfo;
 import dev.asdf00.jluavm.parsing.ir.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.Node;
@@ -10,7 +11,8 @@ import dev.asdf00.jluavm.parsing.ir.Node;
 public class PossiblyBoxedLocalAccessNode extends Node {
     public final SpecificVarInfo info;
 
-    public PossiblyBoxedLocalAccessNode(SpecificVarInfo info) {
+    public PossiblyBoxedLocalAccessNode(Position sourcePos, SpecificVarInfo info) {
+        super(sourcePos);
         this.info = info;
     }
 

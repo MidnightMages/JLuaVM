@@ -1,12 +1,14 @@
 package dev.asdf00.jluavm.parsing.ir.operations;
 
+import dev.asdf00.jluavm.parsing.container.Position;
 import dev.asdf00.jluavm.parsing.ir.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.Node;
 
 public class LogicNotNode extends Node {
     public final Node value;
 
-    public LogicNotNode(Node value) {
+    public LogicNotNode(Position sourcePos, Node value) {
+        super(sourcePos);
         this.value = value;
     }
 

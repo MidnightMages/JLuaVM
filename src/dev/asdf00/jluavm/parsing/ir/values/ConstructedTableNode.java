@@ -1,6 +1,7 @@
 package dev.asdf00.jluavm.parsing.ir.values;
 
 import dev.asdf00.jluavm.exceptions.loading.InternalLuaLoadingError;
+import dev.asdf00.jluavm.parsing.container.Position;
 import dev.asdf00.jluavm.parsing.ir.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.Node;
 
@@ -11,7 +12,8 @@ import java.util.stream.Collectors;
 public class ConstructedTableNode extends Node {
     private final Node[] keyValEntries;
 
-    public ConstructedTableNode(Node[] keyValEntries) {
+    public ConstructedTableNode(Position sourcePos, Node[] keyValEntries) {
+        super(sourcePos);
         this.keyValEntries = keyValEntries;
     }
 

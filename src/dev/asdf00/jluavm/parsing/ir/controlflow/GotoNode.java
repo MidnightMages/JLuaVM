@@ -1,6 +1,7 @@
 package dev.asdf00.jluavm.parsing.ir.controlflow;
 
 import dev.asdf00.jluavm.parsing.container.LabelInfo;
+import dev.asdf00.jluavm.parsing.container.Position;
 import dev.asdf00.jluavm.parsing.ir.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.IRBlock;
 import dev.asdf00.jluavm.parsing.ir.Node;
@@ -15,11 +16,12 @@ public class GotoNode extends Node {
     public int firstLocalToDrop;
     public int dropLocalsCnt;
 
-    public GotoNode() {
-        this(null, 0, 0, 0, 0, 0);
+    public GotoNode(Position sourcePos) {
+        this(sourcePos, null, 0, 0, 0, 0, 0);
     }
 
-    public GotoNode(LabelInfo label, int scopeExits, int closableCnt, int closePatchCnt, int firstLocalToDrop, int dropLocalsCnt) {
+    public GotoNode(Position sourcePos, LabelInfo label, int scopeExits, int closableCnt, int closePatchCnt, int firstLocalToDrop, int dropLocalsCnt) {
+        super(sourcePos);
         this.label = label;
         this.scopeExits = scopeExits;
         this.closableCnt = closableCnt;

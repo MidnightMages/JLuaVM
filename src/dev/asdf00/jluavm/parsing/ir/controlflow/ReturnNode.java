@@ -1,5 +1,6 @@
 package dev.asdf00.jluavm.parsing.ir.controlflow;
 
+import dev.asdf00.jluavm.parsing.container.Position;
 import dev.asdf00.jluavm.parsing.ir.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.IRBlock;
 import dev.asdf00.jluavm.parsing.ir.Node;
@@ -8,7 +9,8 @@ public class ReturnNode extends Node {
     public final Node[] values;
     public final int closableCnt;
 
-    public ReturnNode(Node[] values, int closableCnt) {
+    public ReturnNode(Position sourcePos, Node[] values, int closableCnt) {
+        super(sourcePos);
         this.values = values;
         this.closableCnt = closableCnt;
     }

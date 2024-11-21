@@ -4,10 +4,7 @@ import dev.asdf00.jluavm.exceptions.LuaLoadingException;
 import dev.asdf00.jluavm.exceptions.loading.InternalLuaLoadingError;
 import dev.asdf00.jluavm.exceptions.loading.LuaParserException;
 import dev.asdf00.jluavm.exceptions.loading.LuaSemanticException;
-import dev.asdf00.jluavm.parsing.container.SpecificVarInfo;
-import dev.asdf00.jluavm.parsing.container.Token;
-import dev.asdf00.jluavm.parsing.container.TokenType;
-import dev.asdf00.jluavm.parsing.container.VarScope;
+import dev.asdf00.jluavm.parsing.container.*;
 import dev.asdf00.jluavm.parsing.ir.*;
 import dev.asdf00.jluavm.parsing.ir.controlflow.*;
 import dev.asdf00.jluavm.parsing.ir.operations.*;
@@ -73,22 +70,22 @@ public final class Parser {
         return define(new Token(IDENT, cur.pos(), name), attributes);
     }
 
-    private Node genAccess(SpecificVarInfo info, String ident) {
+    private Node genAccess(Position pos, SpecificVarInfo info, String ident) {
         if (info != null) {
-            return new LocalAccessNode(info);
+            return new LocalAccessNode(pos, info);
         }
         // lookup local definition for _ENV
         var env = symTab.get("_ENV");
         if (env != null) {
             // we index the local _ENV value
-            return new DeRefNode(new LocalAccessNode(env), ConstantNode.ofIdent(ident));
+            return new DeRefNode(pos, new LocalAccessNode(pos, env), ConstantNode.ofIdent(pos, ident));
         } else {
             if ("_ENV".equals(ident)) {
                 // here we access _ENV itself
-                return new EnvAccessNode();
+                return new EnvAccessNode(pos);
             } else {
                 // this seems to be a global value, therefore we index the environment
-                return new DeRefNode(new EnvAccessNode(), ConstantNode.ofIdent(ident));
+                return new DeRefNode(pos, new EnvAccessNode(pos), ConstantNode.ofIdent(pos, ident));
             }
         }
     }
@@ -106,12 +103,13 @@ public final class Parser {
     }
 
     private IRFunction Chunk() {
+        Position _pos = la.pos();
         symTab.enterFunctionScope(true);
         var innerStats = Block();
         int maxLocalCnt = symTab.getMaxFuncLocals();
         VarScope scp = symTab.exitScope();
         check(EOF);
-        return new IRFunction(innerStats.toArray(Node[]::new), scp.getLocalsCount(), scp.getClosableCount(), maxLocalCnt, 0, false);
+        return new IRFunction(_pos, innerStats.toArray(Node[]::new), scp.getLocalsCount(), scp.getClosableCount(), maxLocalCnt, 0, false);
     }
 
     private ArrayList<Node> Block() {
@@ -124,6 +122,7 @@ public final class Parser {
         }
         if (ltok == RETURN) {
             scan();
+            Position pos = cur.pos();
             Node[] returnValues;
             if (EXP_START.contains(ltok)) {
                 returnValues = ExpList();
@@ -133,7 +132,7 @@ public final class Parser {
             if (ltok == SEMICOLON) {
                 scan();
             }
-            statements.add(new ReturnNode(returnValues, symTab.getCurFuncClosableCnt()));
+            statements.add(new ReturnNode(pos, returnValues, symTab.getCurFuncClosableCnt()));
         }
         return statements;
     }
@@ -142,6 +141,7 @@ public final class Parser {
 
     private Node Stat() {
         Node statement;
+        Position _pos = la.pos();
         switch (ltok) {
             case SEMICOLON -> {
                 // nop
@@ -151,7 +151,7 @@ public final class Parser {
             case BREAK -> {
                 scan();
                 symTab.labelNotLast();
-                var bNode = symTab.generateBreakNode();
+                var bNode = symTab.generateBreakNode(_pos);
                 if (bNode == null) {
                     throw new LuaSemanticException(cur.pos(), "'break' is not inside a loop");
                 }
@@ -177,7 +177,7 @@ public final class Parser {
                 var innerStats = Block();
                 check(END);
                 VarScope scp = symTab.exitScope();
-                statement = new DoEndNode(innerStats.toArray(Node[]::new), scp.getLocalsCount(), scp.getClosableCount());
+                statement = new DoEndNode(_pos, innerStats.toArray(Node[]::new), scp.getLocalsCount(), scp.getClosableCount());
             }
             case WHILE -> {
                 scan();
@@ -188,7 +188,7 @@ public final class Parser {
                 var innerStats = Block();
                 check(END);
                 VarScope scp = symTab.exitScope();
-                statement = new IfNode(entryCond, new IRBlock(innerStats.toArray(Node[]::new), entryCond, true,
+                statement = new IfNode(_pos, entryCond, new IRBlock(_pos, innerStats.toArray(Node[]::new), entryCond, true,
                         scp.getLocalsCount(), scp.getClosableCount()));
             }
             case REPEAT -> {
@@ -199,7 +199,7 @@ public final class Parser {
                 check(UNTIL);
                 Node exitCond = Exp();
                 VarScope scp = symTab.exitScope();
-                statement = new PlainInnerBlockNode(new IRBlock(innerStats.toArray(Node[]::new), exitCond, false,
+                statement = new PlainInnerBlockNode(_pos, new IRBlock(_pos, innerStats.toArray(Node[]::new), exitCond, false,
                         scp.getLocalsCount(), scp.getClosableCount()));
             }
             case IF -> {
@@ -208,10 +208,12 @@ public final class Parser {
                 Node condition = Exp();
                 check(THEN);
                 symTab.enterPlainScope();
+                Position thenBPos = cur.pos();
                 var thenBlock = Block();
                 VarScope thenScp = symTab.exitScope();
                 var elifConds = new ArrayList<Node>();
                 var elifBlocks = new ArrayList<ArrayList<Node>>();
+                var elifPoses = new ArrayList<Position>();
                 var elifScps = new ArrayList<VarScope>();
                 while (ltok == ELSEIF) {
                     scan();
@@ -219,26 +221,29 @@ public final class Parser {
                     elifConds.add(elifCond);
                     check(THEN);
                     symTab.enterPlainScope();
+                    elifPoses.add(cur.pos());
                     var elifBlock = Block();
                     elifBlocks.add(elifBlock);
                     elifScps.add(symTab.exitScope());
                 }
+                Position elsePos = null;
                 ArrayList<Node> elseBlock = null;
                 VarScope elseScp = VarScope.EMPTY_DUMMY;
                 if (ltok == ELSE) {
                     scan();
                     symTab.enterLoopScope();
+                    elsePos = cur.pos();
                     elseBlock = Block();
                     elseScp = symTab.exitScope();
                 }
                 check(END);
                 IRBlock[] elifs = new IRBlock[elifBlocks.size()];
                 for (int i = 0; i < elifs.length; i++) {
-                    elifs[i] = new IRBlock(elifBlocks.get(i).toArray(Node[]::new), elifScps.get(i).getLocalsCount(), elifScps.get(i).getClosableCount());
+                    elifs[i] = new IRBlock(elifPoses.get(i), elifBlocks.get(i).toArray(Node[]::new), elifScps.get(i).getLocalsCount(), elifScps.get(i).getClosableCount());
                 }
-                statement = new IfNode(condition, new IRBlock(thenBlock.toArray(Node[]::new), thenScp.getLocalsCount(), thenScp.getClosableCount()),
+                statement = new IfNode(_pos, condition, new IRBlock(thenBPos, thenBlock.toArray(Node[]::new), thenScp.getLocalsCount(), thenScp.getClosableCount()),
                         elifConds.toArray(Node[]::new), elifs,
-                        elseBlock == null ? null : new IRBlock(elseBlock.toArray(Node[]::new), elseScp.getLocalsCount(), elseScp.getClosableCount()));
+                        elseBlock == null ? null : new IRBlock(elsePos, elseBlock.toArray(Node[]::new), elseScp.getLocalsCount(), elseScp.getClosableCount()));
             }
             case FOR -> {
                 scan();
@@ -246,15 +251,18 @@ public final class Parser {
                 check(IDENT);
                 Token ctrlToken = cur;
                 if (ltok == ASSIGN) {
+                    Position cvarPos = cur.pos();
                     scan();
                     // numerical for
                     symTab.enterPlainScope();
+                    Position setupPos = cur.pos();
                     SpecificVarInfo internalControlVar = defineInternal("$internalControlVar$");
                     // start
                     Node initialValue = Exp();
                     check(COMMA);
                     // end
                     Node upperBound = Exp();
+                    Position ubPos = la.pos();
                     SpecificVarInfo ubVar = defineInternal("$upperBound$");
                     Node step;
                     SpecificVarInfo stepVar;
@@ -265,30 +273,34 @@ public final class Parser {
                         stepVar = defineInternal("$step$");
                     } else {
                         // default step width is 1
-                        step = ConstantNode.ofLong(1);
+                        step = ConstantNode.ofLong(ubPos, 1);
                         stepVar = defineInternal("$step$");
                     }
                     symTab.enterLoopScope();
                     SpecificVarInfo controlVar = define(ctrlToken, 0);
                     check(DO);
+                    Position bpos = cur.pos();
                     var innerStats = Block();
                     VarScope innerLoopScp = symTab.exitScope();
                     VarScope outerLoopScp = symTab.exitScope();
                     check(END);
 
                     // we need to move the value of the internal iterator to the actual local iterator variable
-                    innerStats.add(0, new AssignmentNode(new Node[]{new LocalAccessNode(controlVar)}, new Node[]{new LocalAccessNode(internalControlVar)}));
+                    innerStats.add(0, new AssignmentNode(bpos, new Node[]{new LocalAccessNode(cvarPos, controlVar)},
+                            new Node[]{new LocalAccessNode(setupPos, internalControlVar)}));
                     // we add the for-step to the end of the internal statements
                     // the step might break the loop if an integer addition over/under-flows and must therefore close stuff in that case
-                    innerStats.add(new StepForNode(internalControlVar, stepVar, innerLoopScp.getClosableCount()));
-                    Node entryCondition = new RelationalOpNode(LE.metatableFuncNameBinary, false, new LocalAccessNode(internalControlVar), new LocalAccessNode(ubVar));
+                    innerStats.add(new StepForNode(cur.pos(), internalControlVar, stepVar, innerLoopScp.getClosableCount()));
+                    Node entryCondition = new RelationalOpNode(setupPos, LE.metatableFuncNameBinary, false,
+                            new LocalAccessNode(setupPos, internalControlVar), new LocalAccessNode(ubPos, ubVar));
 
                     // build for-loop
-                    statement = new DoEndNode(new Node[]{
-                            new AssignmentNode(new Node[]{new LocalAccessNode(internalControlVar), new LocalAccessNode(ubVar), new LocalAccessNode(stepVar)},
+                    statement = new DoEndNode(_pos, new Node[]{
+                            new AssignmentNode(setupPos, new Node[]{new LocalAccessNode(setupPos, internalControlVar),
+                                    new LocalAccessNode(setupPos, ubVar), new LocalAccessNode(setupPos, stepVar)},
                                     new Node[]{initialValue, upperBound, step}),
-                            new CoerceNumericForNode(internalControlVar, ubVar, stepVar),
-                            new IfNode(entryCondition, new IRBlock(innerStats.toArray(Node[]::new), entryCondition, true,
+                            new CoerceNumericForNode(cur.pos(), internalControlVar, ubVar, stepVar),
+                            new IfNode(_pos, entryCondition, new IRBlock(bpos, innerStats.toArray(Node[]::new), entryCondition, true,
                                     innerLoopScp.getLocalsCount(), innerLoopScp.getClosableCount()))},
                             outerLoopScp.getLocalsCount(), outerLoopScp.getClosableCount());
                 } else {
@@ -302,32 +314,36 @@ public final class Parser {
                     }
                     check(IN);
                     symTab.enterPlainScope();
+                    Position setupPos = cur.pos();
                     SpecificVarInfo internalControlVar = defineInternal("$internalControlVar$");
                     SpecificVarInfo itrFunc = defineInternal("$iteratorFunction$");
                     SpecificVarInfo state = defineInternal("$state$");
                     SpecificVarInfo closing = defineInternal("$closingVariable$", 3);
                     Node[] initials = ExpList();
-                    Node setup = new AssignmentNode(new Node[]{new LocalAccessNode(itrFunc), new LocalAccessNode(state),
-                            new LocalAccessNode(internalControlVar), new LocalAccessNode(closing)}, initials);
+                    Node setup = new AssignmentNode(setupPos, new Node[]{new LocalAccessNode(setupPos, itrFunc), new LocalAccessNode(setupPos, state),
+                            new LocalAccessNode(setupPos, internalControlVar), new LocalAccessNode(setupPos, closing)}, initials);
                     check(DO);
+                    final Position innerSetup = cur.pos();
                     symTab.enterLoopScope();
                     // the first one of these is the control variable accessible to lua
                     SpecificVarInfo[] forVals = ltkList.stream().map(t -> define(t, 0)).toArray(SpecificVarInfo[]::new);
-                    Node step = new SequenceNode(
-                            new AssignmentNode(
-                                    Arrays.stream(forVals).map(v -> new LocalAccessNode(v)).toArray(LocalAccessNode[]::new),
-                                    new Node[]{new FunctionCallNode(
-                                            null, new LocalAccessNode(itrFunc), new Node[]{new LocalAccessNode(state), new LocalAccessNode(internalControlVar)})}),
-                            new AssignmentNode(
-                                    new Node[]{new LocalAccessNode(internalControlVar)},
-                                    new Node[]{new LocalAccessNode(forVals[0])}));
-                    Node entryCondition = new EqualsNode(new LocalAccessNode(internalControlVar), ConstantNode.ofNil());
+                    Node step = new SequenceNode(innerSetup,
+                            new AssignmentNode(innerSetup,
+                                    Arrays.stream(forVals).map(v -> new LocalAccessNode(innerSetup, v)).toArray(LocalAccessNode[]::new),
+                                    new Node[]{new FunctionCallNode(innerSetup,
+                                            null, new LocalAccessNode(innerSetup, itrFunc), new Node[]{new LocalAccessNode(innerSetup, state),
+                                            new LocalAccessNode(innerSetup, internalControlVar)})}),
+                            new AssignmentNode(innerSetup,
+                                    new Node[]{new LocalAccessNode(innerSetup, internalControlVar)},
+                                    new Node[]{new LocalAccessNode(innerSetup, forVals[0])}));
+                    Node entryCondition = new EqualsNode(innerSetup, new LocalAccessNode(innerSetup, internalControlVar), ConstantNode.ofNil(innerSetup));
+                    Position bpos = cur.pos();
                     ArrayList<Node> inners = Block();
                     inners.add(step);
                     VarScope innerLoopScope = symTab.exitScope();
-                    IRBlock block = new IRBlock(inners.toArray(Node[]::new), entryCondition, false, innerLoopScope.getLocalsCount(), innerLoopScope.getClosableCount());
+                    IRBlock block = new IRBlock(bpos, inners.toArray(Node[]::new), entryCondition, false, innerLoopScope.getLocalsCount(), innerLoopScope.getClosableCount());
                     VarScope outerClosableCnt = symTab.exitScope();
-                    statement = new DoEndNode(new Node[]{setup, step, new IfNode(new LogicNotNode(entryCondition), block)},
+                    statement = new DoEndNode(_pos, new Node[]{setup, step, new IfNode(_pos, new LogicNotNode(innerSetup, entryCondition), block)},
                             outerClosableCnt.getLocalsCount(), outerClosableCnt.getClosableCount());
                     check(END);
                 }
@@ -336,21 +352,22 @@ public final class Parser {
                 scan();
                 symTab.labelNotLast();
                 check(IDENT);
-                Node access = genAccess(symTab.get(cur.stVal()), cur.stVal());
+                Position apos = cur.pos();
+                Node access = genAccess(cur.pos(), symTab.get(cur.stVal()), cur.stVal());
                 while (ltok == DOT) {
                     scan();
                     check(IDENT);
-                    access = new DeRefNode(access, ConstantNode.ofIdent(cur.stVal()));
+                    access = new DeRefNode(cur.pos(), access, ConstantNode.ofIdent(cur));
                 }
                 boolean hasSelf = false;
                 if (ltok == COLON) {
                     scan();
                     hasSelf = true;
                     check(IDENT);
-                    access = new DeRefNode(access, ConstantNode.ofIdent(cur.stVal()));
+                    access = new DeRefNode(cur.pos(), access, ConstantNode.ofIdent(cur));
                 }
                 var func = FuncBody(hasSelf);
-                statement = new AssignmentNode(new Node[]{access}, new Node[]{func});
+                statement = new AssignmentNode(apos, new Node[]{access}, new Node[]{func});
             }
             case LOCAL -> {
                 scan();
@@ -358,30 +375,33 @@ public final class Parser {
                 if (ltok == FUNCTION) {
                     scan();
                     check(IDENT);
+                    Position tpos = cur.pos();
                     SpecificVarInfo target = define(cur, 0);
                     var func = FuncBody(false);
-                    statement = new AssignmentNode(new Node[]{new LocalAccessNode(target)}, new Node[]{func});
+                    statement = new AssignmentNode(tpos, new Node[]{new LocalAccessNode(tpos, target)}, new Node[]{func});
                 } else {
                     check(IDENT);
                     var localList = new ArrayList<LocalAccessNode>();
                     Token locVar = cur;
+                    Position apos = cur.pos();
                     int attributes = Attrib();
-                    localList.add(new LocalAccessNode(define(locVar, attributes)));
+                    localList.add(new LocalAccessNode(locVar.pos(), define(locVar, attributes)));
                     while (ltok == COMMA) {
                         scan();
                         check(IDENT);
                         locVar = cur;
                         attributes = Attrib();
-                        localList.add(new LocalAccessNode(define(locVar, attributes)));
+                        localList.add(new LocalAccessNode(locVar.pos(), define(locVar, attributes)));
                     }
                     Node[] expressions;
                     if (ltok == ASSIGN) {
                         scan();
+                        apos = cur.pos();
                         expressions = ExpList();
                     } else {
                         expressions = new Node[0];
                     }
-                    statement = new AssignmentNode(localList.toArray(Node[]::new), expressions);
+                    statement = new AssignmentNode(apos, localList.toArray(Node[]::new), expressions);
                 }
             }
             case IDENT, LPAR -> {
@@ -430,7 +450,7 @@ public final class Parser {
         } else {
             check(IDENT);
             info = symTab.get(cur.stVal());
-            result = genAccess(info, cur.stVal());
+            result = genAccess(cur.pos(), info, cur.stVal());
             onlyIdent = true;
         }
         loop:
@@ -463,6 +483,7 @@ public final class Parser {
                 }
             }
             check(ASSIGN);
+            Position apos = cur.pos();
             qLocals.forEach(p -> {
                 if (p.x() != null && p.y()) {
                     if (p.x().baseInfo().isConstant()) {
@@ -472,10 +493,10 @@ public final class Parser {
                 }
             });
             Node[] expressions = ExpList();
-            result = new AssignmentNode(assignTargets.toArray(Node[]::new), expressions);
+            result = new AssignmentNode(apos, assignTargets.toArray(Node[]::new), expressions);
         } else {
             if (result instanceof FunctionCallNode f) {
-                result = new FunctionStatementNode(f);
+                result = new FunctionStatementNode(f.sourcePos, f);
             } else {
                 throw new LuaParserException(cur.pos(), "(At %s) Expected <%s>, got <%s>".formatted(cur.pos(), EQ.rep, cur.type().rep));
             }
@@ -496,7 +517,7 @@ public final class Parser {
         } else {
             check(IDENT);
             info = symTab.get(cur.stVal());
-            result = genAccess(info, cur.stVal());
+            result = genAccess(cur.pos(), info, cur.stVal());
             onlyIdent = true;
         }
         loop:
@@ -526,9 +547,9 @@ public final class Parser {
         } else {
             check(DOT);
             check(IDENT);
-            index = ConstantNode.ofIdent(cur.stVal());
+            index = ConstantNode.ofIdent(cur);
         }
-        return new DeRefNode(target, index);
+        return new DeRefNode(target.sourcePos, target, index);
     }
 
     private Node FuncCall(Node callable) {
@@ -538,10 +559,11 @@ public final class Parser {
             scan();
             object = callable;
             check(IDENT);
-            func = ConstantNode.ofIdent(cur.stVal());
+            func = ConstantNode.ofIdent(cur);
         }
+        Position pos = la.pos();
         Node[] args = Args();
-        return new FunctionCallNode(object, func, args);
+        return new FunctionCallNode(pos, object, func, args);
     }
 
     private Node[] ExpList() {
@@ -562,8 +584,9 @@ public final class Parser {
         var result = BinOp1();
         while (ltok == OR) {
             scan();
+            Position pos = cur.pos();
             Node y = BinOp1();
-            result = new LogicBinaryOpNode(true, result, y);
+            result = new LogicBinaryOpNode(pos, true, result, y);
         }
         return result;
     }
@@ -573,8 +596,9 @@ public final class Parser {
         Node result = BinOp2();
         while (ltok == AND) {
             scan();
+            Position pos = cur.pos();
             Node y = BinOp2();
-            result = new LogicBinaryOpNode(false, result, y);
+            result = new LogicBinaryOpNode(pos, false, result, y);
         }
         return result;
     }
@@ -584,26 +608,27 @@ public final class Parser {
         Node result = BinOp3();
         loop:
         for (; ; ) {
+            Position opPos = la.pos();
             switch (ltok) {
                 case LT, GT -> {
                     var op = ltok;
                     scan();
                     Node y = BinOp3();
-                    result = new RelationalOpNode(LT.metatableFuncNameBinary, op != LT, result, y);
+                    result = new RelationalOpNode(opPos, LT.metatableFuncNameBinary, op != LT, result, y);
                 }
                 case LE, GE -> {
                     var op = ltok;
                     scan();
                     Node y = BinOp3();
-                    result = new RelationalOpNode(LE.metatableFuncNameBinary, op != LE, result, y);
+                    result = new RelationalOpNode(opPos, LE.metatableFuncNameBinary, op != LE, result, y);
                 }
                 case EQ, NE -> {
                     var op = ltok;
                     scan();
                     Node y = BinOp3();
-                    result = new EqualsNode(result, y);
+                    result = new EqualsNode(opPos, result, y);
                     if (op == NE) {
-                        result = new LogicNotNode(result);
+                        result = new LogicNotNode(opPos, result);
                     }
                 }
                 default -> {
@@ -620,8 +645,9 @@ public final class Parser {
         while (ltok == BOR) {
             var op = ltok;
             scan();
+            Position pos = cur.pos();
             Node y = BinOp4();
-            result = BinaryOpNode.bitwise(op.metatableFuncNameBinary, result, y);
+            result = BinaryOpNode.bitwise(pos, op.metatableFuncNameBinary, result, y);
         }
         return result;
     }
@@ -632,8 +658,9 @@ public final class Parser {
         while (ltok == BXOR) {
             var op = ltok;
             scan();
+            Position pos = cur.pos();
             Node y = BinOp5();
-            result = BinaryOpNode.bitwise(op.metatableFuncNameBinary, result, y);
+            result = BinaryOpNode.bitwise(pos, op.metatableFuncNameBinary, result, y);
         }
         return result;
     }
@@ -644,8 +671,9 @@ public final class Parser {
         while (ltok == BAND) {
             var op = ltok;
             scan();
+            Position pos = cur.pos();
             Node y = BinOp6();
-            result = BinaryOpNode.bitwise(op.metatableFuncNameBinary, result, y);
+            result = BinaryOpNode.bitwise(pos, op.metatableFuncNameBinary, result, y);
         }
         return result;
     }
@@ -656,8 +684,9 @@ public final class Parser {
         while (ltok == SHL || ltok == SHR) {
             var op = ltok;
             scan();
+            Position pos = cur.pos();
             Node y = BinOp7();
-            result = BinaryOpNode.bitwise(op.metatableFuncNameBinary, result, y);
+            result = BinaryOpNode.bitwise(pos, op.metatableFuncNameBinary, result, y);
         }
         return result;
     }
@@ -668,8 +697,9 @@ public final class Parser {
         while (ltok == DDOT) {
             var op = ltok;
             scan();
+            Position pos = cur.pos();
             Node y = BinOp8();
-            result = BinaryOpNode.stringConcat(result, y);
+            result = BinaryOpNode.stringConcat(pos, result, y);
         }
         return result;
     }
@@ -681,8 +711,9 @@ public final class Parser {
             if (ltok == ADD || ltok == SUB) {
                 var op = ltok;
                 scan();
+                Position pos = cur.pos();
                 Node y = BinOp9();
-                result = BinaryOpNode.arithmetic(op.metatableFuncNameBinary, result, y);
+                result = BinaryOpNode.arithmetic(pos, op.metatableFuncNameBinary, result, y);
             } else {
                 break;
             }
@@ -699,8 +730,9 @@ public final class Parser {
                 case MULT, DIV, FDIV, MOD -> {
                     var op = ltok;
                     scan();
+                    Position pos = cur.pos();
                     Node y = UnOp();
-                    result = BinaryOpNode.arithmetic(op.metatableFuncNameBinary, result, y);
+                    result = BinaryOpNode.arithmetic(pos, op.metatableFuncNameBinary, result, y);
                 }
                 default -> {
                     break loop;
@@ -712,12 +744,12 @@ public final class Parser {
 
     private Node UnOp() {
         // not # - ~
-        var opList = new Stack<TokenType>();
+        var opList = new Stack<Tuple<TokenType, Position>>();
         loop:
         for (; ; ) {
             switch (ltok) {
                 case NOT, HASH, SUB, BXOR -> {
-                    opList.push(ltok);
+                    opList.push(new Tuple<>(ltok, la.pos()));
                     scan();
                 }
                 default -> {
@@ -727,11 +759,12 @@ public final class Parser {
         }
         Node result = BinOp10();
         while (!opList.isEmpty()) {
-            result = switch (opList.pop()) {
-                case NOT -> new LogicNotNode(result);
-                case HASH -> new LenghtOfNode(result);
-                case SUB -> UnaryOpNode.negate(result);
-                case BXOR -> UnaryOpNode.invert(result);
+            var op = opList.pop();
+            result = switch (op.x()) {
+                case NOT -> new LogicNotNode(op.y(), result);
+                case HASH -> new LenghtOfNode(op.y(), result);
+                case SUB -> UnaryOpNode.negate(op.y(), result);
+                case BXOR -> UnaryOpNode.invert(op.y(), result);
                 default -> throw new InternalLuaLoadingError("should not reach");
             };
         }
@@ -744,8 +777,9 @@ public final class Parser {
         while (ltok == EXPONENT) {
             var op = ltok;
             scan();
+            Position pos = cur.pos();
             Node y = TermExp();
-            result = BinaryOpNode.arithmetic(op.metatableFuncNameBinary, result, y);
+            result = BinaryOpNode.arithmetic(pos, op.metatableFuncNameBinary, result, y);
         }
         return result;
     }
@@ -755,26 +789,26 @@ public final class Parser {
         switch (ltok) {
             case NIL -> {
                 scan();
-                return ConstantNode.ofNil();
+                return ConstantNode.ofNil(cur.pos());
             }
             case TRUE, FALSE -> {
                 scan();
-                return ConstantNode.ofBool(cur.type() == TRUE);
+                return ConstantNode.ofBool(cur.pos(), cur.type() == TRUE);
             }
             case NUMERAL -> {
                 scan();
-                return cur.nVal() < 0 ? ConstantNode.ofLong(cur.lVal()) : ConstantNode.ofDouble(cur.nVal());
+                return cur.nVal() < 0 ? ConstantNode.ofLong(cur) : ConstantNode.ofDouble(cur);
             }
             case LITERAL_STRING -> {
                 scan();
-                return ConstantNode.ofB64(cur.stVal());
+                return ConstantNode.ofB64(cur);
             }
             case TDOT -> {
                 scan();
                 if (!symTab.paramsDefined()) {
                     throw new LuaSemanticException(cur.pos(), "cannot use '...' outside a vararg function");
                 }
-                return new LocalAccessNode(symTab.get("..."));
+                return new LocalAccessNode(cur.pos(), symTab.get("..."));
             }
             case FUNCTION -> {
                 scan();
@@ -790,6 +824,7 @@ public final class Parser {
     }
 
     private FunctionDefinitionNode FuncBody(boolean hasSelf) {
+        Position capPos = cur.pos();
         check(LPAR);
         Token selfPlaceholder = null;
         if (hasSelf) {
@@ -805,6 +840,7 @@ public final class Parser {
             ps.add(0, selfPlaceholder);
         }
         check(RPAR);
+        Position _pos = la.pos();
         boolean hasParamsArg = !ps.isEmpty() && ps.get(ps.size() - 1).type() == TDOT;
         symTab.enterFunctionScope(hasParamsArg);
         SpecificVarInfo[] args = ps.stream().map(p -> define(p, 0)).toArray(SpecificVarInfo[]::new);
@@ -812,8 +848,8 @@ public final class Parser {
         int maxLocalCnt = symTab.getMaxFuncLocals();
         VarScope scp = symTab.exitScope();
         check(END);
-        return new FunctionDefinitionNode(scp.captured.keySet().stream().map(info -> new PossiblyBoxedLocalAccessNode(info)).toArray(PossiblyBoxedLocalAccessNode[]::new),
-                new IRFunction(innerStats.toArray(Node[]::new), scp.getLocalsCount(), scp.getClosableCount(), maxLocalCnt, args.length, hasParamsArg));
+        return new FunctionDefinitionNode(capPos, scp.captured.keySet().stream().map(info -> new PossiblyBoxedLocalAccessNode(capPos, info)).toArray(PossiblyBoxedLocalAccessNode[]::new),
+                new IRFunction(_pos, innerStats.toArray(Node[]::new), scp.getLocalsCount(), scp.getClosableCount(), maxLocalCnt, args.length, hasParamsArg));
     }
 
     private ArrayList<Token> ParList() {
@@ -852,7 +888,7 @@ public final class Parser {
             check(RPAR);
         } else if (ltok == LITERAL_STRING) {
             scan();
-            result = new Node[]{ConstantNode.ofB64(cur.stVal())};
+            result = new Node[]{ConstantNode.ofB64(cur)};
         } else {
             result = new Node[]{TableConstructor()};
         }
@@ -861,6 +897,7 @@ public final class Parser {
 
     private Node TableConstructor() {
         check(LBRAC);
+        Position tpos = cur.pos();
         Node[] keyVals;
         if (ltok == RBRAC) {
             scan();
@@ -868,7 +905,7 @@ public final class Parser {
         } else {
             keyVals = FieldList();
         }
-        return new ConstructedTableNode(keyVals);
+        return new ConstructedTableNode(tpos, keyVals);
     }
 
     private Node[] FieldList() {
@@ -895,11 +932,11 @@ public final class Parser {
             fieldList.add(Exp());
         } else if (ltok == IDENT && lla.type() == ASSIGN) {
             scan();
-            fieldList.add(ConstantNode.ofIdent(cur.stVal()));
+            fieldList.add(ConstantNode.ofIdent(cur));
             scan();  // ASSIGN
             fieldList.add(Exp());
         } else {
-            fieldList.add(ConstantNode.ofLong(freeIdx));
+            fieldList.add(ConstantNode.ofLong(cur.pos(), freeIdx));
             fieldList.add(Exp());
             freeIdx++;
         }

@@ -1,5 +1,6 @@
 package dev.asdf00.jluavm.parsing.ir.values;
 
+import dev.asdf00.jluavm.parsing.container.Position;
 import dev.asdf00.jluavm.parsing.ir.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.CompilationState.EStackCallInfo;
 import dev.asdf00.jluavm.parsing.ir.Node;
@@ -8,7 +9,8 @@ public class DeRefNode extends Node {
     public final Node value;
     public final Node idx;
 
-    public DeRefNode(Node value, Node idx) {
+    public DeRefNode(Position sourcePos, Node value, Node idx) {
+        super(sourcePos);
         this.value = value;
         this.idx = idx;
     }

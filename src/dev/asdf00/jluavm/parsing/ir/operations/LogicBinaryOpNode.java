@@ -1,5 +1,6 @@
 package dev.asdf00.jluavm.parsing.ir.operations;
 
+import dev.asdf00.jluavm.parsing.container.Position;
 import dev.asdf00.jluavm.parsing.ir.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.Node;
 
@@ -8,7 +9,8 @@ public class LogicBinaryOpNode extends Node {
     public final Node x;
     public final Node y;
 
-    public LogicBinaryOpNode(boolean isOr, Node x, Node y) {
+    public LogicBinaryOpNode(Position sourcePos, boolean isOr, Node x, Node y) {
+        super(sourcePos);
         this.isOr = isOr;
         this.x = x;
         this.y = y;

@@ -1,9 +1,12 @@
 package dev.asdf00.jluavm.parsing.ir;
 
+import dev.asdf00.jluavm.parsing.container.Position;
+
 public class PlainInnerBlockNode extends Node {
     public final IRBlock innerBlock;
 
-    public PlainInnerBlockNode(IRBlock innerBlock) {
+    public PlainInnerBlockNode(Position sourcePos, IRBlock innerBlock) {
+        super(sourcePos);
         this.innerBlock = innerBlock;
     }
 

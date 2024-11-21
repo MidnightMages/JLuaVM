@@ -1,9 +1,12 @@
 package dev.asdf00.jluavm.parsing.ir;
 
+import dev.asdf00.jluavm.parsing.container.Position;
+
 public class SequenceNode extends Node {
     public final Node[] sequence;
 
-    public SequenceNode(Node... sequence) {
+    public SequenceNode(Position sourcePos, Node... sequence) {
+        super(sourcePos);
         this.sequence = sequence;
     }
 

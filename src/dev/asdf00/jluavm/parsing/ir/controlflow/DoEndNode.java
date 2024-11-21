@@ -1,5 +1,6 @@
 package dev.asdf00.jluavm.parsing.ir.controlflow;
 
+import dev.asdf00.jluavm.parsing.container.Position;
 import dev.asdf00.jluavm.parsing.ir.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.IRBlock;
 import dev.asdf00.jluavm.parsing.ir.Node;
@@ -9,7 +10,8 @@ public class DoEndNode extends Node {
     public final int localCnt;
     public final int toClose;
 
-    public DoEndNode(Node[] block, int localCnt, int toClose) {
+    public DoEndNode(Position sourcePos, Node[] block, int localCnt, int toClose) {
+        super(sourcePos);
         this.block = block;
         this.localCnt = localCnt;
         this.toClose = toClose;

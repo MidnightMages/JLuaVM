@@ -152,7 +152,7 @@ public class SymTable {
     }
 
 
-    public BreakNode generateBreakNode() {
+    public BreakNode generateBreakNode(Position pos) {
         var cs = curScope;
         int escapeCnt = 0;
         while (!cs.isFunctionBorder && !cs.isLoop) {
@@ -163,7 +163,7 @@ public class SymTable {
             return null;
         }
         escapeCnt++;
-        var b = new BreakNode(escapeCnt, getCurFuncClosableCnt());
+        var b = new BreakNode(pos, escapeCnt, getCurFuncClosableCnt());
         breaksToPatch.computeIfAbsent(cs, s -> new Stack<>()).push(b);
         return b;
     }
@@ -187,7 +187,7 @@ public class SymTable {
             for (int lc : lbl.localsPerScope) {
                 localsForLabel += lc;
             }
-            return new GotoNode(lbl, perScopeCloseCnt.length - lcpsl, toClose, 0, localsForLabel, localDiff);
+            return new GotoNode(gttk.pos(), lbl, perScopeCloseCnt.length - lcpsl, toClose, 0, localsForLabel, localDiff);
         } else {
             // forward jump
             /*-
@@ -198,7 +198,7 @@ public class SymTable {
              */
             var cDefs = getCurFuncClsCntPerScope();
             var lDefs = getCurFuncLocalsCntPerScope();
-            var g = new GotoNode();
+            var g = new GotoNode(gttk.pos());
             yetToFixGotos.peek().computeIfAbsent(gttk.stVal(), k -> new ArrayList<>()).add(new Quadruple<>(g, lDefs, cDefs, gttk.pos()));
             return g;
         }
@@ -206,7 +206,7 @@ public class SymTable {
 
     public LabelNode generateLabel(Token t) {
         var info = addLabel(t);
-        var node = new LabelNode(info);
+        var node = new LabelNode(t.pos(), info);
 
         // check for fixup
         var gotos = yetToFixGotos.peek().get(t.stVal());

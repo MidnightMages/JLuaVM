@@ -1,5 +1,6 @@
 package dev.asdf00.jluavm.parsing.ir.operations;
 
+import dev.asdf00.jluavm.parsing.container.Position;
 import dev.asdf00.jluavm.parsing.container.SpecificVarInfo;
 import dev.asdf00.jluavm.parsing.ir.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.Node;
@@ -9,7 +10,8 @@ public class CoerceNumericForNode extends Node {
     public final SpecificVarInfo upperBoundVar;
     public final SpecificVarInfo stepVar;
 
-    public CoerceNumericForNode(SpecificVarInfo iteratorVar, SpecificVarInfo upperBoundVar, SpecificVarInfo stepVar) {
+    public CoerceNumericForNode(Position sourcePos, SpecificVarInfo iteratorVar, SpecificVarInfo upperBoundVar, SpecificVarInfo stepVar) {
+        super(sourcePos);
         this.iteratorVar = iteratorVar;
         this.upperBoundVar = upperBoundVar;
         this.stepVar = stepVar;
