@@ -113,7 +113,7 @@ public class AssignmentNode extends Node {
     private static String genIndexedSet(CompilationState cState, String obj, String idx, String val) {
         EStackCallInfo sInfo = cState.generateEStackCallInfo(0);
         String assignment = """
-                if (indexedSet(vm, %d, %s, %s, %s) {
+                if (indexedSet(vm, %d, %s, %s, %s)) {
                     %s
                     return;
                 }
@@ -151,7 +151,8 @@ public class AssignmentNode extends Node {
                             callInfo.saveEStack(),
                             callInfo.resumeLabel(),
                             val,
-                            mval);
+                            mval,
+                            val);
                 } else {
                     assignment = "";
                 }
