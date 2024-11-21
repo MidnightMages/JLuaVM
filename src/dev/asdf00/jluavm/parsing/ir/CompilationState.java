@@ -11,9 +11,7 @@ import org.joor.ReflectException;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Stack;
+import java.util.*;
 import java.util.function.Supplier;
 
 public final class CompilationState {
@@ -187,7 +185,7 @@ public final class CompilationState {
         public int maxEStackPos = -1;
         public int maxEStackSavePos = -1;
         public int curResumeLabel = -1;
-        protected final ArrayList<String> restoreHeaders = new ArrayList<>();
+        protected final LinkedHashMap<String, ArrayList<Integer>> restoreHeaders = new LinkedHashMap<>();
 
         public Scope(int localsCount) {
             this.localsCount = localsCount;
@@ -225,10 +223,13 @@ public final class CompilationState {
         public EStackCallInfo genCallInfo(int expectedReturns) {
             maxEStackSavePos = Math.max(maxEStackSavePos, eStackPos);
             curResumeLabel++;
+            if (expectedReturns > 0) {
+                shouldHit = eStackPos + expectedReturns;
+            }
 
             var saving = new StringBuilder();
             var restoring = new StringBuilder();
-            restoring.append("case ").append(curResumeLabel).append(" -> {\n    ");
+            //restoring.append("case ").append(curResumeLabel).append(" -> {\n    ");
             if (eStackPos > -1) {
                 saving.append("expressionStack[0] = t0;");
                 restoring.append("t0 = expressionStack[0];");
@@ -244,13 +245,32 @@ public final class CompilationState {
                 restoring.append("\n    t").append(eStackPos + 1 + i).append(" = returned.length > ").append(i)
                         .append(" ? returned[").append(i).append("] : LuaObject.nil();");
             }
-            restoring.append("\n}");
-            if (expectedReturns > 0) {
-                shouldHit = eStackPos + expectedReturns;
-            }
-            restoreHeaders.add(restoring.toString());
+            var bucket = restoreHeaders.computeIfAbsent(restoring.toString(), k -> new ArrayList<>());
+            bucket.add(curResumeLabel);
+            //restoring.append("\n}");
+
+            //restoreHeaders.add(restoring.toString());
             String stackSaver = saving.toString();
             return new EStackCallInfo(curResumeLabel, stackSaver);
+        }
+
+        protected String buildRestoreHeaders() {
+            var restoring = new StringBuilder();
+            for (var e : restoreHeaders.entrySet()) {
+                var body = e.getKey();
+                var vals = e.getValue();
+                StringBuilder labels = new StringBuilder();
+                for (int i = 0; i < vals.size(); i++) {
+                    if (i > 0)
+                        labels.append(",");
+
+                    labels.append(vals.get(i));
+                }
+
+                restoring.append("case ").append(labels).append("->{\n    ")
+                        .append(body).append("\n}");
+            }
+            return restoring.toString();
         }
 
         protected final String eStackDefinitions() {
@@ -302,7 +322,7 @@ public final class CompilationState {
                     }
                     }""".formatted(scopeId, eStackDefinitions(),
                     maxEStackSavePos >= 0 ? "vm.registerExpressionStack(%d)".formatted(maxEStackSavePos + 1) : "null",
-                    localsCount, String.join("\n", restoreHeaders), content);
+                    localsCount, buildRestoreHeaders(), content);
             return result;
         }
     }
@@ -350,38 +370,38 @@ public final class CompilationState {
 
             String result = """
                     package dev.asdf00.jluavm.lualoaded;
-                                        
+                    
                     import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
                     import dev.asdf00.jluavm.exceptions.LuaRuntimeError;
                     import dev.asdf00.jluavm.internals.LuaVM_RT;
                     import dev.asdf00.jluavm.runtime.errors.*;
                     import dev.asdf00.jluavm.runtime.types.*;
                     import dev.asdf00.jluavm.runtime.utils.*;
-                                        
+                    
                     import java.lang.reflect.Constructor;
-                                        
+                    
                     public final class %s extends LuaFunction {
                     public static Constructor<? extends LuaFunction>[] innerFunctions;
-                                        
+                   
                     public %s(LuaObject[] _ENV, LuaObject[] closures) {
                         super(_ENV, closures);
                     }
-                                        
+               
                     @Override
                     public int getMaxLocalsSize() {
                         return %d;
                     }
-                                        
+               
                     @Override
                     public int getArgCount() {
                         return %d;
                     }
-                                        
+           
                     @Override
                     public boolean hasParamsArg() {
                         return %s;
                     }
-                                        
+ 
                     @Override
                     public void invoke(LuaVM_RT vm, LuaObject[] stackFrame, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
                     %s
@@ -400,13 +420,13 @@ public final class CompilationState {
                     default: throw new InternalLuaRuntimeError("should not reach end of fall-through switch");
                     }
                     }
-                                        
+     
                     // inner scopes
                     %s
                     }""".formatted(jClassName, jClassName,
                     maxLocalSize, argCnt, hasParamsArg ? "true" : "false",
                     eStackDefinitions(), maxEStackSavePos >= 0 ? "vm.registerExpressionStack(%d)".formatted(maxEStackSavePos + 1) : "null", localsCount,
-                    String.join("\n", restoreHeaders),
+                    buildRestoreHeaders(),
                     content,
                     String.join("\n\n", methodList));
             return result;
