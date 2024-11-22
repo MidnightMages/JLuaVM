@@ -1,10 +1,14 @@
 package dev.asdf00.jluavm.runtime.stdlib;
 
+import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.runtime.errors.LuaArgumentError;
+import dev.asdf00.jluavm.runtime.errors.LuaTypeError;
 import dev.asdf00.jluavm.runtime.errors.LuaUserError;
 import dev.asdf00.jluavm.runtime.types.AtomicLuaFunction;
+import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
+import dev.asdf00.jluavm.runtime.utils.Singletons;
 
 import java.util.Arrays;
 
@@ -45,22 +49,7 @@ public class LGlobal {
         warn
         xpcall
          */
-        rv.set("ipairs", AtomicLuaFunction.forManyResults((vm, tbl) -> new LuaObject[] {
-                LuaObject.of(AtomicLuaFunction.forManyResults((itrVm, myTbl, ctrl) -> {
-                    if (!myTbl.isTable()) {
-                        itrVm.error(new LuaArgumentError(0, "ipairs$iterator", "table expected"));
-                        return null;
-                    }
-                    if (!ctrl.isNumberCoercible()) {
-                        itrVm.error(new LuaArgumentError(0, "ipairs$iterator", "number expected"));
-                        return null;
-                    }
-                    var nextIdx = ctrl.add(LuaObject.of(1));
-                    return myTbl.hasKey(nextIdx) && !myTbl.get(nextIdx).isNil() ? new LuaObject[]{nextIdx, myTbl.get(nextIdx)} : new LuaObject[]{LuaObject.nil()};
-                })),
-                tbl,
-                LuaObject.of(0)
-        }).obj());
+        rv.set("ipairs", ipairs);
 
         rv.set("assert", AtomicLuaFunction.vaForManyResults((vm, params) -> {
             if (params.length == 0) {
@@ -200,4 +189,72 @@ public class LGlobal {
         rv.set("_G", rv);
         return rv;
     }
+
+    // =================================================================================================================
+    //  static function definitions
+    // =================================================================================================================
+
+    private static final LuaObject ipairs = LuaObject.of(new LuaFunction() {
+        @Override
+        public void invoke(LuaVM_RT vm, LuaObject[] stackFrame, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
+            LuaObject t0 = null;
+            if (resume == -1) {
+                vm.registerLocals(1);
+            } else if (resume == 0) {
+                t0 = returned.length > 0 ? returned[0] : LuaObject.nil();
+            }
+            switch (resume) {
+                case -1:
+                    var tbl = stackFrame[0];
+                    if (!tbl.isTable() || tbl.getMetaTable() == null) {
+                        vm.returnValue(standardReturn, stackFrame[0], LuaObject.of(0));
+                        return;
+                    }
+                    var mtbl = tbl.getMetaTable();
+                    t0 = indexedGet(vm, 0, mtbl, Singletons.__ipairs);
+                    if (t0 == null) {
+                        return;
+                    }
+                case 0:
+                    if (!t0.isFunction()) {
+                        vm.returnValue(standardReturn, stackFrame[0], LuaObject.of(0));
+                        return;
+                    }
+                    vm.tailCall(t0.getFunc(), stackFrame[0]);
+                    return;
+                default:
+                    throw new InternalLuaRuntimeError("unknown resume point " + resume);
+            }
+        }
+
+        @Override
+        public int getMaxLocalsSize() {
+            return 1;
+        }
+
+        @Override
+        public int getArgCount() {
+            return 1;
+        }
+
+        @Override
+        public boolean hasParamsArg() {
+            return false;
+        }
+
+        private final static LuaObject standardReturn = LuaObject.of(AtomicLuaFunction.forManyResults((itrVm, myTbl, ctrl) -> {
+            if (!myTbl.isTable()) {
+                // LUAC DEVIATION. We exclusively allow tables here, luac just behaves normally on tables, returns nil on
+                // strings and errors on all other types. We error on all types but tables.
+                itrVm.error(new LuaArgumentError(0, "ipairs$iterator", "table expected"));
+                return null;
+            }
+            if (!ctrl.isNumberCoercible()) {
+                itrVm.error(new LuaArgumentError(0, "ipairs$iterator", "number expected"));
+                return null;
+            }
+            var nextIdx = ctrl.add(LuaObject.of(1));
+            return myTbl.hasKey(nextIdx) && !myTbl.get(nextIdx).isNil() ? new LuaObject[]{nextIdx, myTbl.get(nextIdx)} : new LuaObject[]{LuaObject.nil()};
+        }));
+    });
 }

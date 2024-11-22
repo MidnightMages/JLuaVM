@@ -30,6 +30,9 @@ public class Singletons {
     public static final LuaObject __close = LuaObject.of("__close");
     public static final LuaObject __tostring = LuaObject.of("__tostring");
 
+    public static final LuaObject __ipairs = LuaObject.of("__ipairs");
+    public static final LuaObject __pairs = LuaObject.of("__pairs");
+
     // other singletons
     public static final LuaObject[] EMPTY_LUA_OBJ_ARRAY = new LuaObject[0];
 }

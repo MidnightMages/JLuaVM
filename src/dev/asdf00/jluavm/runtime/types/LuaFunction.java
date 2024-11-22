@@ -18,6 +18,10 @@ public abstract class LuaFunction {
     public final LuaObject[] _ENV;
     public final LuaObject[] closures;
 
+    public LuaFunction() {
+        this(Singletons.EMPTY_LUA_OBJ_ARRAY, Singletons.EMPTY_LUA_OBJ_ARRAY);
+    }
+
     public LuaFunction(LuaObject[] _ENV, LuaObject[] closures) {
         this._ENV = _ENV;
         this.closures = closures;
