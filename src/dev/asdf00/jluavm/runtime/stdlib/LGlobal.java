@@ -70,13 +70,13 @@ public class LGlobal {
             return mt.get(LuaObject.of("__metatable"));
         }).obj());
         rv.set("next", AtomicLuaFunction.vaForManyResults((vm, args) -> {
-            if (args.length == 0){
+            if (args.length == 0) {
                 vm.error(new LuaArgumentError(0, "next", "table expected, got no value"));
                 return null;
             }
 
             var tbl = args[0];
-            if (!tbl.isTable()){
+            if (!tbl.isTable()) {
                 vm.errorArgType(0, "table", tbl);
                 return null;
             }
@@ -84,8 +84,7 @@ public class LGlobal {
             {
                 // if table is empty, return nil instead
                 // return idx, tbl[idx]
-            }
-            else {
+            } else {
                 // get next idx after the given one (args[1])
                 // return again dix, tbl[idx]
                 // if given index was invalid, throw error message "invalid key to 'next'"
@@ -134,26 +133,24 @@ public class LGlobal {
             return tbl;
         }).obj());
         rv.set("select", AtomicLuaFunction.vaForManyResults((vm, args) -> {
-            if (args.length == 0){
+            if (args.length == 0) {
                 vm.error(new LuaArgumentError(0, "select", "number or \"#\" expected, got no value"));
             }
 
             var idx = args[0];
-            if (idx.isNumber())
-            {
-                if (!idx.isLong()){
+            if (idx.isNumber()) {
+                if (!idx.isLong()) {
                     vm.error(new LuaArgumentError(0, "select", "number has no integer representation"));
                     return null;
                 }
                 return Arrays.stream(args).skip(idx.asLong()).toArray(LuaObject[]::new);
-            }
-            else {
-                if (!(idx.isString()  && idx.asString().equals("#"))){
+            } else {
+                if (!(idx.isString() && idx.asString().equals("#"))) {
                     vm.error(new LuaArgumentError(0, "select", "number or \"#\" expected, got %s".formatted(idx.getTypeAsString())));
                     return null;
                 }
                 // must be "#" then
-                return new LuaObject[]{LuaObject.of(args.length-1)};
+                return new LuaObject[]{LuaObject.of(args.length - 1)};
             }
         }).obj());
         rv.set("setmetatable", AtomicLuaFunction.forOneResult((vm, tbl, mt) -> {
@@ -166,12 +163,12 @@ public class LGlobal {
                 return null;
             }
 
-            if(!tbl.getMetaTableValueOrNull("__metatable").isNil()){
+            if (!tbl.getMetaTableValueOrNull("__metatable").isNil()) {
                 vm.error(new LuaUserError("cannot change a protected metatable"));
             }
 
             var existingMt = tbl.getMetaTable();
-            if (!existingMt.isNil())
+            if (existingMt != null && !existingMt.isNil())
                 return mt;
             tbl.setMetatable(mt);
 
