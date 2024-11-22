@@ -15,9 +15,12 @@ public class AtomicLuaFunction extends LuaFunction {
 
     public AtomicLuaFunction(BiFunction<LuaVM_RT, LuaObject[], LuaObject[]> c, int nonVaArgCount, boolean hasVararg) {
         super(Singletons.EMPTY_LUA_OBJ_ARRAY, Singletons.EMPTY_LUA_OBJ_ARRAY);
-        backing = c;
-        this.hasVararg = hasVararg;
         argCount = nonVaArgCount + (hasVararg ? 1 : 0);
+        backing = (vm, args) -> {
+            vm.registerLocals(argCount);
+            return c.apply(vm, args);
+        };
+        this.hasVararg = hasVararg;
     }
 
     public AtomicLuaFunction(BiConsumer<LuaVM_RT, LuaObject[]> c, int nonVaArgCount, boolean hasVararg) {
