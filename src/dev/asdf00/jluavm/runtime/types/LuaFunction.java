@@ -433,7 +433,7 @@ public abstract class LuaFunction {
         LuaObject t0 = null, t1 = null, t2 = null, t3 = null;
         switch (resume) {
             case -1 -> {
-                expressionStack = vm.registerExpressionStack(4);
+                expressionStack = vm.registerExpressionStack(2);
                 if (args.length < 1) {
                     throw new InternalLuaRuntimeError("expected 1 or more arguments, got " + args.length);
                 }

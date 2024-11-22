@@ -457,4 +457,19 @@ public class VmTest {
         var result = vm.run();
         assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS, new LuaObject[]{LuaObject.of(3)}), result);
     }
+
+    @Test
+    public void simpleIPairsLoop() {
+        var vm = LuaVM.create();
+        vm.withEmptyEnv();
+        vm.withRootFunc("""
+                local rv = "res: "
+                for i, v in ipairs({1, 2, 3}) do
+                    rv = rv .. i .. v
+                end
+                return rv
+                """);
+        var result = vm.run();
+        assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS, new LuaObject[]{LuaObject.of(3)}), result);
+    }
 }

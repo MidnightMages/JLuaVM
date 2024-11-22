@@ -43,7 +43,7 @@ public class LuaVM_RT extends LuaVM {
     private void execLoop() {
         for (;;) {
             if (curFuncFrame != null) {
-                curFuncFrame.execute(this);
+                curFuncFrame.getTopFrame().execute(this);
             } else {
                 break;
             }

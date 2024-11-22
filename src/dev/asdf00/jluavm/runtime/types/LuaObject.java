@@ -6,6 +6,7 @@ import dev.asdf00.jluavm.parsing.Lexer;
 
 import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
 
@@ -933,8 +934,9 @@ public final class LuaObject {
             case Types.FUNCTION -> "function: 0x" + Integer.toHexString(System.identityHashCode(this));
             case Types.USERDATA -> "userdata: 0x" + Integer.toHexString(System.identityHashCode(this));
             case Types.THREAD -> "thread: 0x" + Integer.toHexString(System.identityHashCode(this));
-            case Types.TABLE, Types.ARRAY -> "table: 0x" + Integer.toHexString(System.identityHashCode(this));
-            case Types.BOX -> "box of " + ((LuaObject) refVal).asString();
+            case Types.TABLE -> "table: 0x" + Integer.toHexString(System.identityHashCode(this));
+            case Types.ARRAY -> "array: " + Arrays.toString(asArray());
+            case Types.BOX -> "box of <" + ((LuaObject) refVal).asString() + ">";
             default -> throw new IllegalStateException("Unexpected case value: " + type);
         };
     }
