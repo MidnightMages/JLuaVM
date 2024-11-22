@@ -52,7 +52,7 @@ public class AssignmentNode extends Node {
                 sb.append('\n');
             }
             // generate target values
-            sb.append(targets[i].generate(cState));
+            sb.append(values[i].generate(cState));
             vSpots.add(cState.peekEStack());
         }
         if (values.length > 0) {
@@ -152,7 +152,7 @@ public class AssignmentNode extends Node {
                                     return;
                                 }
                             }
-                            vm.addClosable(%s);""".formatted(mval, callInfo.resumeLabel(), val,
+                            vm.addClosable(%s);\n""".formatted(mval, callInfo.resumeLabel(), val,
                             mval,
                             callInfo.saveEStack(),
                             callInfo.resumeLabel(),

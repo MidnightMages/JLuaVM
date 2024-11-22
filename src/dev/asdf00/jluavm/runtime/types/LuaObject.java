@@ -17,7 +17,7 @@ import static dev.asdf00.jluavm.parsing.Lexer.parseHexDouble;
 public final class LuaObject {
     public static final LuaObject NIL = new LuaObject(null, 0, 0, Types.NIL);
     public static final LuaObject FALSE = new LuaObject(null, 0, 0, Types.BOOLEAN);
-    public static final LuaObject TRUE = new LuaObject(null, 1, 0, Types.BOOLEAN);
+    public static final LuaObject TRUE = new LuaObject(null, 0, 1, Types.BOOLEAN);
 
     public static final class Types {
         // plain types
@@ -442,12 +442,12 @@ public final class LuaObject {
     public LuaObject concat(LuaObject other) {
         assert isType(Types.ARITHMETIC) && other.isType(Types.ARITHMETIC);
         String dx;
-        if (other.isString()) {
+        if (isString()) {
             dx = getString();
-        } else if (other.isDouble()) {
+        } else if (isDouble()) {
             dx = doubleToStringFormat.format(dVal);
         } else {
-            assert other.isLong();
+            assert isLong();
             dx = longToStringFormat.format(lVal);
         }
         String dy;
@@ -1106,6 +1106,6 @@ public final class LuaObject {
 
     @Override
     public String toString() {
-        return getTypeAsString() + " " + asString();
+        return asString();
     }
 }

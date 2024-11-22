@@ -36,7 +36,6 @@ public class LGlobal {
         /* TODO, add the following ones: https://www.lua.org/manual/5.4/manual.html#6.1
         collectgarbage
         error
-        ipairs
         load
         next (partially implemented)
         pairs
@@ -46,6 +45,23 @@ public class LGlobal {
         warn
         xpcall
          */
+        rv.set("ipairs", AtomicLuaFunction.forManyResults((vm, tbl) -> new LuaObject[] {
+                LuaObject.of(AtomicLuaFunction.forManyResults((itrVm, myTbl, ctrl) -> {
+                    if (!myTbl.isTable()) {
+                        itrVm.error(new LuaArgumentError(0, "ipairs$iterator", "table expected"));
+                        return null;
+                    }
+                    if (!ctrl.isNumberCoercible()) {
+                        itrVm.error(new LuaArgumentError(0, "ipairs$iterator", "number expected"));
+                        return null;
+                    }
+                    var nextIdx = ctrl.add(LuaObject.of(1));
+                    return myTbl.hasKey(nextIdx) && !myTbl.get(nextIdx).isNil() ? new LuaObject[]{nextIdx, myTbl.get(nextIdx)} : new LuaObject[]{LuaObject.nil()};
+                })),
+                tbl,
+                LuaObject.of(0)
+        }).obj());
+
         rv.set("assert", AtomicLuaFunction.vaForManyResults((vm, params) -> {
             if (params.length == 0) {
                 vm.error(new LuaArgumentError(0, "assert", "value expected"));

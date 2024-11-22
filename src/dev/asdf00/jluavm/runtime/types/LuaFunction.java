@@ -56,6 +56,14 @@ public abstract class LuaFunction {
     // helper ops for generated code
     // =================================================================================================================
 
+    protected void binop(LuaObject x, LuaObject y, String op) {
+        int a = 0;
+    }
+    protected LuaObject areEqual(LuaObject x, LuaObject y) {
+        // TODO
+        return null;
+    }
+
     /**
      * Performs an indexed GET operation. If {@code null} is returned, the VM is set up and the caller is expected to
      * return to the VM.

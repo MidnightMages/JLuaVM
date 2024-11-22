@@ -461,15 +461,15 @@ public class VmTest {
     @Test
     public void simpleIPairsLoop() {
         var vm = LuaVM.create();
-        vm.withEmptyEnv();
+        vm.withStdLib();
         vm.withRootFunc("""
-                local rv = "res: "
-                for i, v in ipairs({1, 2, 3}) do
-                    rv = rv .. i .. v
+                local rv = "res:"
+                for i, v in ipairs({1, 2, 3, nil, 5, 6}) do
+                    rv = rv .. " " .. i .. "," .. v
                 end
                 return rv
                 """);
         var result = vm.run();
-        assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS, new LuaObject[]{LuaObject.of(3)}), result);
+        assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS, new LuaObject[]{LuaObject.of("res: 1,1 2,2 3,3")}), result);
     }
 }
