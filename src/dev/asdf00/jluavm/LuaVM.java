@@ -24,6 +24,10 @@ public abstract class LuaVM {
 
     protected LuaObject _G = LuaObject.nil();
     protected LuaFunction rootFunc = null;
+    private void AssertRootFuncNull(){
+        if (rootFunc != null)
+            throw new IllegalStateException("Cannot set _G like this after code has been loaded");
+    }
 
     private static final Supplier<String> jClassNameGen = new Supplier<>() {
         private int cnt = 0;
@@ -35,6 +39,7 @@ public abstract class LuaVM {
     };
 
     public LuaVM withStdLib() {
+        AssertRootFuncNull();
         _G = LGlobal.getTable(false);
         _G.set("math", LMath.getTable());
         _G.set("table", LTable.getTable());
@@ -42,6 +47,7 @@ public abstract class LuaVM {
     }
 
     public LuaVM withEmptyEnv() {
+        AssertRootFuncNull();
         _G = LuaObject.table();
         return this;
     }
@@ -77,7 +83,7 @@ public abstract class LuaVM {
 
     public abstract VmResult run();
 
-    public record VmResult(VmRunState state, Object[] returnVars) {
+    public record VmResult(VmRunState state, LuaObject[] returnVars) {
         @Override
         public boolean equals(Object obj) {
             if (obj instanceof VmResult other) {
