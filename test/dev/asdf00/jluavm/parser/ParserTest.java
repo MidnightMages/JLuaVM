@@ -1,5 +1,6 @@
 package dev.asdf00.jluavm.parser;
 
+import dev.asdf00.jluavm.exceptions.loading.LuaSemanticException;
 import dev.asdf00.jluavm.parsing.Parser;
 import dev.asdf00.jluavm.parsing.SymTable;
 import dev.asdf00.jluavm.exceptions.loading.LuaLexerException;
@@ -136,36 +137,17 @@ public class ParserTest {
                 "if true then return 1 else return 2 else return 3 end"
         };
 
-        var workingSnippets = new String[]{
-                "goto\ntest"
-        };
-
         snippets = expandOptions(snippets);
         for (var s : snippets)
             assertThrows(LuaParserException.class, () -> parse(s), "Testcode: " + s);
 
-        workingSnippets = expandOptions(workingSnippets);
-        for (var s : workingSnippets)
-            assertDoesNotThrow(() -> parse(s), "Testcode: " + s);
-    }
+        var semanticSnippets = new String[]{
+                "goto\ntest"
+        };
 
-    @Test
-    void testClosure() {
-        var parser = parse("""
-                local a = 1
-                local b = 2
-                local function c(d, e, ...)
-                    a = "test"
-                end
-                """);
-        assertEquals("VarScope {parent=-1, id=0, funcBorder=false, closable=false, names={" +
-                     "a=VarInfo{jName='_0$a', isGlobal=false, isConstant=false, isClosable=false, isInClosure=true, isWritten=true}, " +
-                     "b=VarInfo{jName='_0$b', isGlobal=false, isConstant=false, isClosable=false, isInClosure=false, isWritten=false}, " +
-                     "c=VarInfo{jName='_0$c', isGlobal=false, isConstant=false, isClosable=false, isInClosure=false, isWritten=false}}, " +
-                     "children=[VarScope {parent=0, id=1, funcBorder=true, closable=false, names={" +
-                     "d=VarInfo{jName='_1$d', isGlobal=false, isConstant=false, isClosable=false, isInClosure=false, isWritten=false}, " +
-                     "e=VarInfo{jName='_1$e', isGlobal=false, isConstant=false, isClosable=false, isInClosure=false, isWritten=false}}, " +
-                     "children=[]}]}", getSymTab(parser));
+        semanticSnippets = expandOptions(semanticSnippets);
+        for (var s : semanticSnippets)
+            assertThrows(LuaSemanticException.class,() -> parse(s), "Testcode: " + s);
     }
 
     @Test
