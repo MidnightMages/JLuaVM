@@ -7,7 +7,6 @@ import dev.asdf00.jluavm.parsing.ir.Node;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
-import java.util.Locale;
 
 public final class ConstantNode extends Node {
     private final String codeRepr;
@@ -36,7 +35,7 @@ public final class ConstantNode extends Node {
     }
 
     public static ConstantNode ofDouble(Position sourcePos, double dVal) {
-        return new ConstantNode(sourcePos, "LuaObject.of(%d)".formatted(dVal));
+        return new ConstantNode(sourcePos, "LuaObject.of(%s)".formatted(Double.toString(dVal)));
     }
 
     public static ConstantNode ofBool(Position sourcePos, boolean bVal) {
