@@ -1,6 +1,5 @@
 package dev.asdf00.jluavm;
 
-import dev.asdf00.jluavm.utils.Tuple;
 import org.joor.Reflect;
 import org.joor.ReflectException;
 import org.junit.jupiter.api.Test;
@@ -17,11 +16,10 @@ public class ClassLoadingPlayground {
                 import dev.asdf00.jluavm.runtime.types.*;
                 import dev.asdf00.jluavm.runtime.utils.*;
                 import java.lang.reflect.Constructor;
-                public final class %s extends LuaFunction {;
-                    public static LuaObject _ENV;
+                public final class %s extends LuaFunction {
                     public static Constructor<? extends LuaFunction>[] innerFunctions;
-                    public %s(LuaObject[] closures) {
-                       super(closures);
+                    public %s(LuaObject[] _ENV, LuaObject[] closures) {
+                       super(_ENV, closures);
                     }
                     @Override
                     public int getMaxLocalsSize() {
