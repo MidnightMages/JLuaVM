@@ -27,34 +27,18 @@ public class EqualsNode extends Node {
         // for numbers and strings we do a deep equals, for tables and userdata we attempt a meta table lookup if the
         // reference compare fails
         String block = """
-                if (%s.isNumber() && %s.isNumber() || %s.isString() && %s.isString()) {
-                    %s = %s.eq(%s);
-                } else if (%s.getType() == %s.getType()) {
-                    if (%s == %s) {
-                        %s = LuaObject.TRUE;
-                    } else if (%s.isTable() || %s.isUserData()) {
-                        %s
-                        vm.callInternal(%d, LuaFunction::binaryOpWithMeta, Singletons.__eq, %s, %s);
-                        return;
-                    } else {
-                        %s = LuaObject.FALSE;
-                    }
-                } else {
-                    %s = LuaObject.FALSE;
+                %s = areEqual(vm, %d, %s, %s);
+                if (%s == null) {
+                    %s
+                    return;
                 }
                 case %d:
                 if (resume == %d && !%s.isBoolean()) {
                     %s = LuaObject.of(RTUtils.isTruthy(%s));
-                }""".formatted(xSpot, ySpot, xSpot, ySpot,
-                rSpot, xSpot, ySpot,
-                xSpot, ySpot,
-                xSpot, ySpot,
+                }""".formatted(
+                rSpot, callInfo.resumeLabel(), xSpot, ySpot,
                 rSpot,
-                xSpot, xSpot,
                 callInfo.saveEStack(),
-                callInfo.resumeLabel(), xSpot, ySpot,
-                rSpot,
-                rSpot,
                 callInfo.resumeLabel(),
                 callInfo.resumeLabel(), rSpot,
                 rSpot, rSpot);

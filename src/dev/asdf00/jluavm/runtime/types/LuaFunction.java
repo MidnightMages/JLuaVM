@@ -59,6 +59,7 @@ public abstract class LuaFunction {
     protected void binop(LuaObject x, LuaObject y, String op) {
         int a = 0;
     }
+
     protected LuaObject areEqual(LuaObject x, LuaObject y) {
         // TODO
         return null;
@@ -126,6 +127,23 @@ public abstract class LuaFunction {
         } else {
             vm.error(new LuaTypeError());
             return true;
+        }
+    }
+
+    protected LuaObject areEqual(LuaVM_RT vm, int resumeLabels, LuaObject x, LuaObject y) {
+        if (x.isNumber() && y.isNumber() || x.isString() && y.isString()) {
+            return x.eq(y);
+        } else if (x.getType() == y.getType()) {
+            if (x == y) {
+                return LuaObject.TRUE;
+            } else if (x.isTable() || x.isUserData()) {
+                vm.callInternal(resumeLabels, LuaFunction::binaryOpWithMeta, Singletons.__eq, x, y);
+                return null;
+            } else {
+                return LuaObject.FALSE;
+            }
+        } else {
+            return LuaObject.FALSE;
         }
     }
 
