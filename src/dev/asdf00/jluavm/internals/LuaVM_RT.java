@@ -22,7 +22,7 @@ public class LuaVM_RT extends LuaVM {
     @Override
     public VmResult run() {
         if (rootFunc == null) {
-            return new VmResult(VmRunState.EXECUTION_ERROR, new Object[]{"Invalid root function"});
+            return new VmResult(VmRunState.EXECUTION_ERROR, new LuaObject[]{LuaObject.of("Invalid root function")});
         }
         curFuncFrame = luaCallStack.push(new FunctionCallFrame(new LuaObject[rootFunc.getMaxLocalsSize()], rootFunc));
         execLoop();
