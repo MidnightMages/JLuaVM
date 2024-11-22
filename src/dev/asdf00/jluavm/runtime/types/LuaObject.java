@@ -350,7 +350,12 @@ public final class LuaObject {
                 dy = ly;
             }
         }
-        return LuaObject.of(doubleCalc ? (long) (dx / dy) : lx / ly);
+
+        if (doubleCalc){
+            var dres = LuaObject.of(Math.floor(dx/dy));
+            return dres.hasLongRepr() ? LuaObject.of(dres.asLong()) : dres;
+        }
+        return LuaObject.of(lx / ly);
     }
 
     public LuaObject mod(LuaObject other) {
@@ -795,7 +800,7 @@ public final class LuaObject {
                         double a = epos < 0 ? 2 : 10;
                         int splitter = epos < 0 ? ppos : epos;
                         doubleValue = parseHexDouble(number.substring(2, point)) + Double.parseDouble(number.substring(point, splitter))
-                                * Math.pow(a, Double.parseDouble(number.substring(splitter + 1)));
+                                                                                   * Math.pow(a, Double.parseDouble(number.substring(splitter + 1)));
                     }
                 }
             } else {
@@ -840,7 +845,8 @@ public final class LuaObject {
                 dVal = doubleValue;
             }
             return new CoercedString(!isInteger, doubleValue, longValue);
-        } catch (NumberFormatException e) {
+        }
+        catch (NumberFormatException e) {
             throw new InternalLuaLexerError("Unexpected failure while reading number '%s'".formatted(number), e);
         }
     }
@@ -1098,6 +1104,6 @@ public final class LuaObject {
 
     @Override
     public String toString() {
-        return asString();
+        return getTypeAsString() + " " + asString();
     }
 }
