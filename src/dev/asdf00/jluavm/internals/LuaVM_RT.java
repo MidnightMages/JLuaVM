@@ -11,6 +11,7 @@ import dev.asdf00.jluavm.runtime.utils.Singletons;
 import java.util.Arrays;
 import java.util.Random;
 import java.util.Stack;
+import java.util.function.Supplier;
 
 public class LuaVM_RT extends LuaVM {
 
@@ -42,7 +43,7 @@ public class LuaVM_RT extends LuaVM {
     private LuaObject[] returnVals;
 
     private void execLoop() {
-        for (;;) {
+        for (; ; ) {
             if (curFuncFrame != null) {
                 curFuncFrame.getTopFrame().execute(this);
             } else {
@@ -83,44 +84,95 @@ public class LuaVM_RT extends LuaVM {
     }
 
     public void errorArgType(int argumentIndex, String expectedType, LuaObject actualObject) {
-        error(new LuaTypeError("Expected argument #%s to be of type '%s', but it was of type '%s'!".formatted(argumentIndex+1, expectedType, actualObject.getTypeAsString())));
+        error(new LuaTypeError("Expected argument #%s to be of type '%s', but it was of type '%s'!".formatted(argumentIndex + 1, expectedType, actualObject.getTypeAsString())));
     }
 
     private void setupCall(LuaFunction externalTarget, LuaObject... args) {
         // setup new stack frame for call
         LuaObject[] nuStackFrame = new LuaObject[externalTarget.getMaxLocalsSize()];
-        int srcIdx = 0;
+        int srcArgIdx = 0;
+        int srcArgElemIdx = 0;
         int dstIdx = 0;
         var vaDest = externalTarget.hasParamsArg();
         var targetArgCnt = externalTarget.getArgCount();
-        while (srcIdx < targetArgCnt) {
-            var isLastDest = dstIdx == targetArgCnt-1;
-            if (isLastDest && vaDest) { // dest is varargs, so just take all non-last-ones and also the last one which might be an array and combine and put them in there
-                if (args.length == 0){
-                    nuStackFrame[dstIdx] = LuaObject.of(Singletons.EMPTY_LUA_OBJ_ARRAY);
+        LuaObject[] VADestArray = null;
+
+        while (dstIdx < externalTarget.getArgCount()) {
+            var isLastDest = dstIdx == targetArgCnt - 1;
+            if (isLastDest && vaDest) {
+                if (srcArgIdx >= args.length) {
+                    nuStackFrame[0] = LuaObject.of(Singletons.EMPTY_LUA_OBJ_ARRAY);
                     break;
                 }
+                boolean countingPhase = false;
+                int VaLen = 0;
+                int VaDstIdx = 0;
+                do {
+                    countingPhase ^= true; // counting phase first, then collection phase
+                    if (!countingPhase)
+                        VADestArray = new LuaObject[VaLen];
 
-                var lastElem = args[args.length-1];
-                var lastIsArray = lastElem.isArray();
-                var lastArray = lastIsArray ? lastElem.asArray() : null;
-                var VA = new LuaObject[args.length-srcIdx-1 + (lastIsArray ? lastArray.length : 1)];
-                int VA_i = 0;
-                for (int i = srcIdx; i < args.length-1; i++) { // skip last one as that might be a vararg (=multi) return
-                    VA[VA_i++] = args[i];
-                }
-                if (!lastIsArray) {
-                    VA[VA_i] = args[args.length-1];
-                } else {
-                    System.arraycopy(lastArray, 0, VA, VA_i, lastArray.length);
-                }
-                nuStackFrame[dstIdx] = LuaObject.of(VA);
+                    for (int i = srcArgIdx; i < args.length; i++) {
+                        var srcElem = args[i];
+                        if (!srcElem.isArray()) {
+                            if (countingPhase) {
+                                VaLen++;
+                            } else {
+                                VADestArray[VaDstIdx++] = srcElem;
+                            }
+                        } else {
+                            var srcElemArray = srcElem.asArray();
+                            var lenToTake = srcElemArray.length - srcArgElemIdx;
+                            if (countingPhase) {
+                                VaLen += lenToTake;
+                            } else {
+                                System.arraycopy(srcElemArray, srcArgElemIdx, VADestArray, VaDstIdx, lenToTake);
+                            }
+                        }
+                    }
+                } while (countingPhase);
+                nuStackFrame[dstIdx] = LuaObject.of(VADestArray);
                 break;
-            } else { // dest is definitely not varargs
-                var s =  args[srcIdx++];
-                nuStackFrame[dstIdx++] = s.isArray() ? s.asArray()[0] : s; // if func returned multiple at this pos, take the first one
+            }
+
+            if (srcArgIdx < args.length) {
+                var srcObj = args[srcArgIdx++];
+                if (srcObj.isArray()) { // flatten
+                    var srcObjArr = srcObj.asArray();
+                    if (srcArgElemIdx >= srcObjArr.length) { // src array is empty
+                        srcArgElemIdx = 0;
+                        srcArgIdx++;
+                        continue;
+                    }
+                    nuStackFrame[dstIdx++] = srcObjArr[srcArgElemIdx++];
+                } else {
+                    nuStackFrame[dstIdx++] = srcObj;
+                }
+            } else {
+                nuStackFrame[dstIdx++] = LuaObject.NIL;
             }
         }
+
+        assert ((Supplier<Boolean>) () -> {
+            var allArgs = Arrays.stream(args).flatMap(x -> x.isArray() ? Arrays.stream(x.asArray()) : Arrays.stream(new LuaObject[]{x})).toArray(LuaObject[]::new);
+
+            var expectedNuStack = new LuaObject[nuStackFrame.length];
+            System.arraycopy(allArgs, 0, expectedNuStack, 0, externalTarget.getArgCount() - (externalTarget.hasParamsArg() ? 1 : 0));
+            for (int i = 0; i < expectedNuStack.length; i++) {
+                if (externalTarget.hasParamsArg() && i == externalTarget.getArgCount() - 1)
+                    continue; // skip param arg
+                assert expectedNuStack[i] == nuStackFrame[i];
+            }
+            if (externalTarget.hasParamsArg()) {
+                var expectedParamsArray = Arrays.stream(allArgs).skip(externalTarget.getArgCount() - 1).toArray(LuaObject[]::new);
+                var actualParamsArray = nuStackFrame[externalTarget.getArgCount() - 1].asArray();
+                assert expectedParamsArray.length == actualParamsArray.length;
+                for (int j = 0; j < expectedParamsArray.length; j++) {
+                    assert expectedParamsArray[j] == actualParamsArray[j];
+                }
+            }
+            return true;
+        }).get();
         curFuncFrame = luaCallStack.push(new FunctionCallFrame(nuStackFrame, externalTarget));
     }
 
