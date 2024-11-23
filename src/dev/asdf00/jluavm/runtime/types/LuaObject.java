@@ -1119,6 +1119,9 @@ public final class LuaObject {
 
     @Override
     public String toString() {
-        return "%s {%s}".formatted(getTypeAsString(), asString());
+        return switch (type) {
+            case Types.NIL,Types.BOOLEAN, Types.DOUBLE, Types.LONG, Types.STRING -> "%s: %s".formatted(getTypeAsString(), asString());
+            default -> asString();
+        };
     }
 }
