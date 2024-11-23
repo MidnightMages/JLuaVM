@@ -150,20 +150,39 @@ public abstract class LuaFunction {
         }
     }
 
-    protected static LuaObject areEqual(LuaVM_RT vm, int resumeLabels, LuaObject x, LuaObject y) {
+    protected static LuaObject areEqual(LuaVM_RT vm, int resumeLabel, LuaObject x, LuaObject y) {
         if (x.isNumber() && y.isNumber() || x.isString() && y.isString()) {
             return x.eq(y);
         } else if (x.getType() == y.getType()) {
             if (x == y) {
                 return LuaObject.TRUE;
             } else if (!x.getMetaValueOrNil(Singletons.__eq).isNil() || !y.getMetaValueOrNil(Singletons.__eq).isNil()) {
-                vm.callInternal(resumeLabels, LuaFunction::binaryOpWithMeta, Singletons.__eq, x, y);
+                vm.callInternal(resumeLabel, LuaFunction::binaryOpWithMeta, Singletons.__eq, x, y);
                 return null;
             } else {
                 return LuaObject.FALSE;
             }
         } else {
             return LuaObject.FALSE;
+        }
+    }
+
+    protected static LuaObject lengthOf(LuaVM_RT vm, int resumeLabel, LuaObject obj) {
+        if (obj.isString()) {
+            // LUAC DEVIATION. We intentionally return the number of character instead of the length in bytes.
+            return LuaObject.of(obj.asString().length());
+        }
+        var mv = obj.getMetaValueOrNil(Singletons.__len);
+        if (!mv.isNil()) {
+            vm.callInternal(resumeLabel, LuaFunction::unaryOpWithMeta, Singletons.__len, mv);
+            return null;
+        }
+        if (obj.isTable()) {
+            return LuaObject.of(obj.asMap().luaLen());
+        } else {
+            // type incompatible with length-of operator
+            vm.error(new LuaTypeError());
+            return null;
         }
     }
 
