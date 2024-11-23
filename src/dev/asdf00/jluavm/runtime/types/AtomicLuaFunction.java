@@ -42,6 +42,10 @@ public class AtomicLuaFunction extends LuaFunction {
     public static AtomicLuaFunction forZeroResults(LLBiConsumer c) {
         return new AtomicLuaFunction((BiConsumer<LuaVM_RT, LuaObject[]>) (vm, args) -> c.accept(vm, args[0], args[1]), 2, false);
     }
+
+    public static AtomicLuaFunction vaForZeroResults(LLVaVoidFunction c) {
+        return new AtomicLuaFunction(c::accept, 0, true);
+    }
     // ... more if necessary
 
     // helpers for lua functions of type F(a)->r; F(a,b)->r; F(a,b,...)->r
