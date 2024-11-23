@@ -88,15 +88,36 @@ public class LuaVM_RT extends LuaVM {
     private void setupCall(LuaFunction externalTarget, LuaObject... args) {
         // setup new stack frame for call
         LuaObject[] nuStackFrame = new LuaObject[externalTarget.getMaxLocalsSize()];
-        for (int i = 0, j = 0; i < externalTarget.getArgCount(); j++) {
-            if (args[j].isArray()) {
-                LuaObject[] inner = args[j].asArray();
-                for (int k = 0; k < inner.length && i < externalTarget.getArgCount(); i++, k++) {
-                    nuStackFrame[i] = inner[k];
+        int srcIdx = 0;
+        int dstIdx = 0;
+        var vaDest = externalTarget.hasParamsArg();
+        var targetArgCnt = externalTarget.getArgCount();
+        while (srcIdx < targetArgCnt) {
+            var isLastDest = dstIdx == targetArgCnt-1;
+            if (isLastDest && vaDest) { // dest is varargs, so just take all non-last-ones and also the last one which might be an array and combine and put them in there
+                if (args.length == 0){
+                    nuStackFrame[dstIdx] = LuaObject.of(Singletons.EMPTY_LUA_OBJ_ARRAY);
+                    break;
                 }
-            } else {
-                nuStackFrame[i] = args[j];
-                i++;
+
+                var lastElem = args[args.length-1];
+                var lastIsArray = lastElem.isArray();
+                var lastArray = lastIsArray ? lastElem.asArray() : null;
+                var VA = new LuaObject[args.length-srcIdx-1 + (lastIsArray ? lastArray.length : 1)];
+                int VA_i = 0;
+                for (int i = srcIdx; i < args.length-1; i++) { // skip last one as that might be a vararg (=multi) return
+                    VA[VA_i++] = args[i];
+                }
+                if (!lastIsArray) {
+                    VA[VA_i] = args[args.length-1];
+                } else {
+                    System.arraycopy(lastArray, 0, VA, VA_i, lastArray.length);
+                }
+                nuStackFrame[dstIdx] = LuaObject.of(VA);
+                break;
+            } else { // dest is definitely not varargs
+                var s =  args[srcIdx++];
+                nuStackFrame[dstIdx++] = s.isArray() ? s.asArray()[0] : s; // if func returned multiple at this pos, take the first one
             }
         }
         curFuncFrame = luaCallStack.push(new FunctionCallFrame(nuStackFrame, externalTarget));
