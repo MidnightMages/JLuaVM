@@ -6,6 +6,7 @@ import dev.asdf00.jluavm.parsing.Lexer;
 
 import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.util.Arrays;
 import java.util.Base64;
 
@@ -435,8 +436,14 @@ public final class LuaObject {
         return LuaObject.of(Math.pow(dx, dy));
     }
 
-    private static final DecimalFormat doubleToStringFormat = new DecimalFormat("#.0#############"); // TODO add unittest to make sure this lack of threadsafety doesnt cause any issues
+    private static final DecimalFormat doubleToStringFormat; // TODO add unittest to make sure this lack of threadsafety doesnt cause any issues
     private static final DecimalFormat longToStringFormat = new DecimalFormat("#");
+
+    static {
+        var dfs = DecimalFormatSymbols.getInstance();
+        dfs.setDecimalSeparator('.');
+        doubleToStringFormat = new DecimalFormat("0.0#############", dfs);
+    }
 
     public LuaObject concat(LuaObject other) {
         assert isType(Types.ARITHMETIC) && other.isType(Types.ARITHMETIC);
