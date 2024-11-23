@@ -14,6 +14,7 @@ import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 public abstract class LuaVM {
@@ -30,11 +31,11 @@ public abstract class LuaVM {
     }
 
     private static final Supplier<String> jClassNameGen = new Supplier<>() {
-        private int cnt = 0;
+        private final AtomicInteger cnt = new AtomicInteger(0);
 
         @Override
         public String get() {
-            return "GeneratedLuaFunc_%d".formatted(cnt++);
+            return "GeneratedLuaFunc_%d".formatted(cnt.getAndAdd(1));
         }
     };
 
