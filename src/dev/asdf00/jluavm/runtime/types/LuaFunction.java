@@ -268,8 +268,8 @@ public abstract class LuaFunction {
                     throw new InternalLuaRuntimeError("expected 3 arguments, got " + args.length);
                 }
                 t0 = args[0]; // original table
-                t1 = args[0]; // original key
-                t2 = args[0]; // metatable
+                t1 = args[1]; // original key
+                t2 = args[2]; // metatable
             }
             case 0 -> {
                 // restore expression stack
