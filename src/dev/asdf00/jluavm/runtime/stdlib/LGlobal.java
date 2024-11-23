@@ -3,7 +3,6 @@ package dev.asdf00.jluavm.runtime.stdlib;
 import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.runtime.errors.LuaArgumentError;
-import dev.asdf00.jluavm.runtime.errors.LuaTypeError;
 import dev.asdf00.jluavm.runtime.errors.LuaUserError;
 import dev.asdf00.jluavm.runtime.types.AtomicLuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
@@ -158,10 +157,7 @@ public class LGlobal {
 
             return tbl;
         }).obj());
-//        rv.set("tostring", LuaObject.of(AtomicLuaFunction.forOneResult((vm, x) -> {
-//            var mtFunc = x.getMetaTableValueOrNull("__tostring");
-//            return LuaObject.of(mtFunc != null ? mtFunc.invoke() : x.asString());
-//        }))); // TODO rewrite this to make it work with the vm logic as it is not an atomic function
+        rv.set("tostring", tostring);
         rv.set("type", AtomicLuaFunction.forOneResult((vm, x) -> LuaObject.of(x.getTypeAsString())).obj());
 
         rv.set("_VERSION", LuaObject.of("Lua 5.4"));
@@ -172,6 +168,61 @@ public class LGlobal {
     // =================================================================================================================
     //  static function definitions
     // =================================================================================================================
+
+    private static final LuaObject tostring = LuaObject.of(new LuaFunction() {
+        @Override
+        public void invoke(LuaVM_RT vm, LuaObject[] stackFrame, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
+            LuaObject t0 = null;
+            if (resume == -1) {
+                vm.registerLocals(1);
+            }
+            var arg = stackFrame[0];
+            switch (resume) {
+                case -1:
+                    if (!arg.isTable() || arg.getMetaTable() == null) { // if this is not a table that also has a metatable attached, simply return the easy .asString()
+                        vm.returnValue(LuaObject.of(arg.asString()));
+                        return;
+                    }
+                    // otherwise, try to find a __tostring value and then call it, whatever it is, including a table that has a metatable attached that has __call defined
+                    // otherwise, **if __tostring is undefined or nil** and __name is defined, return $"{__name}: {arg.asString()}"
+                    // otherwise, if there is also no __name, return the easy .asString()
+
+                    var tostring = arg.getMetaTableValueOrNil("__tostring");
+                    if (tostring.isNil()) { // we dont have a tostring field --> cook something up using __name, or without that
+                        var name = arg.getMetaTableValueOrNil("__name");
+                        vm.returnValue(LuaObject.of(!name.isNil() && name.isString() ? name.getString() + ": " + arg.asString() : arg.asString()));
+                        return;
+                    }
+                    // otherwise simply call it and see what happens
+                    if (tostring.isFunction())
+                        vm.tailCall(tostring.getFunc(), arg);
+                    else
+                        vm.callInternal(0, LuaFunction::callWithMeta, tostring, arg);
+                    return;
+                case 0:
+                    var rval = returned.length > 0 ? returned[0] : LuaObject.nil();;
+                    vm.returnValue(rval);
+                    return;
+                default:
+                    throw new InternalLuaRuntimeError("unknown resume point " + resume);
+            }
+        }
+
+        @Override
+        public int getMaxLocalsSize() {
+            return 1;
+        }
+
+        @Override
+        public int getArgCount() {
+            return 1;
+        }
+
+        @Override
+        public boolean hasParamsArg() {
+            return false;
+        }
+    });
 
     private static final LuaObject ipairs = LuaObject.of(new LuaFunction() {
         @Override
