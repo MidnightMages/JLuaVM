@@ -472,4 +472,26 @@ public class VmTest {
         var result = vm.run();
         assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS, new LuaObject[]{LuaObject.of("res: 1,1 2,2 3,3")}), result);
     }
+
+    @Test
+    public void simplePairsLoop() {
+        var vm = LuaVM.create();
+        vm.withStdLib();
+        vm.withRootFunc("""
+                local rv = "result:"
+                for k, v in pairs({a = 1, 2, [1.5] = 3, "nil", bsdf = 5, 6}) do
+                    rv = rv .. "\\n" .. k .. " = " .. v
+                end
+                return rv
+                """);
+        var result = vm.run();
+        assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS, new LuaObject[]{LuaObject.of("""
+                result:
+                a = 1
+                1 = 2
+                1.5 = 3
+                2 = nil
+                bsdf = 5
+                3 = 6""")}), result);
+    }
 }

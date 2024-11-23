@@ -1,14 +1,17 @@
 package dev.asdf00.jluavm.runtime.types;
 
+import dev.asdf00.jluavm.utils.Tuple;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeSet;
-import java.util.function.BiFunction;
-import java.util.function.Function;
 
-public class LuaHashMap extends HashMap<LuaObject, LuaObject> {
+public class LuaHashMap {
     private final TreeSet<Long> upperSequenceBounds = new TreeSet<>();
     private final TreeSet<Long> lowerSequenceBounds = new TreeSet<>();
+    private KeyNode head = null;
+    private KeyNode tail = null;
+    private final Map<LuaObject, Tuple<LuaObject, KeyNode>> backing = new HashMap<>();
 
     public long luaLen() {
         return upperSequenceBounds.isEmpty() ? 0 : upperSequenceBounds.ceiling(Long.MIN_VALUE);
@@ -84,10 +87,21 @@ public class LuaHashMap extends HashMap<LuaObject, LuaObject> {
         }
     }
 
-    @Override
-    public LuaObject put(LuaObject key, LuaObject value) {
+    public void put(LuaObject key, LuaObject value) {
+        boolean alreadyExists = backing.containsKey(key);
+        if (!alreadyExists) {
+            if (tail == null) {
+                // init entry list
+                head = new KeyNode(key);
+                tail = head;
+            } else {
+                // append
+                tail.after = new KeyNode(key, tail);
+                tail = tail.after;
+            }
+        }
         if (key.isLong() && key.asLong() > 0) {
-            var prev = get(key);
+            var prev = alreadyExists ? backing.get(key).x() : null;
             if (prev == null || prev.isNil()) {
                 if (value != null && !value.isNil()) {
                     plugHole(key.asLong());
@@ -98,24 +112,49 @@ public class LuaHashMap extends HashMap<LuaObject, LuaObject> {
                 }
             }
         }
-        return super.put(key, value);
+        backing.put(key, new Tuple<>(value, tail));
     }
 
-    @Override
-    public LuaObject remove(Object k) {
-        if (k instanceof LuaObject key && key.isLong() && key.asLong() > 0) {
-            var prev = get(k);
-            if (prev != null && !prev.isNil()) {
-                createHole(key.asLong());
+    public LuaObject remove(LuaObject key) {
+        if (backing.containsKey(key)) {
+            var entry = backing.get(key);
+            if (backing.size() > 1) {
+                // still retains at least 1 entry after removal
+                var eNode = entry.y();
+                var b = eNode.before;
+                var a = eNode.after;
+                if (b == null) {
+                    // first entry
+                    head = a;
+                    a.before = null;
+                } else if (a == null) {
+                    // last entry
+                    tail = b;
+                    b.after = null;
+                } else {
+                    // middle entry
+                    b.after = a;
+                    a.before = b;
+                }
+            } else {
+                // map is empty now
+                head = null;
+                tail = null;
             }
+            if (key.isLong() && key.asLong() > 0) {
+                var prev = entry.x();
+                if (prev != null && !prev.isNil()) {
+                    createHole(key.asLong());
+                }
+            }
+            return entry.x();
         }
-        return super.remove(k);
+        return null;
     }
 
-    @Override
-    public boolean remove(Object key, Object value) {
-        if (containsKey(key)) {
-            var val = get(key);
+    public boolean remove(LuaObject key, LuaObject value) {
+        if (backing.containsKey(key)) {
+            var val = backing.get(key);
             if (val == null) {
                 if (value == null) {
                     remove(key);
@@ -138,80 +177,49 @@ public class LuaHashMap extends HashMap<LuaObject, LuaObject> {
         }
     }
 
-    @Override
-    public LuaObject putIfAbsent(LuaObject key, LuaObject value) {
-        if (!containsKey(key)) {
-            put(key, value);
-            return null;
-        } else {
-            return get(key);
-        }
-    }
-
-    @Override
-    public void putAll(Map<? extends LuaObject, ? extends LuaObject> m) {
-        for (var kv : m.entrySet()) {
-            LuaObject key = kv.getKey();
-            LuaObject value = kv.getValue();
-            if (key.isLong() && key.asLong() > 0) {
-                var prev = get(key);
-                if (prev == null || prev.isNil()) {
-                    if (value != null && !value.isNil()) {
-                        plugHole(key.asLong());
-                    }
-                } else {
-                    if (value == null || value.isNil()) {
-                        createHole(key.asLong());
-                    }
-                }
-            }
-        }
-        super.putAll(m);
-    }
-
-    @Override
-    public LuaObject computeIfAbsent(LuaObject key, Function<? super LuaObject, ? extends LuaObject> mappingFunction) {
-        if (!containsKey(key)) {
-            LuaObject val = mappingFunction.apply(key);
-            put(key, val);
-            return val;
-        } else {
-            return get(key);
-        }
-    }
-
-    @Override
-    public LuaObject computeIfPresent(LuaObject key, BiFunction<? super LuaObject, ? super LuaObject, ? extends LuaObject> remappingFunction) {
-        if (containsKey(key) && get(key) != null) {
-            LuaObject val = remappingFunction.apply(key, get(key));
-            if (val == null) {
-                remove(key);
-                return null;
-            }
-            put(key, val);
-            return val;
-        }
-        return null;
-    }
-
-    @Override
-    public LuaObject compute(LuaObject key, BiFunction<? super LuaObject, ? super LuaObject, ? extends LuaObject> remappingFunction) {
-        LuaObject val = remappingFunction.apply(key, get(key));
-        if (val != null) {
-            put(key, val);
-        }
-        return val;
-    }
-
-    @Override
     public LuaObject getOrDefault(Object key, LuaObject defaultValue) {
-        return containsKey(key) ? get(key) : defaultValue;
+        return backing.containsKey(key) ? backing.get(key).x() : defaultValue;
     }
 
-    @Override
+    public boolean containsKey(LuaObject key) {
+        return backing.containsKey(key);
+    }
+
     public void clear() {
         lowerSequenceBounds.clear();
         upperSequenceBounds.clear();
-        super.clear();
+        backing.clear();
+        head = null;
+        tail = null;
+    }
+
+    public LuaObject getKeyAfter(LuaObject key) {
+        var entry = backing.get(key);
+        if (entry != null) {
+            var a = entry.y().after;
+            return a == null ? LuaObject.nil() : a.key;
+        } else {
+            return null;
+        }
+    }
+
+    public LuaObject getFirstKey() {
+        return head == null ? LuaObject.nil() : head.key;
+    }
+
+    private static final class KeyNode {
+        public final LuaObject key;
+        public KeyNode before;
+        public KeyNode after;
+
+        public KeyNode(LuaObject key) {
+            this(key, null);
+        }
+
+        public KeyNode(LuaObject key, KeyNode before) {
+            this.key = key;
+            this.before = before;
+            this.after = null;
+        }
     }
 }

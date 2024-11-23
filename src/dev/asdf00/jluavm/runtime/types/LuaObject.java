@@ -8,7 +8,6 @@ import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.Base64;
-import java.util.HashMap;
 
 import static dev.asdf00.jluavm.parsing.Lexer.isDecDigit;
 import static dev.asdf00.jluavm.parsing.Lexer.parseHexDouble;
@@ -586,7 +585,7 @@ public final class LuaObject {
             throw new InternalLuaRuntimeError("This is not a table nor userdata!");
 
         if (isTable()) {
-            return ((HashMap<LuaObject, LuaObject>) refVal).containsKey(key);
+            return ((LuaHashMap) refVal).containsKey(key);
         } else {
             throw new UnsupportedOperationException("userdata get is not yet supported");
         }
@@ -598,7 +597,7 @@ public final class LuaObject {
             throw new InternalLuaRuntimeError("This is not a table nor userdata!");
 
         if (isTable()) {
-            return ((HashMap<LuaObject, LuaObject>) refVal).getOrDefault(key, NIL);
+            return ((LuaHashMap) refVal).getOrDefault(key, NIL);
         } else {
             throw new UnsupportedOperationException("userdata get is not yet supported");
         }
@@ -609,21 +608,21 @@ public final class LuaObject {
     }
 
     @SuppressWarnings("unchecked")
-    public LuaObject set(LuaObject key, LuaObject value) {
+    public void set(LuaObject key, LuaObject value) {
         assert !key.isNil();
         assert impl(key.isDouble(), !key.isNaN());
         if (!isTable() && !isUserData())
             throw new InternalLuaRuntimeError("This is not a table nor userdata!");
 
         if (isTable()) {
-            return ((HashMap<LuaObject, LuaObject>) refVal).put(key, value);
+            ((LuaHashMap) refVal).put(key, value);
         } else {
             throw new UnsupportedOperationException("userdata get is not yet supported");
         }
     }
 
-    public LuaObject set(String key, LuaObject value) {
-        return set(LuaObject.of(key), value);
+    public void set(String key, LuaObject value) {
+        set(LuaObject.of(key), value);
     }
 
     public LuaObject get(String key) {
@@ -939,6 +938,13 @@ public final class LuaObject {
             case Types.BOX -> "box of <" + ((LuaObject) refVal).asString() + ">";
             default -> throw new IllegalStateException("Unexpected case value: " + type);
         };
+    }
+
+    public LuaHashMap asMap() {
+        if (!isTable()) {
+            throw new InternalLuaRuntimeError("This is not a table!");
+        }
+        return (LuaHashMap) refVal;
     }
 
     // =================================================================================================================
