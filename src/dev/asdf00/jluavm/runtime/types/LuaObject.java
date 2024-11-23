@@ -1112,6 +1112,6 @@ public final class LuaObject {
 
     @Override
     public String toString() {
-        return asString();
+        return "%s {%s}".formatted(getTypeAsString(), asString());
     }
 }

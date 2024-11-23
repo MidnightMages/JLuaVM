@@ -494,4 +494,15 @@ public class VmTest {
                 bsdf = 5
                 3 = 6""")}), result);
     }
+
+    @Test
+    public void simpleLen() {
+        var vm = LuaVM.create();
+        vm.withEmptyEnv();
+        vm.withRootFunc("""
+                return #{1, '', nil, nil, "a", nil}
+                """);
+        var result = vm.run();
+        assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS, new LuaObject[]{LuaObject.of(5)}), result);
+    }
 }

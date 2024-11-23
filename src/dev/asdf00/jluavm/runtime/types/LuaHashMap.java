@@ -14,7 +14,7 @@ public class LuaHashMap {
     private final Map<LuaObject, Tuple<LuaObject, KeyNode>> backing = new HashMap<>();
 
     public long luaLen() {
-        return upperSequenceBounds.isEmpty() ? 0 : upperSequenceBounds.ceiling(Long.MIN_VALUE);
+        return upperSequenceBounds.isEmpty() ? 0 : upperSequenceBounds.floor(Long.MAX_VALUE);
     }
 
     private void createHole(long pos) {
@@ -55,34 +55,63 @@ public class LuaHashMap {
     private void plugHole(long pos) {
         Long oCeil = lowerSequenceBounds.higher(pos);
         Long oFloor = upperSequenceBounds.lower(pos);
-        if (oCeil == null || oFloor == null) {
-            // not inside a hole
-            return;
-        }
-        // inside hole (floor, ceil), split/shrink/plug hole
-        long ceil = oCeil;
-        long floor = oFloor;
-        if (floor + 1 < pos) {
-            // not touching lower sequence
-            if (ceil - 1 > pos) {
-                // not touching any sequence, create new single element sequence
+        if (oFloor == null) {
+            if (oCeil == null) {
+                // not inside a hole
                 lowerSequenceBounds.add(pos);
                 upperSequenceBounds.add(pos);
+                return;
             } else {
-                // touching only upper sequence, expanding upper sequence
-                lowerSequenceBounds.remove(pos + 1);
-                lowerSequenceBounds.add(pos);
+                // below lowest hole
+                if (oCeil > pos + 1) {
+                    // not touching
+                    lowerSequenceBounds.add(pos);
+                    upperSequenceBounds.add(pos);
+                } else {
+                    // touching upper sequence, expand sequence
+                    lowerSequenceBounds.remove(oCeil);
+                    lowerSequenceBounds.add(pos);
+                }
             }
         } else {
-            // touching lower sequence
-            if (ceil - 1 > pos) {
-                // touching only lower sequence, expand lower sequence
-                upperSequenceBounds.remove(pos - 1);
-                upperSequenceBounds.add(pos);
+            if (oCeil == null) {
+                // above highest hole
+                if (oFloor < pos - 1) {
+                    // not touching
+                    lowerSequenceBounds.add(pos);
+                    upperSequenceBounds.add(pos);
+                } else {
+                    // touching lower sequence, expand sequence
+                    upperSequenceBounds.remove(oFloor);
+                    upperSequenceBounds.add(pos);
+                }
             } else {
-                // touching upper and lower sequence, merge them into one
-                upperSequenceBounds.remove(pos - 1);
-                lowerSequenceBounds.remove(pos + 1);
+                // inside hole (floor, ceil), split/shrink/plug hole
+                long ceil = oCeil;
+                long floor = oFloor;
+                if (floor + 1 < pos) {
+                    // not touching lower sequence
+                    if (ceil - 1 > pos) {
+                        // not touching any sequence, create new single element sequence
+                        lowerSequenceBounds.add(pos);
+                        upperSequenceBounds.add(pos);
+                    } else {
+                        // touching only upper sequence, expanding upper sequence
+                        lowerSequenceBounds.remove(pos + 1);
+                        lowerSequenceBounds.add(pos);
+                    }
+                } else {
+                    // touching lower sequence
+                    if (ceil - 1 > pos) {
+                        // touching only lower sequence, expand lower sequence
+                        upperSequenceBounds.remove(pos - 1);
+                        upperSequenceBounds.add(pos);
+                    } else {
+                        // touching upper and lower sequence, merge them into one
+                        upperSequenceBounds.remove(pos - 1);
+                        lowerSequenceBounds.remove(pos + 1);
+                    }
+                }
             }
         }
     }
