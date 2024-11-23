@@ -492,4 +492,27 @@ public class VmTest {
         var result = vm.run();
         assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS, new LuaObject[]{LuaObject.of(5)}), result);
     }
+
+    @Test
+    public void metaMetaLookup() {
+        var vm = LuaVM.create();
+        vm.withStdLib();
+        vm.withRootFunc("""
+                local rv = "result:\\n"
+                local t = setmetatable({}, {__index = {meta = "empty"}})
+                rv = rv .. t.meta .. "\\n"
+                local t2 = setmetatable({}, t)
+                rv = rv .. tostring(t2.meta) .. "\\n"
+                local t3 = setmetatable({}, {__index = t})
+                rv = rv .. t3.meta .. "\\n"
+                return rv
+                """);
+        var result = vm.run();
+        assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS, new LuaObject[]{LuaObject.of("""
+                result:
+                empty
+                nil
+                empty
+                """)}), result);
+    }
 }

@@ -8,6 +8,7 @@ import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.LFunc;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 
+import java.util.Arrays;
 import java.util.Random;
 import java.util.Stack;
 
@@ -167,6 +168,7 @@ public class LuaVM_RT extends LuaVM {
     }
 
     public void returnValue(LuaObject... values) {
+        assert Arrays.stream(values).filter(v -> v == null).count() == 0 : "null in return vals";
         // function exit
         luaCallStack.pop();
         if (luaCallStack.isEmpty()) {
@@ -194,6 +196,7 @@ public class LuaVM_RT extends LuaVM {
     }
 
     public void internalReturn(LuaObject... values) {
+        assert Arrays.stream(values).filter(v -> v == null).count() == 0 : "null in internal return vals";
         curFuncFrame.exitScope(values);
     }
 

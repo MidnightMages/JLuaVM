@@ -18,6 +18,8 @@ import java.util.Stack;
 import java.util.function.Supplier;
 
 public final class CompilationState {
+    public static final boolean DEBUG_MODE = true;
+
     private final String COMPILED_CLASSES_MODULE_PREFIX = "dev.asdf00.jluavm.lualoaded.";
 
     private final Supplier<String> jClassNameGenerator;

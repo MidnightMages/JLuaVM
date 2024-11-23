@@ -117,6 +117,10 @@ public class LuaHashMap {
     }
 
     public void put(LuaObject key, LuaObject value) {
+        if (value.isNil()) {
+            remove(key);
+            return;
+        }
         boolean alreadyExists = backing.containsKey(key);
         if (!alreadyExists) {
             if (tail == null) {
@@ -128,17 +132,8 @@ public class LuaHashMap {
                 tail.after = new KeyNode(key, tail);
                 tail = tail.after;
             }
-        }
-        if (key.isLong() && key.asLong() > 0) {
-            var prev = alreadyExists ? backing.get(key).x() : null;
-            if (prev == null || prev.isNil()) {
-                if (value != null && !value.isNil()) {
-                    plugHole(key.asLong());
-                }
-            } else {
-                if (value == null || value.isNil()) {
-                    createHole(key.asLong());
-                }
+            if (key.isLong() && key.asLong() > 0) {
+                plugHole(key.asLong());
             }
         }
         backing.put(key, new Tuple<>(value, tail));

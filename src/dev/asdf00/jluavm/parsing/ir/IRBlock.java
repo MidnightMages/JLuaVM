@@ -35,6 +35,9 @@ public class IRBlock extends Node {
         for (int i = 0; i < statements.length; i++) {
             sb.append(statements[i].generate(cState)).append('\n');
             assert cState.clearEStack() == 0 : "we expect the expression stack to be empty here";
+            if (CompilationState.DEBUG_MODE) {
+                sb.append("debugPoint(\"at lua l%d:c%d\", stackFrame, vm);\n".formatted(statements[i].sourcePos.line(), statements[i].sourcePos.col()));
+            }
         }
         if (continueCondition != null) {
             // this is a loop, generate conditional exit

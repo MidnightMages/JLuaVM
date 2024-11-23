@@ -68,8 +68,13 @@ public final class LuaObject {
         metaTable = mt;
     }
 
-    public LuaObject getMetaTableValueOrNil(String mtKey) {
-        return metaTable != null ? metaTable.get(LuaObject.of(mtKey)) : NIL;
+    public LuaObject getMetaValueOrNil(String mtKey) {
+        return getMetaValueOrNil(LuaObject.of(mtKey))
+                ;
+    }
+
+    public LuaObject getMetaValueOrNil(LuaObject mtKey) {
+        return metaTable != null ? metaTable.get(mtKey) : LuaObject.nil();
     }
 
     public boolean isType(int types) {

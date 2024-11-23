@@ -146,7 +146,7 @@ public class LGlobal {
                 return null;
             }
 
-            if (!tbl.getMetaTableValueOrNil("__metatable").isNil()) {
+            if (!tbl.getMetaValueOrNil("__metatable").isNil()) {
                 vm.error(new LuaUserError("cannot change a protected metatable"));
             }
 
@@ -187,9 +187,9 @@ public class LGlobal {
                     // otherwise, **if __tostring is undefined or nil** and __name is defined, return $"{__name}: {arg.asString()}"
                     // otherwise, if there is also no __name, return the easy .asString()
 
-                    var tostring = arg.getMetaTableValueOrNil("__tostring");
+                    var tostring = arg.getMetaValueOrNil("__tostring");
                     if (tostring.isNil()) { // we dont have a tostring field --> cook something up using __name, or without that
-                        var name = arg.getMetaTableValueOrNil("__name");
+                        var name = arg.getMetaValueOrNil("__name");
                         vm.returnValue(LuaObject.of(!name.isNil() && name.isString() ? name.getString() + ": " + arg.asString() : arg.asString()));
                         return;
                     }

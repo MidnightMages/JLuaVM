@@ -29,6 +29,9 @@ public class DoEndNode extends Node {
         for (int i = 1; i < block.length; i++) {
             sb.append('\n').append(block[i].generate(cState));
             assert cState.clearEStack() == 0 : "we expect the expression stack to be empty here";
+            if (CompilationState.DEBUG_MODE) {
+                sb.append("\ndebugPoint(\"at lua l%d:c%d\", stackFrame, vm);".formatted(block[i].sourcePos.line(), block[i].sourcePos.col()));
+            }
         }
         sb.append(IRBlock.genClose(cState, toClose));
         return "// DO END START LOHL\n" + sb.toString();

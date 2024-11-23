@@ -42,6 +42,9 @@ public class BinaryOpNode extends Node {
                 callInfo.saveEStack(),
                 callInfo.resumeLabel(), op, sx, sy,
                 callInfo.resumeLabel());
+        if ("concat".equals(op)) {
+            result = "debugPoint(%s, %s);\n".formatted(sx, sy) + result;
+        }
         return prev + result;
     }
 
