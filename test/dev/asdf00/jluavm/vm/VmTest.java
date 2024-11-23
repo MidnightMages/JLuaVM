@@ -100,6 +100,7 @@ public class VmTest {
                     rv = rv .. tostring(c[i])..","
                 end
                 rv = rv .. tostring(c["b"])..","..tostring(c.b)..','.. tostring(a["b"])..","..tostring(a.b)..","..tostring(#a)
+                return rv
                 """, LuaObject.of("hi,1,2,7,7,nil,nil,0"));
     }
 
