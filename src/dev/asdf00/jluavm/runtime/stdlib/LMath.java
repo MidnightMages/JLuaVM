@@ -211,7 +211,7 @@ public class LMath {
                         }
                     } else if (min.isTable() || arg.isTable()) {
                         var mtf = isMax ? (min.isTable() ? min : arg) : (arg.isTable() ? arg : min);
-                        var ltf = mtf.getMetaTableValueOrNull("__lt");
+                        var ltf = mtf.getMetaTableValueOrNil("__lt");
                         if (ltf == null) {
                             vm.error(new LuaUserError("attempt to compare number with table"));
                             return;

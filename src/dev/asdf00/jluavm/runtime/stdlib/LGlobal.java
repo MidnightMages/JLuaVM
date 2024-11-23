@@ -147,7 +147,7 @@ public class LGlobal {
                 return null;
             }
 
-            if (!tbl.getMetaTableValueOrNull("__metatable").isNil()) {
+            if (!tbl.getMetaTableValueOrNil("__metatable").isNil()) {
                 vm.error(new LuaUserError("cannot change a protected metatable"));
             }
 

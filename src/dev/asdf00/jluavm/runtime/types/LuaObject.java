@@ -68,7 +68,7 @@ public final class LuaObject {
         metaTable = mt;
     }
 
-    public LuaObject getMetaTableValueOrNull(String mtKey) {
+    public LuaObject getMetaTableValueOrNil(String mtKey) {
         return metaTable != null ? metaTable.get(LuaObject.of(mtKey)) : NIL;
     }
 
@@ -941,7 +941,7 @@ public final class LuaObject {
             case Types.USERDATA -> "userdata: 0x" + Integer.toHexString(System.identityHashCode(this));
             case Types.THREAD -> "thread: 0x" + Integer.toHexString(System.identityHashCode(this));
             case Types.TABLE -> "table: 0x" + Integer.toHexString(System.identityHashCode(this));
-            case Types.ARRAY -> "array: " + Arrays.toString(asArray());
+            case Types.ARRAY -> "array: 0x" + Arrays.toString(asArray());
             case Types.BOX -> "box of <" + ((LuaObject) refVal).asString() + ">";
             default -> throw new IllegalStateException("Unexpected case value: " + type);
         };
