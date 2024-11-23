@@ -188,7 +188,7 @@ public class VmTest {
                 ::a::
                 print("b")
                 ::a::
-                """, LuaParserException.class);
+                """, LuaSemanticException.class);
 
         loadAssertException("""
                 ::a::
@@ -197,7 +197,7 @@ public class VmTest {
                     ::a::
                     print("c")
                 end
-                """, LuaParserException.class);
+                """, LuaSemanticException.class);
 
         loadAssertException("""
                 local TF = §true|false§
@@ -212,21 +212,7 @@ public class VmTest {
                 end
              
                 print("ok!")
-                """, LuaParserException.class);
-        loadAssertException("""
-                local TF = §true|false§
-                do
-                    if TF then
-                        goto dest
-                    end
-                    local a = 1
-                    §print(a)|§
-                    ::dest::
-                    print(1)
-                end
-   
-                print("ok!")
-                """, LuaParserException.class);
+                """, LuaSemanticException.class);
 
         var allowedA = "adf";
         var forbiddenA = "bcez";
@@ -258,7 +244,7 @@ public class VmTest {
             loadAssertSuccess(snippetA.formatted(lbl));
         }
         for (var lbl : forbiddenA.toCharArray()) {
-            loadAssertException(snippetA.formatted(lbl), LuaParserException.class);
+            loadAssertException(snippetA.formatted(lbl), LuaSemanticException.class);
         }
 
         var allowedB = "abcdf";
@@ -291,7 +277,7 @@ public class VmTest {
             loadAssertSuccess(snippetB.formatted(lbl));
         }
         for (var lbl : forbiddenB.toCharArray()) {
-            loadAssertException(snippetB.formatted(lbl), LuaParserException.class);
+            loadAssertException(snippetB.formatted(lbl), LuaSemanticException.class);
         }
 
         loadAssertException("""
@@ -316,7 +302,7 @@ public class VmTest {
                     ::f::
                 end
                 print("done")
-                """, LuaParserException.class);
+                """, LuaSemanticException.class);
 
         loadAssertException("""
                 do
@@ -325,7 +311,7 @@ public class VmTest {
                     end
                     ::lbl::
                 end
-                """, LuaParserException.class);
+                """, LuaSemanticException.class);
     }
 
     @Test
