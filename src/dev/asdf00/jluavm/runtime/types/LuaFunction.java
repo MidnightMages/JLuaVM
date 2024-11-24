@@ -174,7 +174,7 @@ public abstract class LuaFunction {
         }
         var mv = obj.getMetaValueOrNil(Singletons.__len);
         if (!mv.isNil()) {
-            vm.callInternal(resumeLabel, LuaFunction::unaryOpWithMeta, Singletons.__len, mv);
+            vm.callInternal(resumeLabel, LuaFunction::unaryOpWithMeta, Singletons.__len, obj);
             return null;
         }
         if (obj.isTable()) {

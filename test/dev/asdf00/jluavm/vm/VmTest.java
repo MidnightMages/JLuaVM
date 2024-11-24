@@ -494,6 +494,23 @@ public class VmTest {
     }
 
     @Test
+    public void metaLen() {
+        var vm = LuaVM.create();
+        vm.withStdLib();
+        vm.withRootFunc("""
+                x = nil
+                local t = setmetatable({1, '', nil, nil, "a", nil}, {__len = function(tbl)
+                        x = tbl
+                        return 420
+                    end})
+                local len = #t
+                return x == t and len
+                """);
+        var result = vm.run();
+        assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS, new LuaObject[]{LuaObject.of(420)}), result);
+    }
+
+    @Test
     public void metaMetaLookup() {
         var vm = LuaVM.create();
         vm.withStdLib();
