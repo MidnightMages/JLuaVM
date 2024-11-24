@@ -186,105 +186,6 @@ public abstract class LuaFunction {
         }
     }
 
-    protected static LuaObject getMetaClose(LuaVM_RT vm, int resumeLabel, LuaObject closable) {
-        if (RTUtils.isTruthy(closable)) {
-            LuaObject metaTable = closable.getMetaTable();
-            if (metaTable.isTable()) {
-                LuaObject key = Singletons.__close;
-                if (metaTable.hasKey(key)) {
-                    return metaTable.get(key);
-                } else {
-                    LuaObject mtbl = metaTable.getMetaTable();
-                    if (mtbl == null) {
-                        return LuaObject.nil();
-                    } else {
-                        vm.callInternal(resumeLabel, LuaFunction::getWithMeta, metaTable, key, mtbl);
-                        return null;
-                    }
-                }
-            } else if (metaTable.isUserData()) {
-                try {
-                    return metaTable.get(Singletons.__close);
-                } catch (LuaRuntimeError ex) {
-                    vm.error(new LuaForeignCallError());
-                    return null;
-                }
-            } else {
-                vm.error(new LuaTypeError());
-                return null;
-            }
-        } else {
-            return LuaObject.nil();
-        }
-    }
-
-    // =================================================================================================================
-    // closable magic
-    // =================================================================================================================
-
-    protected static void addClosable(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
-        LuaObject t0 = null, t1 = null, t2 = null;
-        // on resume
-        switch (resume) {
-            case -1 -> {
-                expressionStack = vm.registerExpressionStack(3);
-                if (args.length != 1) {
-                    throw new InternalLuaRuntimeError("expected 1 arguments, got " + args.length);
-                }
-                t0 = args[0]; // obj
-            }
-            case 0 -> {
-                // restore expression stack
-                t0 = expressionStack[0];
-                // use first return variable
-                t1 = returned.length > 0 ? returned[0] : LuaObject.nil();
-            }
-        }
-        returned = null;
-        switch (resume) {
-            case -1:
-                // try getExpression __close meta method
-                t1 = t0.getMetaTable();
-                if (t1 == null) {
-                    vm.error(new LuaMetaTableError());
-                }
-                t2 = Singletons.__close;
-                // getExpression index
-                if (t1.isTable()) {
-                    LuaObject table = t1;
-                    LuaObject key = RTUtils.tryCoerceFloatToInt(t2);
-                    if (table.hasKey(key)) {
-                        t1 = table.get(key);
-                    } else {
-                        LuaObject mtbl = table.getMetaTable();
-                        if (mtbl == null) {
-                            t1 = LuaObject.nil();
-                        } else {
-                            // save expression stack
-                            expressionStack[0] = t0;
-                            vm.callInternal(0, LuaFunction::getWithMeta, table, key, mtbl);
-                            return;
-                        }
-                    }
-                } else {
-                    vm.error(new LuaTypeError());
-                    return;
-                }
-                t2 = null;
-            case 0:
-                if (!t1.isFunction()) {
-                    // no meta method __close found
-                    vm.error(new LuaMetaTableError());
-                    return;
-                }
-                vm.addClosable(t0);
-                vm.internalReturn();
-                return;
-            default:
-                throw new InternalLuaRuntimeError("unknown resume point " + resume);
-        }
-    }
-
     // =================================================================================================================
     // slow path methods for meta table involved stuff
     // =================================================================================================================
@@ -403,7 +304,7 @@ public abstract class LuaFunction {
                     return;
                 }
                 if (t1.isFunction()) {
-                    vm.tailCall(t1.getFunc(), t0,  LuaObject.of(Arrays.copyOfRange(args, 1, args.length)));
+                    vm.callExternal(0, t1.getFunc(), t0,  LuaObject.of(Arrays.copyOfRange(args, 1, args.length)));
                     return;
                 } else {
                     var nuArgs = new LuaObject[args.length + 1];

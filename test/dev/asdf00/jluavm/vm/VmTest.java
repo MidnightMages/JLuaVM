@@ -343,11 +343,8 @@ public class VmTest {
                 do
                     local a =  {__close = function() rv=rv.."closing"..";" end}
                     local tbl = setmetatable(a,a)
-                    print("1")
                     local b <close> = a
-                    print("2")
                     local c <close> = a
-                    print("3")
                 end
         
                 return rv""", LuaObject.of("closing;closing;"));
@@ -359,17 +356,12 @@ public class VmTest {
                     setmetatable(a1,a1)
                     local a2 =  {__close = function() rv=rv.."closinga2"..";" end}
                     setmetatable(a2,a2)
-                    print("1")
                     local b <close> = a1
-                    print("2")
                     local c <close> = a2
-                    print("3")
                 end
                 return rv""", LuaObject.of("closinga2;closinga1;"));
 
         loadAssertSuccessAndRv("""
-                origPrint = print
-          
                 rv = ""
                 print = function(a) rv = rv .. tostring(a)..";" end
       
@@ -393,8 +385,7 @@ public class VmTest {
                 until f(a.name)
                 print("c")
                 print("done")
-            
-                origPrint(rv)
+                
                 return rv
                 """, LuaObject.of("iter;b;fvala table;closing;iter;b;fvala table;closing;iter;b;fvala table;closing;c;done;"));
 
@@ -408,7 +399,7 @@ public class VmTest {
                 §local|§ mt = {["__close"]=function() end}
                 setmetatable(mt,mt)
                 local a <§close|const§> = mt
-                return "ok
+                return "ok"
                 """, LuaObject.of("ok"));
     }
 
@@ -530,6 +521,38 @@ public class VmTest {
                 empty
                 nil
                 empty
+                """)}), result);
+    }
+
+    @Test
+    public void closeWithMetaMagic() {
+        var vm = LuaVM.create();
+        vm.withStdLib();
+        vm.withRootFunc("""
+                rv = "result:\\n"
+                do
+                    local cls<close> = setmetatable({}, {
+                        __close = function()
+                            rv = rv .. "closing 1 ...\\n"
+                        end
+                    })
+                end
+                repeat
+                    local cls<close> = setmetatable({}, {
+                        __close = setmetatable({}, {
+                            __call = function()
+                                rv = rv .. "closing 2 ...\\n"
+                            end
+                        })
+                    })
+                until true
+                return rv
+                """);
+        var result = vm.run();
+        assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS, new LuaObject[]{LuaObject.of("""
+                result:
+                closing 1 ...
+                closing 2 ...
                 """)}), result);
     }
 }

@@ -136,29 +136,12 @@ public class AssignmentNode extends Node {
                 // this could be a local definition, therefore we need to insert a closability check for all closable variables
                 if (info.baseInfo().isClosable()) {
                     // insert closability check
-                    var callInfo = cState.generateEStackCallInfo(1);
-                    String mval = cState.pushEStack();
-                    cState.popEStack();
                     assignment = """
-                            %s = getMetaClose(vm, %d, %s);
-                            if (%s == null) {
-                                %s
+                            if (RTUtils.isTruthy(%s) && %s.getMetaValueOrNil(Singletons.__close).isNil()) {
+                                vm.error(new LuaMetaTableError());
                                 return;
                             }
-                            case %d:
-                            if (RTUtils.isTruthy(%s)) {
-                                if (%s.isNil()) {
-                                    vm.error(new LuaMetaTableError());
-                                    return;
-                                }
-                            }
-                            vm.addClosable(%s);\n""".formatted(mval, callInfo.resumeLabel(), val,
-                            mval,
-                            callInfo.saveEStack(),
-                            callInfo.resumeLabel(),
-                            val,
-                            mval,
-                            val);
+                            vm.addClosable(%s);\n""".formatted(val, val, val);
                 } else {
                     assignment = "";
                 }

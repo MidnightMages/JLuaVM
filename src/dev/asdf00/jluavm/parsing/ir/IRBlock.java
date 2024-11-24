@@ -36,7 +36,7 @@ public class IRBlock extends Node {
             sb.append(statements[i].generate(cState)).append('\n');
             assert cState.clearEStack() == 0 : "we expect the expression stack to be empty here";
             if (CompilationState.DEBUG_MODE) {
-                sb.append("debugPoint(\"at lua l%d:c%d\", stackFrame, vm);\n".formatted(statements[i].sourcePos.line(), statements[i].sourcePos.col()));
+                sb.append("debugPoint(\"at lua l%d:c%d\", _ENV, stackFrame, vm);\n".formatted(statements[i].sourcePos.line(), statements[i].sourcePos.col()));
             }
         }
         if (continueCondition != null) {
@@ -69,38 +69,28 @@ public class IRBlock extends Node {
 
     public static String genClose(CompilationState cState, int cnt) {
         var sb = new StringBuilder();
-        for (int i = 1; i < cnt; i++) {
+        for (int i = 0; i < cnt; i++) {
             String close = cState.pushEStack();
-            var mtGetCall = cState.generateEStackCallInfo(1);
-            String mtval = cState.pushEStack();
             cState.popEStack();
-            var mvalCall = cState.generateEStackCallInfo(0);
-            cState.popEStack();
+            var info = cState.generateEStackCallInfo(0);
             // close next
             sb.append('\n').append("""
                     %s = vm.getNextClosable();
-                    %s = getMetaClose(vm, %d, %s);
-                    if (%s == null) {
-                        %s
-                        return;
-                    }
-                    case %d:
                     if (RTUtils.isTruthy(%s)) {
+                        var mval = %s.getMetaValueOrNil(Singletons.__close);
                         %s
-                        if (%s.isFunction()) vm.callExternal(%d, %s.getFunc(), %s);
-                        else vm.callInternal(%d, LuaFunction::callWithMeta, %s, %s);
+                        if (mval.isFunction()) vm.callExternal(%d, mval.getFunc(), %s);
+                        else vm.callInternal(%d, LuaFunction::callWithMeta, mval, %s);
                         return;
                     }
-                    case %d:""".formatted(close,
-                            mtval, mtGetCall.resumeLabel(), close,
-                            close,
-                            mtGetCall.saveEStack(),
-                            mtGetCall.resumeLabel(),
-                            close,
-                            mvalCall.saveEStack(),
-                            mtval, mvalCall.resumeLabel(), mtval, close,
-                            mvalCall.resumeLabel(), mtval, close,
-                            mvalCall.resumeLabel()));
+                    case %d:""".formatted(
+                    close,
+                    close,
+                    close,
+                    info.saveEStack(),
+                    info.resumeLabel(), close,
+                    info.resumeLabel(), close,
+                    info.resumeLabel()));
         }
         return sb.isEmpty() ? "// nothing to close" : sb.toString();
     }
