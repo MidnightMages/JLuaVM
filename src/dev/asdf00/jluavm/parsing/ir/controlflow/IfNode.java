@@ -43,7 +43,7 @@ public class IfNode extends Node {
 
         // build code for if from generated elements
         var sb = new StringBuilder();
-        assert conditions.size() > 0;
+        assert !conditions.isEmpty();
         for (int i = 0; i < conditions.size(); i++) {
             var cc = conditions.get(i);
             sb.append("""
@@ -51,12 +51,14 @@ public class IfNode extends Node {
                     if (RTUtils.isTruthy(%s)) {
                         vm.callInternal(%d, this::%s);
                         return;
-                    }\n""".formatted(cc.x(), cc.y(), callInfo.resumeLabel(), cc.z()));
+                    }
+                    """.formatted(cc.x(), cc.y(), callInfo.resumeLabel(), cc.z()));
         }
         if (elseBlockName != null) {
             sb.append("""
                     vm.callInternal(%d, this::%s);
-                    return;\n""".formatted(callInfo.resumeLabel(), elseBlockName));
+                    return;
+                    """.formatted(callInfo.resumeLabel(), elseBlockName));
         }
         sb.append("case ").append(callInfo.resumeLabel()).append(':');
         return sb.toString();

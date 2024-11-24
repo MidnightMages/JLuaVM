@@ -1,6 +1,5 @@
 package dev.asdf00.jluavm.parsing.ir.controlflow;
 
-import dev.asdf00.jluavm.parsing.SymTable;
 import dev.asdf00.jluavm.parsing.container.LabelInfo;
 import dev.asdf00.jluavm.parsing.container.Position;
 import dev.asdf00.jluavm.parsing.ir.CompilationState;

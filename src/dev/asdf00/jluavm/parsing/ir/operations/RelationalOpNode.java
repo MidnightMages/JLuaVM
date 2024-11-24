@@ -19,6 +19,7 @@ public class RelationalOpNode extends Node {
         this.y = y;
     }
 
+    @SuppressWarnings("SuspiciousNameCombination")
     @Override
     public String generate(CompilationState cState) {
         var sb = new StringBuilder();

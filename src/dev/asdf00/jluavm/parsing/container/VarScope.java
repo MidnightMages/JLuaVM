@@ -42,7 +42,7 @@ public class VarScope {
     }
 
     public SpecificVarInfo add(Token ident, boolean isConst, boolean isClosable) {
-        if (names.containsKey(ident)) {
+        if (names.containsKey(ident.stVal())) {
             return null;
         }
         if (isClosable) {
@@ -84,7 +84,7 @@ public class VarScope {
         boolean notAllowed = false;
         var cur = this;
         while (!cur.isFunctionBorder && !notAllowed) {
-            notAllowed |= cur.labels.containsKey(ident.stVal());
+            notAllowed = cur.labels.containsKey(ident.stVal());
             cur = cur.parent;
         }
         notAllowed |= cur.labels.containsKey(ident.stVal());

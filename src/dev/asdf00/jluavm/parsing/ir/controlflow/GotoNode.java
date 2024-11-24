@@ -6,8 +6,6 @@ import dev.asdf00.jluavm.parsing.ir.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.IRBlock;
 import dev.asdf00.jluavm.parsing.ir.Node;
 
-import java.util.ArrayList;
-
 public class GotoNode extends Node {
     public LabelInfo label;
     public int scopeExits;
@@ -39,12 +37,11 @@ public class GotoNode extends Node {
         var patches = new StringBuilder();
         if (closePatchCnt > 0) {
             patches.append("vm.addClosable(LuaObject.nil());");
+            patches.append(" vm.addClosable(LuaObject.nil());".repeat(closePatchCnt - 1));
         } else {
             patches.append("// nothing to patch");
         }
-        for (int i = 1; i < closePatchCnt; i++) {
-            patches.append(" vm.addClosable(LuaObject.nil());");
-        }
+
         return """
                 %s
                 %s
