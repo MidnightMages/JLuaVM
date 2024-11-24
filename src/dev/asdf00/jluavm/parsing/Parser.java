@@ -177,7 +177,7 @@ public final class Parser {
             case DO -> {
                 scan();
                 symTab.labelNotLast();
-                symTab.enterPlainScope();
+                symTab.enterPlainScope(true);
                 var innerStats = Block();
                 check(END);
                 VarScope scp = symTab.exitScope();
@@ -211,7 +211,7 @@ public final class Parser {
                 symTab.labelNotLast();
                 Node condition = Exp();
                 check(THEN);
-                symTab.enterPlainScope();
+                symTab.enterPlainScope(false);
                 Position thenBPos = cur.pos();
                 var thenBlock = Block();
                 VarScope thenScp = symTab.exitScope();
@@ -224,7 +224,7 @@ public final class Parser {
                     var elifCond = Exp();
                     elifConds.add(elifCond);
                     check(THEN);
-                    symTab.enterPlainScope();
+                    symTab.enterPlainScope(false);
                     elifPoses.add(cur.pos());
                     var elifBlock = Block();
                     elifBlocks.add(elifBlock);
@@ -258,7 +258,7 @@ public final class Parser {
                     Position cvarPos = cur.pos();
                     scan();
                     // numerical for
-                    symTab.enterPlainScope();
+                    symTab.enterPlainScope(true);
                     Position setupPos = cur.pos();
                     SpecificVarInfo internalControlVar = defineInternal("$internalControlVar$");
                     // start
@@ -317,7 +317,7 @@ public final class Parser {
                         ltkList.add(cur);
                     }
                     check(IN);
-                    symTab.enterPlainScope();
+                    symTab.enterPlainScope(true);
                     Position setupPos = cur.pos();
                     SpecificVarInfo internalControlVar = defineInternal("$internalControlVar$");
                     SpecificVarInfo itrFunc = defineInternal("$iteratorFunction$");

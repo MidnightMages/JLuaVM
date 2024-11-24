@@ -6,35 +6,34 @@ import dev.asdf00.jluavm.parsing.ir.controlflow.BreakNode;
 import dev.asdf00.jluavm.parsing.ir.controlflow.GotoNode;
 import dev.asdf00.jluavm.parsing.ir.controlflow.LabelNode;
 import dev.asdf00.jluavm.utils.Quadruple;
+import dev.asdf00.jluavm.utils.Triple;
 import dev.asdf00.jluavm.utils.Tuple;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Stack;
+import java.util.*;
 
 public class SymTable {
     private int idSupplier = 0;
     private VarScope rootScope = null;
     private VarScope curScope = null;
     private final HashMap<VarScope, Stack<BreakNode>> breaksToPatch = new HashMap<>();
-    private final Stack<HashMap<String, ArrayList<Quadruple<GotoNode, int[], int[], Position>>>> yetToFixGotos = new Stack<>();
+    private final Stack<HashMap<String, ArrayList<Triple<GotoNode, Triple<Integer, Integer, Boolean>[], Position>>>> yetToFixGotos = new Stack<>();
     private final Stack<ArrayList<Tuple<GotoNode, Position>>> dangerZone = new Stack<>();
 
-    public void enterPlainScope() {
-        enterScope(false, false, false);
+    public void enterPlainScope(boolean isInlined) {
+        enterScope(false, false, false, isInlined);
     }
 
     public void enterLoopScope() {
-        enterScope(false, false, true);
+        enterScope(false, false, true, false);
     }
 
     public void enterFunctionScope(boolean hasParamsArg) {
-        enterScope(true, hasParamsArg, false);
+        enterScope(true, hasParamsArg, false, false);
     }
 
-    private void enterScope(boolean isFunctionBorder, boolean hasParamsArg, boolean isLoop) {
+    private void enterScope(boolean isFunctionBorder, boolean hasParamsArg, boolean isLoop, boolean isInlined) {
         var prev = curScope;
-        curScope = new VarScope(curScope, idSupplier++, isFunctionBorder, hasParamsArg, isLoop);
+        curScope = new VarScope(curScope, idSupplier++, isFunctionBorder, hasParamsArg, isLoop, isInlined);
         if (rootScope == null) {
             rootScope = curScope;
         }
@@ -60,7 +59,9 @@ public class SymTable {
         } else {
             // exit inner scope
             var inner = yetToFixGotos.pop();
-            yetToFixGotos.peek().putAll(inner);
+            for (var entry : inner.entrySet()) {
+                yetToFixGotos.peek().computeIfAbsent(entry.getKey(), k -> new ArrayList<>()).addAll(entry.getValue());
+            }
         }
         dangerZone.pop();
 
@@ -107,18 +108,32 @@ public class SymTable {
             cs = cs.parent;
         }
         closeDefList.add(cs.getClosableCount());
+        Collections.reverse(closeDefList);
         return closeDefList.stream().mapToInt(i -> i).toArray();
     }
 
     private int[] getCurFuncLocalsCntPerScope() {
-        var closeDefList = new ArrayList<Integer>();
+        var localDefList = new ArrayList<Integer>();
         var cs = curScope;
         while (!cs.isFunctionBorder) {
-            closeDefList.add(cs.getLocalsCount());
+            localDefList.add(cs.getLocalsCount());
             cs = cs.parent;
         }
-        closeDefList.add(cs.getLocalsCount());
-        return closeDefList.stream().mapToInt(i -> i).toArray();
+        localDefList.add(cs.getLocalsCount());
+        Collections.reverse(localDefList);
+        return localDefList.stream().mapToInt(i -> i).toArray();
+    }
+
+    private Triple<Integer, Integer, Boolean>[] getScopeStats() {
+        var stats = new ArrayList<Triple<Integer, Integer, Boolean>>();
+        var cs = curScope;
+        while (!cs.isFunctionBorder) {
+            stats.add(new Triple<>(cs.getLocalsCount(), cs.getClosableCount(), cs.isInlined));
+            cs = cs.parent;
+        }
+        stats.add(new Triple<>(cs.getLocalsCount(), cs.getClosableCount(), cs.isInlined));
+        Collections.reverse(stats);
+        return stats.toArray(Triple[]::new);
     }
 
     public int getMaxFuncLocals() {
@@ -151,17 +166,19 @@ public class SymTable {
         return curScope.getLabel(ident);
     }
 
-
     public BreakNode generateBreakNode(Position pos) {
         var cs = curScope;
         int escapeCnt = 0;
         while (!cs.isFunctionBorder && !cs.isLoop) {
+            if (!cs.isInlined) {
+                escapeCnt++;
+            }
             cs = cs.parent;
-            escapeCnt++;
         }
         if (cs.isFunctionBorder) {
             return null;
         }
+        // function- and loop borders are never inlined
         escapeCnt++;
         var b = new BreakNode(pos, escapeCnt, getCurFuncClosableCnt());
         breaksToPatch.computeIfAbsent(cs, s -> new Stack<>()).push(b);
@@ -172,34 +189,36 @@ public class SymTable {
         var lbl = getLabel(gttk.stVal());
         if (lbl != null) {
             // back-jump
-            int[] perScopeCloseCnt = getCurFuncClsCntPerScope();
-            int[] perScopeLocalCnt = getCurFuncLocalsCntPerScope();
+            var stats = getScopeStats();
             int toClose = 0;
             int localDiff = 0;
+            int exits = 0;
             int lcpsl = lbl.closablesPerScope.length;
-            for (int i = perScopeCloseCnt.length - 1; i >= lcpsl; i--) {
-                toClose += perScopeCloseCnt[i];
-                localDiff += perScopeLocalCnt[i];
+            for (int i = stats.length - 1; i >= lcpsl; i--) {
+                localDiff += stats[i].x();
+                toClose += stats[i].y();
+                if (!stats[i].z()) {
+                    exits++;
+                }
             }
-            toClose += perScopeCloseCnt[lcpsl - 1] - lbl.closablesPerScope[lcpsl - 1];
-            localDiff += perScopeLocalCnt[lcpsl - 1] - lbl.localsPerScope[lcpsl - 1];
+            localDiff += stats[lcpsl - 1].x() - lbl.localsPerScope[lcpsl - 1];
+            toClose += stats[lcpsl - 1].y() - lbl.closablesPerScope[lcpsl - 1];
             int localsForLabel = 0;
             for (int lc : lbl.localsPerScope) {
                 localsForLabel += lc;
             }
-            return new GotoNode(gttk.pos(), lbl, perScopeCloseCnt.length - lcpsl, toClose, 0, localsForLabel, localDiff);
+            return new GotoNode(gttk.pos(), lbl, exits, toClose, 0, localsForLabel, localDiff);
         } else {
             // forward jump
             /*-
              * How to patch this goto node:
-             *  - subtract label scope depth from goto cDefs.length -> scope exits
+             *  - count all non-inlined loops from goto depth to label depth -> scope exits
              *  - sum all cDefs the goto has seen in scopes lower than the label -> closableCnt
              *  - subtract cloables defined in label scope at goto from defined at label -> closePatchCnt
              */
-            var cDefs = getCurFuncClsCntPerScope();
-            var lDefs = getCurFuncLocalsCntPerScope();
+            var stats = getScopeStats();
             var g = new GotoNode(gttk.pos());
-            yetToFixGotos.peek().computeIfAbsent(gttk.stVal(), k -> new ArrayList<>()).add(new Quadruple<>(g, lDefs, cDefs, gttk.pos()));
+            yetToFixGotos.peek().computeIfAbsent(gttk.stVal(), k -> new ArrayList<>()).add(new Triple<>(g, stats, gttk.pos()));
             return g;
         }
     }
@@ -216,24 +235,29 @@ public class SymTable {
         }
 
         // fix gotos
-        int[] ccps = getCurFuncClsCntPerScope();
         int[] clps = getCurFuncLocalsCntPerScope();
-        for (Quadruple<GotoNode, int[], int[], Position> gtt : gotos) {
-            int scopeExits = gtt.y().length - ccps.length;
+        int[] ccps = getCurFuncClsCntPerScope();
+
+        for (Triple<GotoNode, Triple<Integer, Integer, Boolean>[], Position> gtt : gotos) {
+            int scopeExits = 0;
             int toClose = 0;
             for (int i = gtt.y().length - 1; i >= ccps.length; i--) {
-                toClose -= gtt.y()[i];
+                toClose += gtt.y()[i].y();
+                if (!gtt.y()[i].z()) {
+                    // this scope is not inlined, therefore we need to exit this scope in the vm
+                    scopeExits++;
+                }
             }
-            toClose += gtt.y()[ccps.length - 1];
-            int toPatch = ccps[ccps.length - 1] - gtt.y()[ccps.length - 1];
-            if (gtt.x()[clps.length - 1] < clps[clps.length - 1]) {
+            toClose += gtt.y()[ccps.length - 1].y();
+            int toPatch = ccps[ccps.length - 1] - gtt.y()[ccps.length - 1].y();
+            if (gtt.y()[clps.length - 1].x() < clps[clps.length - 1]) {
                 // we jump into scopes of local variables which is only allowed if the label is the last statement in a block
-                dangerZone.peek().add(new Tuple<>(gtt.w(), gtt.z()));
+                dangerZone.peek().add(new Tuple<>(gtt.x(), gtt.z()));
             }
-            gtt.w().label = info;
-            gtt.w().scopeExits = scopeExits;
-            gtt.w().closableCnt = toClose;
-            gtt.w().closePatchCnt = toPatch;
+            gtt.x().label = info;
+            gtt.x().scopeExits = scopeExits;
+            gtt.x().closableCnt = toClose;
+            gtt.x().closePatchCnt = toPatch;
         }
         yetToFixGotos.peek().remove(t.stVal());
         return node;

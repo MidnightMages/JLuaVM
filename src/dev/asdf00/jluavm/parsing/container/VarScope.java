@@ -10,7 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.stream.Collectors;
 
 public class VarScope {
-    public static final VarScope EMPTY_DUMMY = new VarScope(null, -1, false, false, false);
+    public static final VarScope EMPTY_DUMMY = new VarScope(null, -1, false, false, false, false);
 
     public final VarScope parent;
     private final int baseIdx;
@@ -23,16 +23,18 @@ public class VarScope {
     public final boolean isFunctionBorder;
     public final boolean hasParamsArg;
     public final boolean isLoop;
+    public final boolean isInlined;
     private int closableCnt;
 
     public final LinkedHashMap<SpecificVarInfo, Integer> captured;
 
-    public VarScope(VarScope parent, int id, boolean isFunctionBorder, boolean hasParamsArg, boolean isLoop) {
+    public VarScope(VarScope parent, int id, boolean isFunctionBorder, boolean hasParamsArg, boolean isLoop, boolean isInlined) {
         this.parent = parent;
         this.id = id;
         this.isFunctionBorder = isFunctionBorder;
         this.hasParamsArg = hasParamsArg;
         this.isLoop = isLoop;
+        this.isInlined = isInlined;
         if (parent == null || isFunctionBorder) {
             baseIdx = 0;
         } else {
@@ -82,7 +84,14 @@ public class VarScope {
     }
 
     public LabelInfo addLabel(Token ident, int[] localsCnt, int[] closableCnt) {
-        if (labels.containsKey(ident.stVal())) {
+        boolean notAllowed = false;
+        var cur = this;
+        while (!cur.isFunctionBorder && !notAllowed) {
+            notAllowed |= cur.labels.containsKey(ident.stVal());
+            cur = cur.parent;
+        }
+        notAllowed |= cur.labels.containsKey(ident.stVal());
+        if (notAllowed) {
             throw new LuaSemanticException(ident.pos(), "Label '%s' defined twice".formatted(ident.stVal()));
         }
         var info = new LabelInfo(ident.stVal(), localsCnt, closableCnt);

@@ -12,7 +12,7 @@ import java.util.Arrays;
 import java.util.stream.Collectors;
 
 import static dev.asdf00.jluavm.Util.expandOptions;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class VmTest {
     @Test
@@ -40,15 +40,15 @@ public class VmTest {
     private static void loadAssertException(String s, Class<? extends LuaLoadingException> exc) {
         for (var expanded : expandOptions(s)) {
             var vm = LuaVM.create().withStdLib();
-            Assertions.assertThrows(exc, ()->vm.withRootFunc(expanded).run());
+            assertThrows(exc, ()->vm.withRootFunc(expanded).run());
         }
     }
 
     private static void loadAssertRuntimeError(String s) {
         for (var expanded : expandOptions(s)) {
             var vm = LuaVM.create().withStdLib();
-            Assertions.assertDoesNotThrow(() -> vm.withRootFunc(expanded));
-            var res = Assertions.assertDoesNotThrow(vm::run);
+            assertDoesNotThrow(() -> vm.withRootFunc(expanded));
+            var res = assertDoesNotThrow(vm::run);
              Assertions.assertEquals(LuaVM.VmRunState.EXECUTION_ERROR, res.state());
         }
     }
@@ -56,8 +56,8 @@ public class VmTest {
     private static void loadAssertSuccess(String s) {
         for (var expanded : expandOptions(s)) {
             var vm = LuaVM.create().withStdLib();
-            Assertions.assertDoesNotThrow(() -> vm.withRootFunc(expanded));
-            Assertions.assertDoesNotThrow(vm::run);
+            assertDoesNotThrow(() -> vm.withRootFunc(expanded));
+            assertDoesNotThrow(vm::run);
         }
     }
 
@@ -218,6 +218,10 @@ public class VmTest {
         var allowedA = "adf";
         var forbiddenA = "bcez";
         var snippetA = """
+                rv = ""
+                local function print(e)
+                    rv = tostring(e) .. "\\n"
+                end
                 print("b")
                 local looping = true
                 do
@@ -239,6 +243,7 @@ public class VmTest {
                     ::f::
                 end
                 print("done")
+                return rv
                 """;
 
         for (var lbl : allowedA.toCharArray()) {
@@ -250,7 +255,11 @@ public class VmTest {
 
         var allowedB = "abcdf";
         var forbiddenB = "ez";
-        var snippetB = """                
+        var snippetB = """
+                rv = ""
+                local function print(e)
+                    rv = tostring(e) .. "\\n"
+                end             
                 print("b")
                 local looping = false
                 do
@@ -272,6 +281,7 @@ public class VmTest {
                     ::f::
                 end
                 print("done")
+                return rv
                 """;
 
         for (var lbl : allowedB.toCharArray()) {
@@ -282,6 +292,10 @@ public class VmTest {
         }
 
         loadAssertException("""
+                rv = ""
+                local function print(e)
+                    rv = tostring(e) .. "\\n"
+                end     
                 print("b")
                 local looping = false
                 do
@@ -303,6 +317,7 @@ public class VmTest {
                     ::f::
                 end
                 print("done")
+                return rv
                 """, LuaSemanticException.class);
 
         loadAssertException("""
@@ -555,4 +570,56 @@ public class VmTest {
                 closing 2 ...
                 """)}), result);
     }
+
+    @Test
+    public void brokenGoto() {
+        var vm = LuaVM.create();
+        assertThrows(LuaSemanticException.class, () -> vm.withRootFunc("""
+                do
+                    goto e
+                    local a = 1
+                    ::e::
+                    a = 2
+                end
+                """));
+    }
+
+    @Test
+    public void gotoExitInlinedScope() {
+        var vm = LuaVM.create();
+        vm.withRootFunc("""
+                do
+                    goto a
+                end
+                ::a::
+                """);
+        assertDoesNotThrow(vm::run);
+    }
+
+    @Test
+    public void breakInlinedScope() {
+        var vm = LuaVM.create();
+        vm.withRootFunc("""
+                repeat
+                    do
+                        break
+                    end
+                until true
+                ::a::
+                """);
+        assertDoesNotThrow(vm::run);
+    }
+
+    @Test
+    public void brokenGoto2() {
+        var vm = LuaVM.create();
+        assertDoesNotThrow(() -> vm.withRootFunc("""
+                goto d
+                do
+                    goto d
+                end
+                ::d::
+                """));
+    }
+
 }

@@ -32,6 +32,7 @@ public class GotoNode extends Node {
 
     @Override
     public String generate(CompilationState cState) {
+        assert label != null : "goto not resolved";
         assert cState.clearEStack() == 0 : "we expect the expression stack to be empty here";
         String closings = IRBlock.genClose(cState, closableCnt);
         assert cState.clearEStack() == 0 : "we expect the expression stack to be empty here";
