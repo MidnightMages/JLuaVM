@@ -193,7 +193,7 @@ public class SymTable {
             int toClose = 0;
             int localDiff = 0;
             int exits = 0;
-            int lcpsl = lbl.closablesPerScope.length;
+            int lcpsl = lbl.closablesPerScope().length;
             for (int i = stats.length - 1; i >= lcpsl; i--) {
                 localDiff += stats[i].x();
                 toClose += stats[i].y();
@@ -201,10 +201,10 @@ public class SymTable {
                     exits++;
                 }
             }
-            localDiff += stats[lcpsl - 1].x() - lbl.localsPerScope[lcpsl - 1];
-            toClose += stats[lcpsl - 1].y() - lbl.closablesPerScope[lcpsl - 1];
+            localDiff += stats[lcpsl - 1].x() - lbl.localsPerScope()[lcpsl - 1];
+            toClose += stats[lcpsl - 1].y() - lbl.closablesPerScope()[lcpsl - 1];
             int localsForLabel = 0;
-            for (int lc : lbl.localsPerScope) {
+            for (int lc : lbl.localsPerScope()) {
                 localsForLabel += lc;
             }
             return new GotoNode(gttk.pos(), lbl, exits, toClose, 0, localsForLabel, localDiff);

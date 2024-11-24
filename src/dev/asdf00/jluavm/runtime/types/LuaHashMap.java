@@ -13,6 +13,7 @@ public class LuaHashMap {
     private KeyNode tail = null;
     private final Map<LuaObject, Tuple<LuaObject, KeyNode>> backing = new HashMap<>();
 
+    @SuppressWarnings("DataFlowIssue")
     public long luaLen() {
         return upperSequenceBounds.isEmpty() ? 0 : upperSequenceBounds.floor(Long.MAX_VALUE);
     }
@@ -60,7 +61,6 @@ public class LuaHashMap {
                 // not inside a hole
                 lowerSequenceBounds.add(pos);
                 upperSequenceBounds.add(pos);
-                return;
             } else {
                 // below lowest hole
                 if (oCeil > pos + 1) {
@@ -139,6 +139,7 @@ public class LuaHashMap {
         backing.put(key, new Tuple<>(value, tail));
     }
 
+    @SuppressWarnings("UnusedReturnValue")
     public LuaObject remove(LuaObject key) {
         if (backing.containsKey(key)) {
             var entry = backing.get(key);
@@ -176,32 +177,7 @@ public class LuaHashMap {
         return null;
     }
 
-    public boolean remove(LuaObject key, LuaObject value) {
-        if (backing.containsKey(key)) {
-            var val = backing.get(key);
-            if (val == null) {
-                if (value == null) {
-                    remove(key);
-                    return true;
-                } else {
-                    return false;
-                }
-            } else {
-                if (val == null) {
-                    return false;
-                } else if (val.equals(value)) {
-                    remove(key);
-                    return true;
-                } else {
-                    return false;
-                }
-            }
-        } else {
-            return false;
-        }
-    }
-
-    public LuaObject getOrDefault(Object key, LuaObject defaultValue) {
+    public LuaObject getOrDefault(LuaObject key, LuaObject defaultValue) {
         return backing.containsKey(key) ? backing.get(key).x() : defaultValue;
     }
 
@@ -209,6 +185,7 @@ public class LuaHashMap {
         return backing.containsKey(key);
     }
 
+    @SuppressWarnings("unused")
     public void clear() {
         lowerSequenceBounds.clear();
         upperSequenceBounds.clear();

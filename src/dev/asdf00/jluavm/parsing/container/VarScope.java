@@ -1,9 +1,6 @@
 package dev.asdf00.jluavm.parsing.container;
 
 import dev.asdf00.jluavm.exceptions.loading.LuaSemanticException;
-import dev.asdf00.jluavm.parsing.ir.controlflow.GotoNode;
-import dev.asdf00.jluavm.parsing.ir.controlflow.LabelNode;
-import dev.asdf00.jluavm.utils.Tuple;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;

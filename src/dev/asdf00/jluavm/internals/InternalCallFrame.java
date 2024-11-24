@@ -3,8 +3,6 @@ package dev.asdf00.jluavm.internals;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.LFunc;
 
-import java.util.Arrays;
-
 public final class InternalCallFrame extends AbstractCallStackFrame {
     private final LFunc callable;
     public LuaObject[] arguments;
