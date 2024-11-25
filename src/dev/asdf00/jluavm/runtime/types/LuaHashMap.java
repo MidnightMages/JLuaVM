@@ -117,6 +117,7 @@ public class LuaHashMap {
     }
 
     public void put(LuaObject key, LuaObject value) {
+        assert !key.isNil() && !(key.isDouble() && Double.isNaN(key.asDouble()));
         if (value.isNil()) {
             remove(key);
             return;
