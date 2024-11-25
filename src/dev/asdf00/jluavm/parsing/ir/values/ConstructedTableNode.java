@@ -5,10 +5,6 @@ import dev.asdf00.jluavm.parsing.container.Position;
 import dev.asdf00.jluavm.parsing.ir.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.Node;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.stream.Collectors;
-
 public class ConstructedTableNode extends Node {
     private final Node[] keyValEntries;
 
@@ -17,6 +13,7 @@ public class ConstructedTableNode extends Node {
         this.keyValEntries = keyValEntries;
     }
 
+    @SuppressWarnings("ForLoopReplaceableByForEach")
     @Override
     public String generate(CompilationState cState) {
         if (keyValEntries.length % 2 == 1) {

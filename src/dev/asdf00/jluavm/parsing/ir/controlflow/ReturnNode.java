@@ -19,6 +19,7 @@ public class ReturnNode extends Node {
     public String generate(CompilationState cState) {
         assert cState.clearEStack() == 0 : "we expect the expression stack to be empty here";
         var sb = new StringBuilder();
+        //noinspection ForLoopReplaceableByForEach
         for (int i = 0; i < values.length; i++) {
             sb.append(values[i].generate(cState)).append('\n');
         }

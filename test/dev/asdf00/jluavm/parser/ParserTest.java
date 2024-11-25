@@ -73,8 +73,6 @@ public class ParserTest {
         var parser = parse("""
                 return subscribedCoroutineMap[a]
                 """);
-
-        parser = parser;
     }
 
     @Test
@@ -89,9 +87,6 @@ public class ParserTest {
             else
                 assertDoesNotThrow(() -> parse(expanded), "Code was: " + expanded);
         }
-        src = src;
-
-        src = src;
     }
 
     @Test
@@ -183,11 +178,11 @@ public class ParserTest {
         };
         for (var s : expandOptions(snippets)) {
             var segments = s.split("#", -1);
-            String src = "";
+            StringBuilder src = new StringBuilder();
             for (int i = 0; i < segments.length; i++) {
-                src += segments[i];
-                if (i != 0) src += " ";
-                final String src2 = src;
+                src.append(segments[i]);
+                if (i != 0) src.append(" ");
+                final String src2 = src.toString();
                 assertThrowsLexerOrParserException(() -> parse(src2), () -> "Code was " + src2);
             }
         }

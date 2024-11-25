@@ -17,6 +17,7 @@ import java.util.LinkedHashMap;
 import java.util.Stack;
 import java.util.function.Supplier;
 
+@SuppressWarnings("FieldCanBeLocal")
 public final class CompilationState {
     public static final boolean DEBUG_MODE = true;
 

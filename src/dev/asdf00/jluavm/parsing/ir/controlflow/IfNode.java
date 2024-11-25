@@ -44,6 +44,7 @@ public class IfNode extends Node {
         // build code for if from generated elements
         var sb = new StringBuilder();
         assert !conditions.isEmpty();
+        //noinspection ForLoopReplaceableByForEach
         for (int i = 0; i < conditions.size(); i++) {
             var cc = conditions.get(i);
             sb.append("""

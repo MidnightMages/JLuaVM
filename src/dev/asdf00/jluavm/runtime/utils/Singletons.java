@@ -2,6 +2,7 @@ package dev.asdf00.jluavm.runtime.utils;
 
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 
+@SuppressWarnings("unused")
 public class Singletons {
     // meta functions
     public static final LuaObject __add = LuaObject.of("__add");

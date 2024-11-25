@@ -5,7 +5,7 @@ import dev.asdf00.jluavm.parsing.ir.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.Node;
 
 public class LogicBinaryOpNode extends Node {
-    boolean isOr;
+    final boolean isOr;
     public final Node x;
     public final Node y;
 
@@ -20,6 +20,7 @@ public class LogicBinaryOpNode extends Node {
     public String generate(CompilationState cState) {
         String result = x.generate(cState);
         String xSpot = cState.peekEStack();
+
         /**
          * Here we employ a little bit of trickery to avoid having to do an internal call for the 'if' body:
          * All internal resume points are pulled to before the if condition. Then, inside the if condition the

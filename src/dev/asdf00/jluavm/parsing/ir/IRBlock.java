@@ -32,6 +32,7 @@ public class IRBlock extends Node {
             return blockName;
         }
         var sb = new StringBuilder();
+        //noinspection ForLoopReplaceableByForEach
         for (int i = 0; i < statements.length; i++) {
             sb.append(statements[i].generate(cState)).append('\n');
             assert cState.clearEStack() == 0 : "we expect the expression stack to be empty here";

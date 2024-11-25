@@ -1,7 +1,7 @@
 package dev.asdf00.jluavm;
 
 public class Constants {
-    public static String largeValidLuaProgram ="""
+    public static final String largeValidLuaProgram ="""
 local coroutineResumeOrig = _G.coroutine.resume
 
 --[[

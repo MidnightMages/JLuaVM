@@ -5,7 +5,6 @@ import dev.asdf00.jluavm.parsing.container.*;
 import dev.asdf00.jluavm.parsing.ir.controlflow.BreakNode;
 import dev.asdf00.jluavm.parsing.ir.controlflow.GotoNode;
 import dev.asdf00.jluavm.parsing.ir.controlflow.LabelNode;
-import dev.asdf00.jluavm.utils.Quadruple;
 import dev.asdf00.jluavm.utils.Triple;
 import dev.asdf00.jluavm.utils.Tuple;
 
@@ -44,6 +43,7 @@ public class SymTable {
         dangerZone.push(new ArrayList<>());
     }
 
+    @SuppressWarnings("OptionalGetWithoutIsPresent")
     public VarScope exitScope() {
         var rVal = curScope;
         curScope = curScope.parent;
@@ -133,6 +133,7 @@ public class SymTable {
         }
         stats.add(new Triple<>(cs.getLocalsCount(), cs.getClosableCount(), cs.isInlined));
         Collections.reverse(stats);
+        //noinspection unchecked
         return stats.toArray(Triple[]::new);
     }
 
@@ -266,7 +267,7 @@ public class SymTable {
     public void labelNotLast() {
         if (!dangerZone.peek().isEmpty()) {
             // jump into scope of local variable
-            var elem = dangerZone.peek().get(0);
+            var elem = dangerZone.peek().getFirst();
             throw new LuaSemanticException(elem.y(), "jump into scope of local variable");
         }
     }

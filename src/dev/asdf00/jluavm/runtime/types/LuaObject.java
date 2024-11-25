@@ -591,7 +591,6 @@ public final class LuaObject {
         return LuaObject.of(sx.length() <= sy.length());
     }
 
-    @SuppressWarnings("unchecked")
     public boolean hasKey(LuaObject key) {
         if (!isTable() && !isUserData())
             throw new InternalLuaRuntimeError("This is not a table nor userdata!");
@@ -603,7 +602,6 @@ public final class LuaObject {
         }
     }
 
-    @SuppressWarnings("unchecked")
     public LuaObject get(LuaObject key) {
         if (!isTable() && !isUserData())
             throw new InternalLuaRuntimeError("This is not a table nor userdata!");
@@ -619,7 +617,6 @@ public final class LuaObject {
         return !a || b;
     }
 
-    @SuppressWarnings("unchecked")
     public void set(LuaObject key, LuaObject value) {
         assert !key.isNil();
         assert impl(key.isDouble(), !key.isNaN());
@@ -663,6 +660,7 @@ public final class LuaObject {
      * This method is directly taken from {@linkplain Lexer}.
      * TODO: correctly coerce Long.MIN_VAL to long instead of double
      */
+    @SuppressWarnings("DataFlowIssue")
     private CoercedString coerceToNumber() {
         assert isString() : "trying to coerce non-string";
         if ((markWord & 0b11) != 0) {
@@ -787,7 +785,7 @@ public final class LuaObject {
             return null;
         }
         try {
-            double doubleValue = -1;
+            double doubleValue;
             long longValue = -1;
             if (number.startsWith("0x")) {
                 if (isInteger) {
@@ -1003,6 +1001,7 @@ public final class LuaObject {
         return isType(Types.ARRAY);
     }
 
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     public boolean isBox() {
         return isType(Types.BOX);
     }
@@ -1044,6 +1043,7 @@ public final class LuaObject {
         return new LuaObject(obj, 0, 0, Types.BOX);
     }
 
+    @SuppressWarnings("SameReturnValue")
     public static LuaObject nil() {
         return NIL;
     }

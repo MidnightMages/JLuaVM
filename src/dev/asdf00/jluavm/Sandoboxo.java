@@ -27,7 +27,7 @@ import java.lang.reflect.Constructor;
  * end
  * </pre>
  */
-@SuppressWarnings({"IfStatementWithIdenticalBranches", "ConstantValue"})
+@SuppressWarnings({"IfStatementWithIdenticalBranches", "ConstantValue", "ParameterCanBeLocal", "SwitchStatementWithTooFewBranches", "UnnecessaryLocalVariable", "DataFlowIssue", "UnusedAssignment"})
 public class Sandoboxo extends LuaFunction {
     public static Constructor<? extends LuaFunction>[] innerFunctions; // populated on class load
 
@@ -55,13 +55,9 @@ public class Sandoboxo extends LuaFunction {
         LuaObject t0 = null, t1 = null, t2 = null, t3 = null, t4 = null, t5 = null, t6 = null, t7 = null;
         // on resume
         switch (resume) {
-            case -1 -> {
-                expressionStack = vm.registerExpressionStack(8);
-            }
-            case 0 -> {
-                // unpack fist return value
-                t0 = returned.length > 0 ? returned[0] : LuaObject.nil();
-            }
+            case -1 -> expressionStack = vm.registerExpressionStack(8);
+            case 0 -> // unpack fist return value
+                    t0 = returned.length > 0 ? returned[0] : LuaObject.nil();
             case 1 -> {
                 // restore expression stack
                 t0 = expressionStack[0];
@@ -342,9 +338,7 @@ public class Sandoboxo extends LuaFunction {
     private void innerScope0(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
         LuaObject t0 = null, t1 = null;
         switch (resume) {
-            case -1 -> {
-                expressionStack = vm.registerExpressionStack(2);
-            }
+            case -1 -> expressionStack = vm.registerExpressionStack(2);
         }
         returned = null;
         switch (resume) {
@@ -373,9 +367,7 @@ public class Sandoboxo extends LuaFunction {
     private void innerScope1(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
         LuaObject t0 = null;
         switch (resume) {
-            case -1 -> {
-                expressionStack = vm.registerExpressionStack(1);
-            }
+            case -1 -> expressionStack = vm.registerExpressionStack(1);
         }
         returned = null;
         switch (resume) {
@@ -393,6 +385,7 @@ public class Sandoboxo extends LuaFunction {
     }
 
     // in reality, this class would live in its own space and not be a mere inner member class
+    @SuppressWarnings("UnusedAssignment")
     public static class InnerFunction extends LuaFunction {
         public static Constructor<? extends LuaFunction>[] innerFunctions; // populated on class load
 
@@ -419,9 +412,7 @@ public class Sandoboxo extends LuaFunction {
         public void invoke(LuaVM_RT vm, LuaObject[] stackFrame, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
             LuaObject t0 = null, t1 = null;
             switch (resume) {
-                case -1 -> {
-                    expressionStack = vm.registerExpressionStack(2);
-                }
+                case -1 -> expressionStack = vm.registerExpressionStack(2);
             }
             returned = null;
             switch (resume) {

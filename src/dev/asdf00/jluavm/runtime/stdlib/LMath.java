@@ -105,8 +105,8 @@ public class LMath {
             }
         }
 
-        long m = -1;
-        long n = -1;
+        long m;
+        long n;
 
         if (args.length == 1) { // math.random(n) == math.random(1,n)
             m = 1;
@@ -175,6 +175,7 @@ public class LMath {
         table.set(name, AtomicLuaFunction.forOneResult(f).obj());
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static void addMultiRvVaFunc(LuaObject table, String name, LLMultiFunction f) {
         table.set(name, AtomicLuaFunction.forManyResults(f).obj());
     }

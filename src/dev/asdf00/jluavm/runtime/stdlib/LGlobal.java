@@ -28,6 +28,7 @@ public class LGlobal {
     public static LuaObject getTable(boolean includeUnconstrainedFunctions) {
         var rv = LuaObject.table();
 
+        //noinspection StatementWithEmptyBody
         if (includeUnconstrainedFunctions) {
         /* TODO, add the following ones: https://www.lua.org/manual/5.4/manual.html#6.1
             dofile
@@ -172,6 +173,7 @@ public class LGlobal {
     private static final LuaObject tostring = LuaObject.of(new LuaFunction() {
         @Override
         public void invoke(LuaVM_RT vm, LuaObject[] stackFrame, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
+            //noinspection unused
             LuaObject t0 = null;
             if (resume == -1) {
                 vm.registerLocals(1);
@@ -200,7 +202,7 @@ public class LGlobal {
                         vm.callInternal(0, LuaFunction::callWithMeta, tostring, arg);
                     return;
                 case 0:
-                    var rval = returned.length > 0 ? returned[0] : LuaObject.nil();;
+                    var rval = returned.length > 0 ? returned[0] : LuaObject.nil();
                     vm.returnValue(rval);
                     return;
                 default:

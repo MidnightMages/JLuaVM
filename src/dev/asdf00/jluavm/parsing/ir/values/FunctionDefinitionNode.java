@@ -21,6 +21,7 @@ public class FunctionDefinitionNode extends Node {
         var spot = cState.pushEStack();
         var captSpots = new StringBuilder();
         var sb = new StringBuilder();
+        //noinspection ForLoopReplaceableByForEach
         for (int i = 0; i < captures.length; i++) {
             sb.append(captures[i].generate(cState)).append('\n');
             captSpots.append(", ").append(cState.peekEStack());

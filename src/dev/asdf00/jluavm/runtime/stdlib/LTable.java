@@ -18,6 +18,7 @@ public class LTable {
         return false;
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static boolean checkArgIsTable(LuaVM_RT vm, int argIndex, String funcName, LuaObject actualObject) {
         var actualType = actualObject == null ? "nothing" : actualObject.getTypeAsString();
         if (actualObject == null || !actualType.equals("table")) {

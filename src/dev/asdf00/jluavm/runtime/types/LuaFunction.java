@@ -5,7 +5,6 @@ import dev.asdf00.jluavm.exceptions.LuaRuntimeError;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.runtime.errors.LuaArgumentError;
 import dev.asdf00.jluavm.runtime.errors.LuaForeignCallError;
-import dev.asdf00.jluavm.runtime.errors.LuaMetaTableError;
 import dev.asdf00.jluavm.runtime.errors.LuaTypeError;
 import dev.asdf00.jluavm.runtime.utils.RTUtils;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
@@ -195,6 +194,7 @@ public abstract class LuaFunction {
      * The arguments for this method takes the original table, the key and the metatable as arguments.
      */
     protected static void getWithMeta(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
+        //noinspection UnusedAssignment
         LuaObject t0 = null, t1 = null, t2 = null;
         if (resume == -1) {
             vm.registerLocals(0);
@@ -285,6 +285,7 @@ public abstract class LuaFunction {
      * This method is meant to be called when the given argument is meant to be called without being a function
      */
     protected static void callWithMeta(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
+        //noinspection UnusedAssignment
         LuaObject t0 = null, t1 = null;
         if (resume == -1) {
             vm.registerLocals(0);
@@ -305,14 +306,13 @@ public abstract class LuaFunction {
                 }
                 if (t1.isFunction()) {
                     vm.callExternal(0, t1.getFunc(), t0,  LuaObject.of(Arrays.copyOfRange(args, 1, args.length)));
-                    return;
                 } else {
                     var nuArgs = new LuaObject[args.length + 1];
                     nuArgs[0] = t1;
                     System.arraycopy(args, 0, nuArgs, 1, nuArgs.length);
                     vm.callInternal(0, LuaFunction::callWithMeta, nuArgs);
-                    return;
                 }
+                return;
             case 0:
                 vm.internalReturn(returned);
                 return;
@@ -327,6 +327,7 @@ public abstract class LuaFunction {
      * The arguments this method takes are the name of the meta-method to call, x and y as arguments.
      */
     protected static void binaryOpWithMeta(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
+        //noinspection UnusedAssignment
         LuaObject t0 = null, t1 = null, t2 = null, t3 = null;
         if (resume == -1) {
             vm.registerLocals(0);
@@ -354,11 +355,10 @@ public abstract class LuaFunction {
                 }
                 if (t3.isFunction()) {
                     vm.callExternal(0, t3.getFunc(), t1, t2);
-                    return;
                 } else {
                     vm.callInternal(0, LuaFunction::callWithMeta, t3, t1, t2);
-                    return;
                 }
+                return;
             case 0:
                 vm.returnValue(t0);
                 return;
@@ -373,6 +373,7 @@ public abstract class LuaFunction {
      * The arguments this method takes are the name of the meta-method to call and the value as arguments.
      */
     protected static void unaryOpWithMeta(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
+        //noinspection UnusedAssignment
         LuaObject t0 = null, t1 = null;
         if (resume == -1) {
             vm.registerLocals(0);
@@ -396,11 +397,10 @@ public abstract class LuaFunction {
                 }
                 if (t0.isFunction()) {
                     vm.callExternal(0, t0.getFunc(), t1);
-                    return;
                 } else {
                     vm.callInternal(0, LuaFunction::callWithMeta, t0, t1);
-                    return;
                 }
+                return;
             case 0:
                 vm.internalReturn(t0);
                 return;

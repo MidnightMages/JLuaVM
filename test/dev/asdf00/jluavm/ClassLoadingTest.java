@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class ClassLoadingPlayground {
+public class ClassLoadingTest {
     private static final String VERY_SIMPLE_CLASS = """
             package dev.asdf00.jluavm.lualoaded;
             import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;

@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 import static dev.asdf00.jluavm.Util.expandOptions;
 import static org.junit.jupiter.api.Assertions.*;
 
+@SuppressWarnings("unused")
 public class VmTest {
     @Test
     void simpleSnippet() {
@@ -44,6 +45,7 @@ public class VmTest {
         }
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static void loadAssertRuntimeError(String s) {
         for (var expanded : expandOptions(s)) {
             var vm = LuaVM.create().withStdLib();
@@ -259,7 +261,7 @@ public class VmTest {
                 rv = ""
                 local function print(e)
                     rv = tostring(e) .. "\\n"
-                end             
+                end
                 print("b")
                 local looping = false
                 do
@@ -295,7 +297,7 @@ public class VmTest {
                 rv = ""
                 local function print(e)
                     rv = tostring(e) .. "\\n"
-                end     
+                end
                 print("b")
                 local looping = false
                 do
@@ -330,6 +332,7 @@ public class VmTest {
                 """, LuaSemanticException.class);
     }
 
+    @SuppressWarnings("RedundantStringFormatCall")
     @Test
     void floorDiv() {
         // assert that LUA{a//b} == floor((float)a/(float)b) for pos and negative

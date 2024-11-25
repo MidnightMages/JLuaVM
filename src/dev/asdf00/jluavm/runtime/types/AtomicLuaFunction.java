@@ -8,6 +8,7 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
+@SuppressWarnings("unused")
 public class AtomicLuaFunction extends LuaFunction {
     private final int argCount;
     private final BiFunction<LuaVM_RT, LuaObject[], LuaObject[]> backing;

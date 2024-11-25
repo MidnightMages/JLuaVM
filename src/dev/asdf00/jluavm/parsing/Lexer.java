@@ -32,6 +32,7 @@ public class Lexer {
         cur = input.next();
     }
 
+    @SuppressWarnings("DataFlowIssue")
     public Token next() throws LuaLexerException {
         // skip whitespace and comments
         for (; ; ) {
@@ -160,7 +161,7 @@ public class Lexer {
                 throw new LuaLexerException(pos, "'%s' is not a valid number".formatted(number));
             }
             try {
-                double nVal = -1;
+                double nVal;
                 long lVal = -1;
                 if (number.startsWith("0x")) {
                     if (isInteger) {
@@ -461,6 +462,7 @@ public class Lexer {
         return c != CEOF && (c == '_' || Character.isLetterOrDigit(c));
     }
 
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     public static boolean isHexDigit(char c) {
         return ('0' <= c && c <= '9') || ('a' <= c && c <= 'f') || ('A' <= c && c <= 'F');
     }
