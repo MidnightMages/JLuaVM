@@ -41,8 +41,6 @@ public class LGlobal {
         collectgarbage
         error
         load
-        next (partially implemented)
-        pairs
         pcall
         print
         tonumber
