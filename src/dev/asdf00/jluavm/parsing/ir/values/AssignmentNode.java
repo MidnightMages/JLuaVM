@@ -28,21 +28,22 @@ public class AssignmentNode extends Node {
         var tTars = new Object[targets.length];
         // generate assignment values in left-to-right order
         for (int i = 0; i < tTars.length; i++) {
-            switch (targets[i]) {
-                case LocalAccessNode access -> tTars[i] = access.info;
-                case EnvAccessNode eacc -> tTars[i] = eacc;
-                case DeRefNode deRef -> {
-                    if (!sb.isEmpty()) {
-                        sb.append('\n');
-                    }
-                    sb.append(deRef.value.generate(cState));
-                    String vSpot = cState.peekEStack();
-                    sb.append('\n').append(deRef.idx.generate(cState));
-                    String iSpot = cState.peekEStack();
-                    tTars[i] = new Tuple<>(vSpot, iSpot);
+            if (targets[i] instanceof LocalAccessNode access) {
+                tTars[i] = access.info;
+            } else if (targets[i] instanceof EnvAccessNode eacc) {
+                tTars[i] = eacc;
+            } else if (targets[i] instanceof DeRefNode deRef) {
+
+                if (!sb.isEmpty()) {
+                    sb.append('\n');
                 }
-                case null, default ->
-                        throw new InternalLuaLoadingError("what is %s in assignment?".formatted(targets[i] == null ? "NULL" : targets[i].getClass().getName()));
+                sb.append(deRef.value.generate(cState));
+                String vSpot = cState.peekEStack();
+                sb.append('\n').append(deRef.idx.generate(cState));
+                String iSpot = cState.peekEStack();
+                tTars[i] = new Tuple<>(vSpot, iSpot);
+            } else {
+                throw new InternalLuaLoadingError("what is %s in assignment?".formatted(targets[i].getClass().getName()));
             }
         }
 

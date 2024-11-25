@@ -8,7 +8,10 @@ import dev.asdf00.jluavm.parsing.ir.controlflow.LabelNode;
 import dev.asdf00.jluavm.utils.Triple;
 import dev.asdf00.jluavm.utils.Tuple;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Stack;
 
 public class SymTable {
     private int idSupplier = 0;
@@ -267,7 +270,7 @@ public class SymTable {
     public void labelNotLast() {
         if (!dangerZone.peek().isEmpty()) {
             // jump into scope of local variable
-            var elem = dangerZone.peek().getFirst();
+            var elem = dangerZone.peek().get(0);
             throw new LuaSemanticException(elem.y(), "jump into scope of local variable");
         }
     }

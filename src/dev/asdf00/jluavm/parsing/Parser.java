@@ -291,7 +291,7 @@ public final class Parser {
                     check(END);
 
                     // we need to move the value of the internal iterator to the actual local iterator variable
-                    innerStats.addFirst(new AssignmentNode(bpos, new Node[]{new LocalAccessNode(cvarPos, controlVar)},
+                    innerStats.add(0, new AssignmentNode(bpos, new Node[]{new LocalAccessNode(cvarPos, controlVar)},
                             new Node[]{new LocalAccessNode(setupPos, internalControlVar)}));
                     // we add the for-step to the end of the internal statements
                     // the step might break the loop if an integer addition over/under-flows and must therefore close stuff in that case
@@ -834,11 +834,11 @@ public final class Parser {
             ps = new ArrayList<>();
         }
         if (selfPlaceholder != null) {
-            ps.addFirst(selfPlaceholder);
+            ps.add(0, selfPlaceholder);
         }
         check(RPAR);
         Position _pos = la.pos();
-        boolean hasParamsArg = !ps.isEmpty() && ps.getLast().type() == TDOT;
+        boolean hasParamsArg = !ps.isEmpty() && ps.get(ps.size() - 1).type() == TDOT;
         symTab.enterFunctionScope(hasParamsArg);
         SpecificVarInfo[] args = ps.stream().map(p -> define(p, 0)).toArray(SpecificVarInfo[]::new);
         var innerStats = Block();
