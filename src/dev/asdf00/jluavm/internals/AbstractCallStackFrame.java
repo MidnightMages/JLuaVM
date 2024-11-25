@@ -5,15 +5,20 @@ import dev.asdf00.jluavm.runtime.types.LuaObject;
 import java.util.Stack;
 
 public abstract sealed class AbstractCallStackFrame permits FunctionCallFrame, InternalCallFrame {
+    // effectively finals
     public final LuaObject[] locals;
+    public final int startLocals;
+    public int localCnt;  // late init
+    public final Stack<LuaObject> closables;
+
+    // operational fields
     public int resume;
     public LuaObject[] expressionStack;
     public LuaObject[] rvals;
-    public int localCnt;
-    public final Stack<LuaObject> closables;
 
-    public AbstractCallStackFrame(LuaObject[] locals) {
+    public AbstractCallStackFrame(LuaObject[] locals, int startLocals) {
         this.locals = locals;
+        this.startLocals = startLocals;
         this.closables = new Stack<>();
         init();
     }

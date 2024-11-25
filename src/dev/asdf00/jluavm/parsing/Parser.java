@@ -181,7 +181,7 @@ public final class Parser {
                 var innerStats = Block();
                 check(END);
                 VarScope scp = symTab.exitScope();
-                statement = new DoEndNode(_pos, innerStats.toArray(Node[]::new), scp.getLocalsCount(), scp.getClosableCount());
+                statement = new DoEndNode(_pos, innerStats.toArray(Node[]::new), scp.getPrevFunctionLocalsCount(), scp.getLocalsCount(), scp.getClosableCount());
             }
             case WHILE -> {
                 scan();
@@ -307,7 +307,7 @@ public final class Parser {
                             new CoerceNumericForNode(cur.pos(), internalControlVar, ubVar, stepVar),
                             new IfNode(_pos, entryCondition, new IRBlock(bpos, innerStats.toArray(Node[]::new), entryCondition, true,
                                     innerLoopScp.getLocalsCount(), innerLoopScp.getClosableCount()))},
-                            outerLoopScp.getLocalsCount(), outerLoopScp.getClosableCount());
+                            outerLoopScp.getPrevFunctionLocalsCount(), outerLoopScp.getLocalsCount(), outerLoopScp.getClosableCount());
                 } else {
                     // foreach
                     var ltkList = new ArrayList<Token>();
@@ -349,7 +349,7 @@ public final class Parser {
                     IRBlock block = new IRBlock(bpos, inners.toArray(Node[]::new), entryCondition, false, innerLoopScope.getLocalsCount(), innerLoopScope.getClosableCount());
                     VarScope outerClosableCnt = symTab.exitScope();
                     statement = new DoEndNode(_pos, new Node[]{setup, step, new IfNode(_pos, new LogicNotNode(innerSetup, entryCondition), block)},
-                            outerClosableCnt.getLocalsCount(), outerClosableCnt.getClosableCount());
+                            outerClosableCnt.getPrevFunctionLocalsCount(), outerClosableCnt.getLocalsCount(), outerClosableCnt.getClosableCount());
                     check(END);
                 }
             }
@@ -435,6 +435,7 @@ public final class Parser {
         return rVal;
     }
 
+    @SuppressWarnings("unused")
     private static final EnumSet<TokenType> DEREF_OR_FUNCCALL_START = EnumSet.of(LBRAK, DOT, COLON, LPAR, LITERAL_STRING, LBRAC);
 
     private Node StatExp() {
@@ -692,7 +693,6 @@ public final class Parser {
         // ..
         var result = BinOp8();
         while (ltok == DDOT) {
-            var op = ltok;
             scan();
             Position pos = cur.pos();
             Node y = BinOp8();
@@ -871,6 +871,7 @@ public final class Parser {
         return parameters;
     }
 
+    @SuppressWarnings("unused")
     private static final EnumSet<TokenType> ARGS_START = EnumSet.of(LPAR, LITERAL_STRING, LBRAC);
 
     private Node[] Args() {

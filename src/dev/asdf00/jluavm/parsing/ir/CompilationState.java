@@ -388,6 +388,7 @@ public final class CompilationState {
                     import dev.asdf00.jluavm.runtime.utils.*;
                     
                     import java.lang.reflect.Constructor;
+                    import java.util.Arrays;
                     
                     public final class %s extends LuaFunction {
                     public static Constructor<? extends LuaFunction>[] innerFunctions;

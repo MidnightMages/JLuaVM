@@ -7,12 +7,14 @@ import dev.asdf00.jluavm.parsing.ir.Node;
 
 public class DoEndNode extends Node {
     public final Node[] block;
+    public final int startLocals;
     public final int localCnt;
     public final int toClose;
 
-    public DoEndNode(Position sourcePos, Node[] block, int localCnt, int toClose) {
+    public DoEndNode(Position sourcePos, Node[] block, int startLocals, int localCnt, int toClose) {
         super(sourcePos);
         this.block = block;
+        this.startLocals = startLocals;
         this.localCnt = localCnt;
         this.toClose = toClose;
     }
@@ -34,6 +36,10 @@ public class DoEndNode extends Node {
             }
         }
         sb.append(IRBlock.genClose(cState, toClose));
+        if (localCnt > 0) {
+            // clear local variables from stackFrame
+            sb.append("\nArrays.fill(stackFrame, %d, %d, null);".formatted(startLocals, startLocals + localCnt));
+        }
         return sb.toString();
     }
 }

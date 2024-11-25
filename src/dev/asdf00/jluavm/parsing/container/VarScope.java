@@ -105,6 +105,7 @@ public class VarScope {
         return rVal;
     }
 
+    @SuppressWarnings("unused")
     public String toFullString() {
         return "VarScope {parent=%s, id=%s, funcBorder=%s, closable=%s, names=%s, children=%s}".formatted(
                 parent == null ? -1 : parent.id, id, isFunctionBorder, closableCnt, names.toString(),
@@ -117,5 +118,16 @@ public class VarScope {
 
     public int getLocalsCount() {
         return names.size();
+    }
+
+    public int getPrevFunctionLocalsCount() {
+        var cur = this;
+        int locals = 0;
+        while (!cur.isFunctionBorder) {
+            locals += cur.getLocalsCount();
+            cur = cur.parent;
+        }
+        locals += cur.getLocalsCount();
+        return locals - getLocalsCount();
     }
 }

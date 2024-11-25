@@ -7,8 +7,8 @@ public final class InternalCallFrame extends AbstractCallStackFrame {
     private final LFunc callable;
     public LuaObject[] arguments;
 
-    public InternalCallFrame(LuaObject[] locals, LFunc callable, LuaObject[] arguments) {
-        super(locals);
+    public InternalCallFrame(LuaObject[] locals, int startLocals, LFunc callable, LuaObject[] arguments) {
+        super(locals, startLocals);
         this.callable = callable;
         this.arguments = arguments;
     }
