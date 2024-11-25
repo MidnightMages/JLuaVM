@@ -22,6 +22,7 @@ public class DeRefNode extends Node {
         return prev + dereference(cState);
     }
 
+    @SuppressWarnings("UnnecessaryLocalVariable")
     public static String dereference(CompilationState cState) {
         String i = cState.popEStack();
         String v = cState.popEStack();

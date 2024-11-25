@@ -290,6 +290,7 @@ public final class CompilationState {
         }
     }
 
+    @SuppressWarnings("UnnecessaryLocalVariable")
     private static final class InternalScope extends Scope {
         public final int scopeId;
 
@@ -333,6 +334,7 @@ public final class CompilationState {
         }
     }
 
+    @SuppressWarnings("UnnecessaryLocalVariable")
     private static final class FunctionScope extends Scope {
         private final Stack<InternalScope> innerScopes = new Stack<>();
         private final ArrayList<String> methodList = new ArrayList<>();

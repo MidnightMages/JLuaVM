@@ -112,6 +112,7 @@ public class AssignmentNode extends Node {
         return sb.toString();
     }
 
+    @SuppressWarnings("UnnecessaryLocalVariable")
     private static String genIndexedSet(CompilationState cState, String obj, String idx, String val) {
         EStackCallInfo sInfo = cState.generateEStackCallInfo(0);
         String assignment = """
