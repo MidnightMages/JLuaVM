@@ -72,6 +72,10 @@ public class AtomicLuaFunction extends LuaFunction {
     // ... more if necessary
 
     // helpers for lua functions of type F(a)->r[]; F(a,b)->r[]; F(a,b,...)->r[]
+    public static AtomicLuaFunction forManyResults(LLMultiSupplier c) {
+        return new AtomicLuaFunction((BiFunction<LuaVM_RT, LuaObject[], LuaObject[]>) (vm, args) -> c.apply(vm), 0, false);
+    }
+
     public static AtomicLuaFunction forManyResults(LLMultiFunction c) {
         return new AtomicLuaFunction((BiFunction<LuaVM_RT, LuaObject[], LuaObject[]>) (vm, args) -> c.apply(vm, args[0]), 1, false);
     }
