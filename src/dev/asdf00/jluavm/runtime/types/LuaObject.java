@@ -1090,6 +1090,14 @@ public final class LuaObject {
         return new LuaObject(rv, -1, -1, Types.TABLE);
     }
 
+    public static LuaObject tableFromArray(LuaObject... arr) {
+        var tbl = LuaObject.table();
+        for (int i = 0; i < arr.length; i++) {
+            tbl.set(LuaObject.of(i+1), arr[i]);
+        }
+        return tbl;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (o instanceof LuaObject other) {
