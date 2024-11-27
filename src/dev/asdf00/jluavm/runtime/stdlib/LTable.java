@@ -106,7 +106,7 @@ public class LTable {
             int arrIdx = 0;
             for (int k = ((int) i); k <= j; k++) {
                 var idx = k - 1;
-                t[arrIdx++] = idx >= 0 && idx < args.length ? LuaObject.of(args[idx]) : LuaObject.NIL;
+                t[arrIdx++] = idx >= 0 && idx < args.length ? args[idx] : LuaObject.NIL;
             }
             return t;
         }).obj());
