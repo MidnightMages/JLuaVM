@@ -45,7 +45,9 @@ public class AtomicLuaFunction extends LuaFunction {
     }
 
     public static AtomicLuaFunction vaForZeroResults(LLVaVoidFunction c) {
-        return new AtomicLuaFunction(c::accept, 0, true);
+        return new AtomicLuaFunction((vm, args) -> {
+            c.accept(vm, args[0].asArray());
+        }, 0, true);
     }
     // ... more if necessary
 
@@ -67,7 +69,7 @@ public class AtomicLuaFunction extends LuaFunction {
     }
 
     public static AtomicLuaFunction vaForOneResult(LLVaFunction c) {
-        return new AtomicLuaFunction((vm, args) -> new LuaObject[]{c.apply(vm, args)}, 0, true);
+        return new AtomicLuaFunction((vm, args) -> new LuaObject[]{c.apply(vm, args[0].asArray())}, 0, true);
     }
     // ... more if necessary
 
@@ -85,7 +87,9 @@ public class AtomicLuaFunction extends LuaFunction {
     }
 
     public static AtomicLuaFunction vaForManyResults(LLVaMultiFunction c) {
-        return new AtomicLuaFunction(c::apply, 0, true);
+        return new AtomicLuaFunction((vm, args) -> {
+            return c.apply(vm, args[0].asArray());
+        }, 0, true);
     }
     // ... more if necessary
 
