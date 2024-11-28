@@ -50,6 +50,26 @@ public class LGlobal {
         rv.set("ipairs", ipairs);
         rv.set("pairs", pairs);
         rv.set("next", next);
+        rv.set("load", AtomicLuaFunction.vaForOneResult((vm, args) -> {
+            // https://www.lua.org/manual/5.4/manual.html#pdf-load
+            // TODO support function for args[0]; make it return nil, error message on error, and function, nil on success
+            if (args.length == 0) {
+                vm.error(new LuaArgumentError(0, "load", "value expected"));
+                return null;
+            }
+            var code = args[0];
+            if (!code.isString()) {
+                vm.error(new LuaArgumentError(0, "load", "string expected"));
+                return null;
+            }
+            var env = args.length > 1 ? args[0] : null;
+            if (env != null && !env.isTable()) {
+                vm.error(new LuaArgumentError(1, "load", "table or nothing expected"));
+                return null;
+            }
+            var rv2 = vm.load(code.getString(), vm.get_G()); // TODO change this to the current _ENV so that you cant break out of a sandbox
+            return LuaObject.of(rv2);
+        }).obj());
 
         rv.set("assert", AtomicLuaFunction.vaForManyResults((vm, params) -> {
             if (params.length == 0) {
