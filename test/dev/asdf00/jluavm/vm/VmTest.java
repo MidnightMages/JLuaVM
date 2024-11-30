@@ -22,13 +22,15 @@ public class VmTest {
             for (var src : expandOptions("return 4+%s-(§1+0 * %s|%s * 0+1|1+0*%s|%s*0+1|1 + 0*%s|%s*0 + 1§)".formatted(b, b, b, b, b, b, b))) {
                 var vm = LuaVM.create().withStdLib().withRootFunc(src);
                 var res = vm.run();
-                loadAssertSuccessAndRv(src, LuaObject.of(4-1+b));
+                loadAssertSuccessAndRv(src, LuaObject.of(4 - 1 + b));
             }
         }
     }
+
     private static void loadAssertSuccessAndRv(String code, LuaObject expectedRet) {
         loadAssertSuccessAndRv(code, new LuaObject[]{expectedRet});
     }
+
     private static void loadAssertSuccessAndRv(String code, LuaObject[] expectedRets) {
         for (var expanded : expandOptions(code)) {
             var vm = LuaVM.create().withStdLib().withRootFunc(expanded);
@@ -41,7 +43,7 @@ public class VmTest {
     private static void loadAssertException(String s, Class<? extends LuaLoadingException> exc) {
         for (var expanded : expandOptions(s)) {
             var vm = LuaVM.create().withStdLib();
-            assertThrows(exc, ()->vm.withRootFunc(expanded).run());
+            assertThrows(exc, () -> vm.withRootFunc(expanded).run());
         }
     }
 
@@ -51,7 +53,7 @@ public class VmTest {
             var vm = LuaVM.create().withStdLib();
             assertDoesNotThrow(() -> vm.withRootFunc(expanded));
             var res = assertDoesNotThrow(vm::run);
-             Assertions.assertEquals(LuaVM.VmRunState.EXECUTION_ERROR, res.state());
+            Assertions.assertEquals(LuaVM.VmRunState.EXECUTION_ERROR, res.state());
         }
     }
 
@@ -124,12 +126,14 @@ public class VmTest {
                 return c(7)
                 """, LuaObject.of("7,9:(9,8,7)"));
     }
+
     @Test
     void nilCall() {
         loadAssertRuntimeError("""                
                 return nonexistenttostring(123)
                 """);
     }
+
     @Test
     void horrificSnippets() {
         // semi-resurrection
@@ -213,7 +217,7 @@ public class VmTest {
                     ::dest::
                     print(1)
                 end
-             
+                             
                 print("ok!")
                 """, LuaSemanticException.class);
 
@@ -341,7 +345,7 @@ public class VmTest {
                 if (b == 0)
                     continue;
 
-                System.out.println("a: %s, b:%s".formatted(a,b));
+                System.out.println("a: %s, b:%s".formatted(a, b));
                 var expected = Math.floor((float) a / (float) b);
                 var vm = LuaVM.create().withStdLib().withRootFunc("return %s//%s".formatted((float) a, (float) b));
                 var res = vm.run();
@@ -364,7 +368,7 @@ public class VmTest {
                     local b <close> = a
                     local c <close> = a
                 end
-        
+                        
                 return rv""", LuaObject.of("closing;closing;"));
 
         loadAssertSuccessAndRv("""
@@ -382,20 +386,20 @@ public class VmTest {
         loadAssertSuccessAndRv("""
                 rv = ""
                 print = function(a) rv = rv .. tostring(a)..";" end
-      
+                      
                 i = 0
                 function f(x)
                     print("fval"..tostring(x))
                     i=i+1
                     return i>2
                 end
-     
+                     
                 function getMt()
                    local t = {["__close"]=function() print("closing") end, ["name"]="a table"}
                    setmetatable(t,t)
                    return t
                 end
-          
+                          
                 repeat
                     print("iter")
                     local a <close> = getMt()
@@ -403,7 +407,7 @@ public class VmTest {
                 until f(a.name)
                 print("c")
                 print("done")
-                
+                                
                 return rv
                 """, LuaObject.of("iter;b;fvala table;closing;iter;b;fvala table;closing;iter;b;fvala table;closing;c;done;"));
 
@@ -623,6 +627,26 @@ public class VmTest {
                 end
                 ::d::
                 """));
+    }
+
+    @Test
+    public void stringExtensionFunc() {
+        var vm = LuaVM.create();
+        vm.withEmptyEnv();
+        vm.get_G().set("_EXT", LuaObject.table(LuaObject.of("string"), LuaObject.table()));
+        assertDoesNotThrow(() -> vm.withRootFunc("""
+                function _EXT.string.landOf(it, arg1)
+                    return "In the land of "..it.." where the "..arg1.." lie."
+                end
+                local mdr = ("Mordor"):landOf("shadows")
+                local shr = ("the Shire"):landOf "lush grass lands"
+                return mdr.."\\n"..shr.."\\n"
+                """));
+        var result = vm.run();
+        assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS, new LuaObject[]{LuaObject.of("""
+               In the land of Mordor where the shadows lie.
+               In the land of the Shire where the lush grass lands lie.
+                """)}), result);
     }
 
 }

@@ -4,6 +4,7 @@ import dev.asdf00.jluavm.parsing.container.Position;
 import dev.asdf00.jluavm.parsing.ir.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.CompilationState.EStackCallInfo;
 import dev.asdf00.jluavm.parsing.ir.Node;
+import dev.asdf00.jluavm.parsing.ir.values.ConstantNode;
 import dev.asdf00.jluavm.parsing.ir.values.DeRefNode;
 
 /**
@@ -13,13 +14,15 @@ import dev.asdf00.jluavm.parsing.ir.values.DeRefNode;
  */
 public class FunctionCallNode extends Node {
     public final Node object;
+    public final Node env;
     public final Node func;
     public final Node[] args;
     public int expectedResultCnt;
 
-    public FunctionCallNode(Position sourcePos, Node object, Node func, Node[] args) {
+    public FunctionCallNode(Position sourcePos, Node object, Node env, Node func, Node[] args) {
         super(sourcePos);
         this.object = object;
+        this.env = env;
         this.func = func;
         this.args = args;
         this.expectedResultCnt = 1;
@@ -31,22 +34,7 @@ public class FunctionCallNode extends Node {
 
         boolean isOopCall = object != null;
         if (isOopCall) {
-            // generate object
-            sb.append(object.generate(cState)).append('\n');
-            String objSpot = cState.peekEStack();
-            // duplicate object
-            sb.append(cState.pushEStack()).append(" = ").append(objSpot).append(";\n");
-            // generate index
-            sb.append(func.generate(cState)).append('\n');
-            // dereference object with index
-            sb.append(DeRefNode.dereference(cState)).append('\n');
-            // swap dereferenced callable and object to pass object as first argument
-            String callableRes = cState.peekEStack();
-            String tmpSpot = cState.pushEStack();
-            sb.append(tmpSpot).append(" = ").append(callableRes).append(";\n")
-                    .append(callableRes).append(" = ").append(objSpot).append(";\n")
-                    .append(objSpot).append(" = ").append(tmpSpot).append(";\n");
-            cState.popEStack();
+            prepOopCall(sb, cState, object, env, func);
         } else {
             sb.append(func.generate(cState)).append('\n');
         }
@@ -84,5 +72,68 @@ public class FunctionCallNode extends Node {
                 callInfo.resumeLabel(), funcSpot, stringOfArgs,
                 callInfo.resumeLabel());
         return sb.append(result).toString();
+    }
+
+    public static void prepOopCall(StringBuilder sb, CompilationState cState, Node object, Node env, Node func) {
+        assert func instanceof ConstantNode : "got %s as OOP call func???".formatted(func.getClass().getName());
+        // generate object
+        sb.append(object.generate(cState)).append('\n');
+        String objSpot = cState.peekEStack();
+        // duplicate object
+        sb.append(cState.pushEStack()).append(" = ").append(objSpot).append(";\n");
+        // generate index
+        sb.append(func.generate(cState)).append('\n');
+        // dereference object with index
+        // here, if the dereference fails due to a type error, we do not want to eat the error immediately, we want
+        // to perform a type extension function lookup instead
+        sb.append(extendableDereference(cState)).append('\n');
+        // swap dereferenced callable and object to pass object as first argument
+        String callableRes = cState.peekEStack();
+        // here we rely on the fact that func can only be an IDENT in the EBNF
+        String envCode = env.generate(cState);
+        String regenFuncCode = func.generate(cState);
+        String funcSpot = cState.popEStack();
+        String envSpot = cState.popEStack();
+        cState.popEStack();
+        var extCall = cState.generateEStackCallInfo(1);
+        cState.pushEStack();
+        sb.append("""
+                    if (%s.isNil()) {
+                        %s
+                        %s
+                        %s
+                        vm.callInternal(%d, LuaFunction::lookupExtension, %s, LuaObject.of(%s.getTypeAsString()), %s);
+                        return;
+                    }
+                    case %d:
+                    """.formatted(callableRes,
+                envCode,
+                regenFuncCode,
+                extCall.saveEStack(),
+                extCall.resumeLabel(), envSpot, objSpot, funcSpot,
+                extCall.resumeLabel()));
+        String tmpSpot = cState.pushEStack();
+        sb.append(tmpSpot).append(" = ").append(callableRes).append(";\n")
+                .append(callableRes).append(" = ").append(objSpot).append(";\n")
+                .append(objSpot).append(" = ").append(tmpSpot).append(";\n");
+        cState.popEStack();
+    }
+
+    public static String extendableDereference(CompilationState cState) {
+        String i = cState.popEStack();
+        String v = cState.popEStack();
+        EStackCallInfo callInfo = cState.generateEStackCallInfo(1);
+        String r = cState.pushEStack();
+        String result = """
+                %s = %s.isExtendable() ? tryIndexedGet(vm, %d, %s, %s) : indexedGet(vm, %d, %s, %s);
+                if (%s == null) {
+                    %s
+                    return;
+                }
+                case %d:""".formatted(r, v, callInfo.resumeLabel(), v, i, callInfo.resumeLabel(), v, i,
+                r,
+                callInfo.saveEStack(),
+                callInfo.resumeLabel());
+        return result;
     }
 }

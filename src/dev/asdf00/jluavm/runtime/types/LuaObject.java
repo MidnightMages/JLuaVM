@@ -36,6 +36,7 @@ public final class LuaObject {
         // combinations
         public static final int NUMBER = DOUBLE | LONG;
         public static final int ARITHMETIC = DOUBLE | LONG | STRING;
+        public static final int EXTENDABLE = NIL | BOOLEAN | NUMBER | STRING | FUNCTION | THREAD | TABLE;
     }
 
     public Object refVal; // reassignable only for box
@@ -106,6 +107,10 @@ public final class LuaObject {
 
     public boolean isTruthy() {
         return !isNil() && this != FALSE;
+    }
+
+    public boolean isExtendable() {
+        return isType(Types.EXTENDABLE);
     }
 
     // =================================================================================================================

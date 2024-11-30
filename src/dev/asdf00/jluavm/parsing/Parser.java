@@ -90,6 +90,12 @@ public final class Parser {
         }
     }
 
+    private Node getEnv(Position pos) {
+        // lookup local definition for _ENV
+        var env = symTab.get("_ENV");
+        return env == null ? new EnvAccessNode(pos) : new LocalAccessNode(pos, env);
+    }
+
     // =================================================================================================================
     //    PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING
     // =================================================================================================================
@@ -336,7 +342,7 @@ public final class Parser {
                             new AssignmentNode(innerSetup,
                                     Arrays.stream(forVals).map(v -> new LocalAccessNode(innerSetup, v)).toArray(LocalAccessNode[]::new),
                                     new Node[]{new FunctionCallNode(innerSetup,
-                                            null, new LocalAccessNode(innerSetup, itrFunc), new Node[]{new LocalAccessNode(innerSetup, state),
+                                            null, null, new LocalAccessNode(innerSetup, itrFunc), new Node[]{new LocalAccessNode(innerSetup, state),
                                             new LocalAccessNode(innerSetup, internalControlVar)})}),
                             new AssignmentNode(innerSetup,
                                     new Node[]{new LocalAccessNode(innerSetup, internalControlVar)},
@@ -556,12 +562,13 @@ public final class Parser {
         if (ltok == COLON) {
             scan();
             object = callable;
+            // code gen in FunctionCallNode relies on this being a constant ident
             check(IDENT);
             func = ConstantNode.ofIdent(cur);
         }
         Position pos = la.pos();
         Node[] args = Args();
-        return new FunctionCallNode(pos, object, func, args);
+        return new FunctionCallNode(pos, object, getEnv(pos), func, args);
     }
 
     private Node[] ExpList() {

@@ -3,7 +3,6 @@ package dev.asdf00.jluavm.parsing.ir.controlflow;
 import dev.asdf00.jluavm.parsing.container.Position;
 import dev.asdf00.jluavm.parsing.ir.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.Node;
-import dev.asdf00.jluavm.parsing.ir.values.DeRefNode;
 
 public class TailCallNode extends Node {
     FunctionCallNode call;
@@ -20,22 +19,7 @@ public class TailCallNode extends Node {
 
         boolean isOopCall = call.object != null;
         if (isOopCall) {
-            // generate object
-            sb.append(call.object.generate(cState)).append('\n');
-            String objSpot = cState.peekEStack();
-            // duplicate object
-            sb.append(cState.pushEStack()).append(" = ").append(objSpot).append(";\n");
-            // generate index
-            sb.append(call.func.generate(cState)).append('\n');
-            // dereference object with index
-            sb.append(DeRefNode.dereference(cState)).append('\n');
-            // swap dereferenced callable and object to pass object as first argument
-            String callableRes = cState.peekEStack();
-            String tmpSpot = cState.pushEStack();
-            sb.append(tmpSpot).append(" = ").append(callableRes).append(";\n")
-                    .append(callableRes).append(" = ").append(objSpot).append(";\n")
-                    .append(objSpot).append(" = ").append(tmpSpot).append(";\n");
-            cState.popEStack();
+            FunctionCallNode.prepOopCall(sb, cState, call.object, call.env, call.func);
         } else {
             sb.append(call.func.generate(cState)).append('\n');
         }

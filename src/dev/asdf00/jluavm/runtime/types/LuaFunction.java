@@ -108,6 +108,39 @@ public abstract class LuaFunction {
         }
     }
 
+    protected static LuaObject tryIndexedGet(LuaVM_RT vm, int resumeLabel, LuaObject obj, LuaObject idx) {
+        if (obj.isTable()) {
+            LuaObject key = RTUtils.tryCoerceFloatToInt(idx);
+            if (obj.hasKey(key)) {
+                return obj.get(key);
+            } else {
+                LuaObject mtbl = obj.getMetaTable();
+                if (mtbl == null || !mtbl.isTable() || !mtbl.hasKey(Singletons.__index)) {
+                    return LuaObject.nil();
+                } else {
+                    vm.callInternal(resumeLabel, LuaFunction::getWithMeta, obj, key, mtbl);
+                    return null;
+                }
+            }
+        } else if (obj.isUserData()) {
+            LuaObject mtbl = obj.getMetaTable();
+            if (mtbl == null || !mtbl.isTable() || !mtbl.hasKey(Singletons.__index)) {
+                try {
+                    return obj.get(idx);
+                } catch (LuaRuntimeError ex) {
+                    vm.error(new LuaForeignCallError());
+                    return null;
+                }
+            } else {
+                vm.callInternal(resumeLabel, LuaFunction::getWithMeta, obj, idx, mtbl);
+                return null;
+            }
+        } else {
+            // instead of producing an error when this is called on an invalid type, we just return nil
+            return LuaObject.nil();
+        }
+    }
+
     protected static boolean indexedSet(LuaVM_RT vm, int resumeLabel, LuaObject obj, LuaObject idx, LuaObject val) {
         if (obj.isTable()) {
             LuaObject key = RTUtils.tryCoerceFloatToInt(idx);
@@ -233,7 +266,7 @@ public abstract class LuaFunction {
                 vm.internalReturn(t0);
                 return;
             default:
-                throw new InternalLuaRuntimeError("unknown resume point " + resume);
+                throw new InternalLuaRuntimeError("should not reach end of fall-through switch");
         }
     }
 
@@ -277,7 +310,7 @@ public abstract class LuaFunction {
                 vm.internalReturn();
                 return;
             default:
-                throw new InternalLuaRuntimeError("unknown resume point " + resume);
+                throw new InternalLuaRuntimeError("should not reach end of fall-through switch");
         }
     }
 
@@ -305,7 +338,7 @@ public abstract class LuaFunction {
                     return;
                 }
                 if (t1.isFunction()) {
-                    vm.callExternal(0, t1.getFunc(), t0,  LuaObject.of(Arrays.copyOfRange(args, 1, args.length)));
+                    vm.callExternal(0, t1.getFunc(), t0, LuaObject.of(Arrays.copyOfRange(args, 1, args.length)));
                 } else {
                     var nuArgs = new LuaObject[args.length + 1];
                     nuArgs[0] = t1;
@@ -317,7 +350,7 @@ public abstract class LuaFunction {
                 vm.internalReturn(returned);
                 return;
             default:
-                throw new InternalLuaRuntimeError("unknown resume point " + resume);
+                throw new InternalLuaRuntimeError("should not reach end of fall-through switch");
         }
     }
 
@@ -363,7 +396,7 @@ public abstract class LuaFunction {
                 vm.returnValue(t0);
                 return;
             default:
-                throw new InternalLuaRuntimeError("unknown resume point " + resume);
+                throw new InternalLuaRuntimeError("should not reach end of fall-through switch");
         }
     }
 
@@ -405,7 +438,68 @@ public abstract class LuaFunction {
                 vm.internalReturn(t0);
                 return;
             default:
-                throw new InternalLuaRuntimeError("unknown resume point " + resume);
+                throw new InternalLuaRuntimeError("should not reach end of fall-through switch");
+        }
+    }
+
+    /**
+     * This method performs the lookup {@code _ENV._EXT.<type>.<functionName>}. This is the slow path when calling a type
+     * extension function.
+     * The arguments this method takes are the {@code _ENV}, the object's type and the function name.
+     */
+    protected static void lookupExtension(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
+        LuaObject t0 = null, t1 = null, t2 = null;
+        switch (resume) {
+            case -1 -> {
+                vm.registerLocals(0);
+                expressionStack = vm.registerExpressionStack(3);
+                vm.registerLocals(0);
+                if (args.length != 3) {
+                    throw new InternalLuaRuntimeError("expected 3 arguments, got " + args.length);
+                }
+                // assign locals in inverse order of consumption
+                t0 = args[2]; // funcName
+                t1 = args[1]; // type
+                t2 = args[0]; // env
+            }
+            case 0 -> {
+                t0 = expressionStack[0];
+                t1 = expressionStack[1];
+            }
+            case 1 -> {
+                t0 = expressionStack[0];
+            }
+            case 2 -> { }
+            default -> throw new InternalLuaRuntimeError("unknown resume point " + resume);
+        }
+        switch (resume) {
+            case -1:
+                // _ENV
+                t2 = indexedGet(vm, 0, t2, Singletons._EXT);
+                if (t2 == null) {
+                    expressionStack[0] = t0;
+                    expressionStack[1] = t1;
+                    return;
+                }
+            case 0:
+                // _ENV._EXT
+                t1 = indexedGet(vm, 1, t2, t1);
+                if (t1 == null) {
+                    expressionStack[0] = t0;
+                    return;
+                }
+            case 1:
+                // _ENV._EXT.<type>
+                t0 = indexedGet(vm, 2, t1, t0);
+                if (t1 == null) {
+                    return;
+                }
+            case 2:
+                // _ENV._EXT.<type>.<funcName>
+                vm.internalReturn(t0);
+                return;
+            default:
+                throw new InternalLuaRuntimeError("should not reach end of fall-through switch");
         }
     }
 }
