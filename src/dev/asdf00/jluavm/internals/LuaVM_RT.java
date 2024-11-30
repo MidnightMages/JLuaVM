@@ -14,7 +14,7 @@ import java.util.Random;
 import java.util.Stack;
 import java.util.function.Supplier;
 
-@SuppressWarnings("unsused")
+@SuppressWarnings("unused")
 public class LuaVM_RT extends LuaVM {
 
     public LuaVM_RT() {
