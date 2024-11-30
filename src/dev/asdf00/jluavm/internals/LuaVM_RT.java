@@ -54,6 +54,10 @@ public class LuaVM_RT extends LuaVM {
         }
     }
 
+    public LuaObject getCallerEnv() {
+        return luaCallStack.size() > 1 ? luaCallStack.get(luaCallStack.size() - 2).lFunc._ENV[0] : null;
+    }
+
     // =================================================================================================================
     // scope setup methods
     // =================================================================================================================

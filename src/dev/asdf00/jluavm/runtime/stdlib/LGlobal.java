@@ -62,12 +62,12 @@ public class LGlobal {
                 vm.error(new LuaArgumentError(0, "load", "string expected"));
                 return null;
             }
-            var env = args.length > 1 ? args[0] : null;
+            var env = args.length > 1 ? args[1] : null;
             if (env != null && !env.isTable()) {
                 vm.error(new LuaArgumentError(1, "load", "table or nothing expected"));
                 return null;
             }
-            var rv2 = vm.load(code.getString(), vm.get_G()); // TODO change this to the current _ENV so that you cant break out of a sandbox
+            var rv2 = vm.load(code.getString(), env == null ? vm.getCallerEnv() : env);
             return LuaObject.of(rv2);
         }).obj());
 
