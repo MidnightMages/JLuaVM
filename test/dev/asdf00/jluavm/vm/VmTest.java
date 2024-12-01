@@ -640,13 +640,54 @@ public class VmTest {
                 end
                 local mdr = ("Mordor"):landOf("shadows")
                 local shr = ("the Shire"):landOf "lush grass lands"
-                return mdr.."\\n"..shr.."\\n"
+                local gndr = "Gondor":landOf "Kingsmen"
+                return mdr.."\\n"..shr.."\\n"..gndr.."\\n"
                 """));
         var result = vm.run();
         assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS, new LuaObject[]{LuaObject.of("""
                In the land of Mordor where the shadows lie.
                In the land of the Shire where the lush grass lands lie.
-                """)}), result);
+               In the land of Gondor where the Kingsmen lie.
+               """)}), result);
+    }
+
+    @Test
+    public void literalExtensionCalls() {
+        var vm = LuaVM.create();
+        vm.withStdLib();
+        assertDoesNotThrow(() -> vm.withRootFunc("""
+                rv = ""
+                function print(a)
+                    rv = rv .. tostring(a) .. "\\n"
+                end
+                function _EXT.string.toNum(str)
+                  if (str == "I") then return 1 end
+                  if (str == "II") then return 2 end
+                  if (str == "III") then return 3 end
+                  if (str == "IV") then return 4 end
+                  if (str == "V") then return 5 end
+                  return nil
+                end
+                local romanConst<const> = {"I", "II", "III", "IV", "V"}
+                function _EXT.number.toRoman(int)
+                  return romanConst[int]
+                end
+                
+                print(5:toRoman() .. " guys")
+                local myInt = ("III":toNum() + tostring("II":toNum()))
+                print(myInt:toRoman())
+                local four = ("V":toNum() - tostring("I":toNum())):toRoman()
+                print(four)
+                print(3:toRoman():toNum())
+                return rv
+                """));
+        var result = vm.run();
+        assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS, new LuaObject[]{LuaObject.of("""
+               V guys
+               V
+               IV
+               3
+               """)}), result);
     }
 
 }

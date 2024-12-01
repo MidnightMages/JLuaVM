@@ -44,6 +44,16 @@ public abstract class LuaVM {
         _G = LGlobal.getTable(false);
         _G.set("math", LMath.getTable());
         _G.set("table", LTable.getTable());
+        _G.set("string", LuaObject.table());  // TODO implement string functions
+        _G.set("_EXT", LuaObject.table(
+                LuaObject.of("nil"), LuaObject.table(),
+                LuaObject.of("boolean"), LuaObject.table(),
+                LuaObject.of("number"), LuaObject.table(),
+                LuaObject.of("string"), _G.get("string"),
+                LuaObject.of("function"), LuaObject.table(),
+                LuaObject.of("thread"), LuaObject.table(),
+                LuaObject.of("table"), LuaObject.table()
+        ));
         return this;
     }
 

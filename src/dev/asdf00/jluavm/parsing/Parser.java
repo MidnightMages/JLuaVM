@@ -483,7 +483,7 @@ public final class Parser {
             qLocals.add(new Tuple<>(info, onlyIdent));
             while (ltok == COMMA) {
                 scan();
-                var packedInfo = ValExp();
+                var packedInfo = OopValExp();
                 assignTargets.add(packedInfo.x());
                 qLocals.add(new Tuple<>(packedInfo.y(), packedInfo.z()));
                 if (!isAssignable()) {
@@ -510,6 +510,28 @@ public final class Parser {
             }
         }
         return result;
+    }
+
+    private Triple<Node, SpecificVarInfo, Boolean> OopValExp() {
+        if (OOP_CALLABLE_LITERAL_START.contains(ltok)) {
+            Node result = OopCallableLiteral();
+            if (ltok == COLON) {
+                result = OopFuncCall(result);
+                loop:
+                for (; ; ) {
+                    switch (ltok) {
+                        case LBRAK, DOT -> result = DeRef(result);
+                        case COLON, LPAR, LITERAL_STRING, LBRAC -> result = FuncCall(result);
+                        default -> {
+                            break loop;
+                        }
+                    }
+                }
+            }
+            return new Triple<>(result, null, false);
+        } else {
+            return ValExp();
+        }
     }
 
     private Triple<Node, SpecificVarInfo, Boolean> ValExp() {
@@ -566,6 +588,17 @@ public final class Parser {
             check(IDENT);
             func = ConstantNode.ofIdent(cur);
         }
+        Position pos = la.pos();
+        Node[] args = Args();
+        return new FunctionCallNode(pos, object, getEnv(pos), func, args);
+    }
+
+    private Node OopFuncCall(Node callable) {
+        check(COLON);
+        Node object = callable;
+        // code gen in FunctionCallNode relies on this being a constant ident
+        check(IDENT);
+        Node func = ConstantNode.ofIdent(cur);
         Position pos = la.pos();
         Node[] args = Args();
         return new FunctionCallNode(pos, object, getEnv(pos), func, args);
@@ -791,6 +824,27 @@ public final class Parser {
     private Node TermExp() {
         // constants, funcdef or ValExp
         switch (ltok) {
+            case TDOT -> {
+                scan();
+                if (!symTab.paramsDefined()) {
+                    throw new LuaSemanticException(cur.pos(), "cannot use '...' outside a vararg function");
+                }
+                return new LocalAccessNode(cur.pos(), symTab.get("..."));
+            }
+            case FUNCTION -> {
+                scan();
+                return FuncBody(false);
+            }
+            default -> {
+                return OopValExp().x();
+            }
+        }
+    }
+
+    private static final EnumSet<TokenType> OOP_CALLABLE_LITERAL_START = EnumSet.of(NIL, TRUE, FALSE, NUMERAL, LITERAL_STRING, LBRAC);
+
+    private Node OopCallableLiteral() {
+        switch (ltok) {
             case NIL -> {
                 scan();
                 return ConstantNode.ofNil(cur.pos());
@@ -807,22 +861,11 @@ public final class Parser {
                 scan();
                 return ConstantNode.ofB64(cur);
             }
-            case TDOT -> {
-                scan();
-                if (!symTab.paramsDefined()) {
-                    throw new LuaSemanticException(cur.pos(), "cannot use '...' outside a vararg function");
-                }
-                return new LocalAccessNode(cur.pos(), symTab.get("..."));
-            }
-            case FUNCTION -> {
-                scan();
-                return FuncBody(false);
-            }
             case LBRAC -> {
                 return TableConstructor();
             }
             default -> {
-                return ValExp().x();
+                throw new InternalLuaLoadingError("should not reach");
             }
         }
     }

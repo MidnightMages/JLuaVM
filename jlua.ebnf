@@ -20,11 +20,13 @@ Stat ::= ";" |
 Attrib ::= [ "<" ident ">" ]
 
 # assignable if cur = "]" | ident
-StatExp ::= ( "(" Exp ")" ( DeRef | FuncCall) | ident ) { ( DeRef | FuncCall) }
-            ( ###assignable### { "," ValExp ###assignable### } "=" ExpList | ###not_assignable### )
+StatExp ::= ( "(" Exp ")" ( DeRef | FuncCall) | OopCallableLiteral OopFuncCall | ident ) { ( DeRef | FuncCall) }
+            ( ###assignable### { "," OopValExp ###assignable### } "=" ExpList | ###not_assignable### )
+OopValExp ::= OopCallableLiteral [ OopFuncCall { ( DeRef | FuncCall) } ] | ValExp
 ValExp ::= ( "(" Exp ")" | ident ) { ( DeRef | FuncCall) }
 DeRef ::= "[" Exp "]" | "." ident
 FuncCall ::= [ ":" ident ] Args
+OopFuncCall ::= ":" ident Args
 
 ExpList ::= Exp { "," Exp }
 
@@ -40,7 +42,8 @@ BinOp8 ::= BinOp9 { ( "+" | "-" ) BinOp9 }
 BinOp9 ::= UnOp { ( "*" | "/" | "//" | "%" ) UnOp }
 UnOp ::= { "not" | "#" | "-" | "~" } BinOp10
 BinOp10 ::= TermExp { "^" TermExp }
-TermExp ::= "nil" | "false" | "true" | numeral | literal_string | "..." | "function" FuncBody | ValExp | TableConstructor
+TermExp ::= "..." | "function" FuncBody | OopValExp
+OopCallableLiteral ::= "nil" | "false" | "true" | numeral | literal_string | TableConstructor
 
 FuncBody ::= "(" [ ParList ] ")" Block "end"
 
