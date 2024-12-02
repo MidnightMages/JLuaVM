@@ -8,6 +8,7 @@ import dev.asdf00.jluavm.parsing.ir.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.IRFunction;
 import dev.asdf00.jluavm.runtime.stdlib.LGlobal;
 import dev.asdf00.jluavm.runtime.stdlib.LMath;
+import dev.asdf00.jluavm.runtime.stdlib.LString;
 import dev.asdf00.jluavm.runtime.stdlib.LTable;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
@@ -44,12 +45,12 @@ public abstract class LuaVM {
         _G = LGlobal.getTable(false);
         _G.set("math", LMath.getTable());
         _G.set("table", LTable.getTable());
-        _G.set("string", LuaObject.table());  // TODO implement string functions
+        _G.set("string", LString.getTable());
         _G.set("_EXT", LuaObject.table(
                 LuaObject.of("nil"), LuaObject.table(),
                 LuaObject.of("boolean"), LuaObject.table(),
                 LuaObject.of("number"), LuaObject.table(),
-                LuaObject.of("string"), _G.get("string"),
+                LuaObject.of("string"), LString.getExtTable(),
                 LuaObject.of("function"), LuaObject.table(),
                 LuaObject.of("thread"), LuaObject.table(),
                 LuaObject.of("table"), LuaObject.table()
