@@ -11,11 +11,19 @@ import java.util.Stack;
 public final class FunctionCallFrame extends AbstractCallStackFrame {
     public final LuaFunction lFunc;
     private final Stack<InternalCallFrame> scopes;
+    public int failCnt;
+    public boolean isResumable;
+    public boolean isProtected;
+    public LuaFunction msgHandler;
 
     public FunctionCallFrame(LuaObject[] locals, LuaFunction lFunc) {
         super(locals, 0);
         this.lFunc = lFunc;
         this.scopes = new Stack<>();
+        isResumable = true;
+        failCnt = 0;
+        isProtected = false;
+        msgHandler = null;
     }
 
     public AbstractCallStackFrame getTopFrame() {
@@ -35,6 +43,11 @@ public final class FunctionCallFrame extends AbstractCallStackFrame {
         }
         Arrays.fill(locals, scp.startLocals, scp.startLocals + scp.localCnt, null);
         getTopFrame().rvals = rvals;
+    }
+
+    public void asProtected(LuaFunction msgHandler) {
+        isProtected = true;
+        this.msgHandler = msgHandler;
     }
 
     @Override

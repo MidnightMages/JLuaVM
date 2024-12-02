@@ -690,4 +690,14 @@ public class VmTest {
                """)}), result);
     }
 
+    @Test
+    public void simpleNilCall() {
+        var vm = LuaVM.create();
+        assertDoesNotThrow(() -> vm.withRootFunc("""
+                (nil)()
+                """));
+        var res = vm.run();
+        assertEquals(LuaVM.VmRunState.EXECUTION_ERROR, res.state());
+    }
+
 }

@@ -37,6 +37,8 @@ public class LGlobal {
          */
         }
 
+        // errors
+
         /* TODO, add the following ones: https://www.lua.org/manual/5.4/manual.html#6.1
         collectgarbage
         error
@@ -47,6 +49,9 @@ public class LGlobal {
         warn
         xpcall
          */
+
+        rv.set("pcall", pcall);
+
         rv.set("ipairs", ipairs);
         rv.set("pairs", pairs);
         rv.set("next", next);
@@ -375,4 +380,48 @@ public class LGlobal {
         }
         return nidx.isNil() ? new LuaObject[]{LuaObject.nil(), LuaObject.nil()} : new LuaObject[]{nidx, table.get(nidx)};
     })).obj();
+
+    private static final LuaObject pcall = LuaObject.of(new LuaFunction() {
+        @Override
+        public int getMaxLocalsSize() {
+            return 2;
+        }
+
+        @Override
+        public int getArgCount() {
+            return 2;
+        }
+
+        @Override
+        public boolean hasParamsArg() {
+            return true;
+        }
+
+        @Override
+        public void invoke(LuaVM_RT vm, LuaObject[] stackFrame, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
+            if (resume == -1) {
+                vm.registerLocals(1);
+            }
+            switch (resume) {
+                case -1:
+                    if (!stackFrame[0].isFunction()) {
+                        vm.error(LuaObject.of("Expected argument #1 to be of type 'function', but it was of type '%s'!".formatted(stackFrame[0].getTypeAsString())));
+                        return;
+                    }
+                    vm.setProtected(null);
+                    vm.callExternal(0, stackFrame[0].getFunc(), stackFrame[1].asArray());
+                    return;
+                case 0:
+                    if (vm.isFailed()) {
+                        vm.returnValue(LuaObject.of(false), returned.length > 0 ? returned[0] : LuaObject.nil());
+                        return;
+                    } else {
+                        vm.returnValue(LuaObject.of(true), LuaObject.of(returned));
+                        return;
+                    }
+                default:
+                    throw new InternalLuaRuntimeError("unknown resume point " + resume);
+            }
+        }
+    });
 }

@@ -334,7 +334,7 @@ public abstract class LuaFunction {
                 t1 = t0.getMetaValueOrNil(Singletons.__call);
                 if (t1.isNil()) {
                     // non-callable value
-                    vm.error(new LuaTypeError());
+                    vm.error(LuaObject.of("trying to call a nil value"));
                     return;
                 }
                 if (t1.isFunction()) {
