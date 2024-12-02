@@ -645,10 +645,10 @@ public class VmTest {
                 """));
         var result = vm.run();
         assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS, new LuaObject[]{LuaObject.of("""
-               In the land of Mordor where the shadows lie.
-               In the land of the Shire where the lush grass lands lie.
-               In the land of Gondor where the Kingsmen lie.
-               """)}), result);
+                In the land of Mordor where the shadows lie.
+                In the land of the Shire where the lush grass lands lie.
+                In the land of Gondor where the Kingsmen lie.
+                """)}), result);
     }
 
     @Test
@@ -672,7 +672,7 @@ public class VmTest {
                 function _EXT.number.toRoman(int)
                   return romanConst[int]
                 end
-                
+                                
                 print(5:toRoman() .. " guys")
                 local myInt = ("III":toNum() + tostring("II":toNum()))
                 print(myInt:toRoman())
@@ -683,11 +683,11 @@ public class VmTest {
                 """));
         var result = vm.run();
         assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS, new LuaObject[]{LuaObject.of("""
-               V guys
-               V
-               IV
-               3
-               """)}), result);
+                V guys
+                V
+                IV
+                3
+                """)}), result);
     }
 
     @Test
@@ -698,6 +698,34 @@ public class VmTest {
                 """));
         var res = vm.run();
         assertEquals(LuaVM.VmRunState.EXECUTION_ERROR, res.state());
+    }
+
+    @Test
+    public void simpleXPCall() {
+        var vm = LuaVM.create().withStdLib();
+        assertDoesNotThrow(() -> vm.withRootFunc("""
+                pres = ""
+                local function print(a)
+                    pres = pres .. tostring(a) .. "\\n"
+                end
+                local ra, rb = xpcall(
+                    function(p1)
+                        print("print received: " .. tostring(p1))
+                        error(99)
+                    end,
+                    function(err)
+                        return "raised " .. tostring(err) .. " Luftballons"
+                    end,
+                    "i am an argument")
+                return pres, ra, rb
+                """));
+        var res = vm.run();
+        assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS,
+                new LuaObject[]{
+                        LuaObject.of("print received: i am an argument\n"),
+                        LuaObject.of(false),
+                        LuaObject.of("raised 99 Luftballons")
+                }), res);
     }
 
 }
