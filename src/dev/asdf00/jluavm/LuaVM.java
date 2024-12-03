@@ -13,10 +13,19 @@ import dev.asdf00.jluavm.runtime.stdlib.LTable;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
+import dev.asdf00.jluavm.utils.Tuple;
 
+import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 public abstract class LuaVM {
 
@@ -26,7 +35,8 @@ public abstract class LuaVM {
 
     protected LuaObject _G = LuaObject.nil();
     protected LuaFunction rootFunc = null;
-    private void AssertRootFuncNull(){
+
+    private void AssertRootFuncNull() {
         if (rootFunc != null)
             throw new IllegalStateException("Cannot set _G like this after code has been loaded");
     }
@@ -90,6 +100,104 @@ public abstract class LuaVM {
             return rootCtor.newInstance(new LuaObject[]{_ENV}, Singletons.EMPTY_LUA_OBJ_ARRAY);
         } catch (ReflectiveOperationException e) {
             throw new InternalLuaLoadingError(e);
+        }
+    }
+
+    public void dumpJICFor(String luaCode, Path into) {
+        IRFunction rootFunc = new Parser(luaCode).parse();
+        var javaIntermediateCode = new CompilationState(jClassNameGen);
+        rootFunc.generate(javaIntermediateCode);
+        javaIntermediateCode.resolveAllPatches();
+        var lld = into.resolve("dev/asdf00/jluavm/lualoaded");
+        try {
+            if (!Files.exists(lld)) {
+                Files.createDirectory(lld);
+            }
+            for (var jic : javaIntermediateCode.functionJavaCode) {
+                Files.writeString(lld.resolve(jic.x() + ".java"), jic.y());
+            }
+            String depts = javaIntermediateCode.innerFunctionDependencies.stream().map(lst -> String.join(",", lst.stream().map(i -> i.toString()).toArray(String[]::new)))
+                    .collect(Collectors.joining(";"));
+            Files.writeString(lld.resolve("depts.txt"), depts);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        System.out.println("successfully dumped files!");
+    }
+
+    public void withDumpedRoot(String depFile, Class<? extends LuaFunction>... jClasses) {
+        var constructors = (Constructor<? extends LuaFunction>[]) new Constructor<?>[jClasses.length];
+        var depts = new Field[jClasses.length];
+        for (int i = 0; i < constructors.length; i++) {
+            try {
+                constructors[i] = jClasses[i].getDeclaredConstructor(LuaObject[].class, LuaObject[].class);
+                depts[i] = jClasses[i].getDeclaredField("innerFunctions");
+            } catch (ReflectiveOperationException e) {
+                throw new InternalLuaLoadingError(e);
+            }
+        }
+
+        // load dependencies
+        var innerFunctionDependencies = new ArrayList<ArrayList<Integer>>();
+        var left = depFile;
+        for (; ; ) {
+            int gSplit = left.indexOf(';');
+            if (gSplit < 0) {
+                break;
+            }
+            var iStr = left.substring(0, gSplit);
+            left = left.substring(gSplit + 1);
+            var innerList = new ArrayList<Integer>();
+            for (; ; ) {
+                int iSplit = iStr.indexOf(',');
+                if (iSplit < 0) {
+                    break;
+                }
+                innerList.add(Integer.valueOf(Integer.parseInt(iStr.substring(0, iSplit))));
+                iStr = iStr.substring(iSplit + 1);
+            }
+            if (!iStr.isEmpty()) {
+                innerList.add(Integer.valueOf(Integer.parseInt(iStr)));
+            }
+            innerFunctionDependencies.add(innerList);
+        }
+        if (!left.isEmpty()) {
+            var iStr = left;
+            var innerList = new ArrayList<Integer>();
+            for (; ; ) {
+                int iSplit = iStr.indexOf(',');
+                if (iSplit < 0) {
+                    break;
+                }
+                innerList.add(Integer.valueOf(Integer.parseInt(iStr.substring(0, iSplit))));
+                iStr = iStr.substring(iSplit + 1);
+            }
+            if (!iStr.isEmpty()) {
+                innerList.add(Integer.valueOf(Integer.parseInt(iStr)));
+            }
+            innerFunctionDependencies.add(innerList);
+        } else {
+            innerFunctionDependencies.add(new ArrayList<>());
+        }
+
+        // link classes
+        for (int i = 0; i < constructors.length; i++) {
+            try {
+                var innerDepts = innerFunctionDependencies.get(i);
+                var ds = (Constructor<? extends LuaFunction>[]) new Constructor<?>[innerDepts.size()];
+                for (int j = 0; j < innerDepts.size(); j++) {
+                    ds[j] = constructors[innerDepts.get(j)];
+                }
+                depts[i].set(null, ds);
+            } catch (ReflectiveOperationException e) {
+                throw new InternalLuaLoadingError(e);
+            }
+        }
+        // return constructor for root function
+        try {
+            rootFunc = constructors[constructors.length - 1].newInstance(new LuaObject[]{_G}, Singletons.EMPTY_LUA_OBJ_ARRAY);
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
         }
     }
 

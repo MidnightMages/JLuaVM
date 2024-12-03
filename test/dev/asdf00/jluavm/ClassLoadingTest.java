@@ -1,10 +1,15 @@
 package dev.asdf00.jluavm;
 
+import dev.asdf00.jluavm.lualoaded.GeneratedLuaFunc_0;
 import org.joor.Reflect;
 import org.joor.ReflectException;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class ClassLoadingTest {
     private static final String VERY_SIMPLE_CLASS = """
@@ -59,5 +64,22 @@ public class ClassLoadingTest {
             ex = e;
         }
         assertNotNull(ex);
+    }
+
+    // @Test
+    public void dumpStuff() {
+        LuaVM.create().dumpJICFor("""
+                        return 1 + 2
+                        """,
+                Path.of("test"));
+    }
+
+    // @Test
+    @SuppressWarnings("unchecked")
+    public void debugDumpedStuff() throws Exception {
+        var vm = LuaVM.create();
+        vm.withStdLib();
+        vm.withDumpedRoot(Files.readString(Path.of("test/dev/asdf00/jluavm/lualoaded/depts.txt")), GeneratedLuaFunc_0.class);
+        vm.run();
     }
 }
