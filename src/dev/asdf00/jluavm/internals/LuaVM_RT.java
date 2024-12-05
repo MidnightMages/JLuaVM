@@ -32,7 +32,6 @@ public class LuaVM_RT extends LuaVM {
             return new VmResult(VmRunState.EXECUTION_ERROR, new LuaObject[]{LuaObject.of("Invalid root function")});
         }
         rootFail = false;
-        rootErrorMsg = null;
         curFuncFrame = luaCallStack.push(new FunctionCallFrame(new LuaObject[rootFunc.getMaxLocalsSize()], rootFunc));
         execLoop();
         return new VmResult(rootFail ? VmRunState.EXECUTION_ERROR : VmRunState.SUCCESS, rootReturned);
@@ -45,15 +44,17 @@ public class LuaVM_RT extends LuaVM {
     // magic state
     public Random lMathRandom = new Random();
 
+    private boolean isErroring;
+
     Stack<FunctionCallFrame> luaCallStack;
     FunctionCallFrame curFuncFrame;
 
     private boolean rootFail;
-    private LuaObject rootErrorMsg;
     private LuaObject[] rootReturned;
 
     private void execLoop() {
         for (; ; ) {
+            isErroring = false;
             if (curFuncFrame != null) {
                 curFuncFrame.getTopFrame().execute(this);
             } else {
@@ -97,6 +98,10 @@ public class LuaVM_RT extends LuaVM {
         return curFuncFrame.failCnt > 0;
     }
 
+    public boolean isErroring() {
+        return isErroring;
+    }
+
     // =================================================================================================================
     // lua vm call magic setup methods (MUST be followed by return, and return must be preceded by exactly one of these, or throw internal lua error)
     // =================================================================================================================
@@ -111,6 +116,7 @@ public class LuaVM_RT extends LuaVM {
 
     public void error(LuaObject errMsg) {
         // setup vm for error
+        isErroring = true;
         int frmIdx;
         for (frmIdx = luaCallStack.size() - 1; frmIdx >= 0 && !luaCallStack.get(frmIdx).isProtected; frmIdx--) {
             // set all stack frames from the current one until the first protected frame to be un-resumable

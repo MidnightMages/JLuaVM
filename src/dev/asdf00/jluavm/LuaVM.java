@@ -12,12 +12,10 @@ import dev.asdf00.jluavm.runtime.stdlib.LTable;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
-import dev.asdf00.jluavm.utils.Tuple;
 
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -115,7 +113,7 @@ public abstract class LuaVM {
             for (var jic : javaIntermediateCode.functionJavaCode) {
                 Files.writeString(lld.resolve(jic.x() + ".java"), jic.y());
             }
-            String depts = javaIntermediateCode.innerFunctionDependencies.stream().map(lst -> String.join(",", lst.stream().map(i -> i.toString()).toArray(String[]::new)))
+            String depts = javaIntermediateCode.innerFunctionDependencies.stream().map(lst -> String.join(",", lst.stream().map(Object::toString).toArray(String[]::new)))
                     .collect(Collectors.joining(";"));
             Files.writeString(lld.resolve("depts.txt"), depts);
         } catch (IOException e) {
@@ -125,6 +123,7 @@ public abstract class LuaVM {
     }
 
     public void withDumpedRoot(String depFile, Class<? extends LuaFunction>... jClasses) {
+        @SuppressWarnings("unchecked")
         var constructors = (Constructor<? extends LuaFunction>[]) new Constructor<?>[jClasses.length];
         var depts = new Field[jClasses.length];
         for (int i = 0; i < constructors.length; i++) {
@@ -152,11 +151,11 @@ public abstract class LuaVM {
                 if (iSplit < 0) {
                     break;
                 }
-                innerList.add(Integer.valueOf(Integer.parseInt(iStr.substring(0, iSplit))));
+                innerList.add(Integer.parseInt(iStr.substring(0, iSplit)));
                 iStr = iStr.substring(iSplit + 1);
             }
             if (!iStr.isEmpty()) {
-                innerList.add(Integer.valueOf(Integer.parseInt(iStr)));
+                innerList.add(Integer.parseInt(iStr));
             }
             innerFunctionDependencies.add(innerList);
         }
@@ -168,11 +167,11 @@ public abstract class LuaVM {
                 if (iSplit < 0) {
                     break;
                 }
-                innerList.add(Integer.valueOf(Integer.parseInt(iStr.substring(0, iSplit))));
+                innerList.add(Integer.parseInt(iStr.substring(0, iSplit)));
                 iStr = iStr.substring(iSplit + 1);
             }
             if (!iStr.isEmpty()) {
-                innerList.add(Integer.valueOf(Integer.parseInt(iStr)));
+                innerList.add(Integer.parseInt(iStr));
             }
             innerFunctionDependencies.add(innerList);
         } else {
@@ -183,6 +182,7 @@ public abstract class LuaVM {
         for (int i = 0; i < constructors.length; i++) {
             try {
                 var innerDepts = innerFunctionDependencies.get(i);
+                @SuppressWarnings("unchecked")
                 var ds = (Constructor<? extends LuaFunction>[]) new Constructor<?>[innerDepts.size()];
                 for (int j = 0; j < innerDepts.size(); j++) {
                     ds[j] = constructors[innerDepts.get(j)];
@@ -209,6 +209,14 @@ public abstract class LuaVM {
                 return state == other.state && Arrays.equals(returnVars, other.returnVars);
             }
             return false;
+        }
+
+        @Override
+        public String toString() {
+            return "VmResult[" +
+                    "state=" + state +
+                    ", returnVars=" + Arrays.toString(returnVars) +
+                    ']';
         }
     }
 
