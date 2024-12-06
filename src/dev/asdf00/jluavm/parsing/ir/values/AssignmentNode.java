@@ -140,7 +140,7 @@ public class AssignmentNode extends Node {
                     // insert closability check
                     assignment = """
                             if (RTUtils.isTruthy(%s) && %s.getMetaValueOrNil(Singletons.__close).isNil()) {
-                                vm.error(new LuaMetaTableError());
+                                vm.error(LuaObject.of("Variable got a non-closable value"));
                                 return;
                             }
                             vm.addClosable(%s);

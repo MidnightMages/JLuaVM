@@ -5,14 +5,14 @@ import dev.asdf00.jluavm.api.lambdas.LLFunction;
 import dev.asdf00.jluavm.api.lambdas.LLMultiFunction;
 import dev.asdf00.jluavm.api.lambdas.LLVaFunction;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
-import dev.asdf00.jluavm.runtime.errors.LuaArgumentError;
-import dev.asdf00.jluavm.runtime.errors.LuaUserError;
 import dev.asdf00.jluavm.runtime.types.AtomicLuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 
 import java.util.function.Function;
+
+import static dev.asdf00.jluavm.runtime.utils.RTUtils.*;
 
 public class LMath {
     private static LuaObject getIntNumberIfFits(double x) {
@@ -21,17 +21,17 @@ public class LMath {
 
     public static LuaObject abs(LuaVM_RT vm, LuaObject x) {
         if (x.isNumber()) return x.asDouble() < 0 ? x.unm() : x;
-        vm.errorArgType(0, "number", x);
+        vm.error(funcArgTypeError("math.abs", 0, x, "number"));
         return null;
     }
 
     public static LuaObject atan(LuaVM_RT vm, LuaObject y, LuaObject xOrNil) {
         if (!y.isNumber()) {
-            vm.errorArgType(0, "number", y);
+            vm.error(funcArgTypeError("math.atan", 0, y, "number"));
             return null;
         }
         if (!(xOrNil.isNumber() || xOrNil.isNil())) {
-            vm.errorArgType(1, "number or nil", xOrNil);
+            vm.error(funcArgAnyTypeError("math.atan", 1, xOrNil, "number", "nil"));
             return null;
         }
 
@@ -40,7 +40,7 @@ public class LMath {
 
     public static LuaObject ceil(LuaVM_RT vm, LuaObject x) {
         if (!x.isNumber()) {
-            vm.errorArgType(0, "number", x);
+            vm.error(funcArgTypeError("math.ceil", 0, x, "number"));
             return null;
         }
         return getIntNumberIfFits(Math.ceil(x.asDouble()));
@@ -48,7 +48,7 @@ public class LMath {
 
     public static LuaObject floor(LuaVM_RT vm, LuaObject x) {
         if (!x.isNumber()) {
-            vm.errorArgType(0, "number", x);
+            vm.error(funcArgTypeError("math.floor", 0, x, "number"));
             return null;
         }
         return getIntNumberIfFits(Math.floor(x.asDouble()));
@@ -56,11 +56,11 @@ public class LMath {
 
     public static LuaObject fmod(LuaVM_RT vm, LuaObject x, LuaObject y) {
         if (!x.isNumber()) {
-            vm.errorArgType(0, "number", x);
+            vm.error(funcArgTypeError("math.fmod", 0, x, "number"));
             return null;
         }
         if (!y.isNumber()) {
-            vm.errorArgType(1, "number", y);
+            vm.error(funcArgTypeError("math.fmod", 1, y, "number"));
             return null;
         }
 
@@ -70,11 +70,11 @@ public class LMath {
 
     private static LuaObject log(LuaVM_RT vm, LuaObject x, LuaObject baseOrNil) {
         if (!x.isNumber()) {
-            vm.errorArgType(0, "number", x);
+            vm.error(funcArgTypeError("math.log", 0, x, "number"));
             return null;
         }
         if (!(baseOrNil.isNumber() | baseOrNil.isNil())) {
-            vm.errorArgType(1, "number or nil", baseOrNil);
+            vm.error(funcArgAnyTypeError("math.log", 1, baseOrNil, "number", "nil"));
             return null;
         }
 
@@ -88,7 +88,7 @@ public class LMath {
             var fracPart = dx - fullPart;
             return new LuaObject[]{getIntNumberIfFits(fullPart), LuaObject.of(fracPart)};
         }
-        vm.errorArgType(0, "number", x);
+        vm.error(funcArgTypeError("math.modf", 0, x, "number"));
         return null;
     }
 
@@ -100,7 +100,7 @@ public class LMath {
         // all args must be int coercible
         for (int i = 0; i < args.length; i++) {
             if (!args[i].isIntCoercible()) {
-                vm.errorArgType(i, "integer", args[i]);
+                vm.error(funcArgTypeError("math.random", i, args[i], "integer"));
                 return null;
             }
         }
@@ -114,14 +114,14 @@ public class LMath {
             if (n == 0) {
                 return LuaObject.of(rnd.nextLong());
             } else if (n < 0) {
-                vm.error(new LuaArgumentError(0, "random", "interval is empty"));
+                vm.error(funcBadArgError("math.random", 0, "interval is empty"));
                 return null;
             }
         } else if (args.length == 2) {
             m = args[0].asLong();
             n = args[1].asLong();
         } else {
-            vm.error(new LuaUserError("too many arguments"));
+            vm.error(LuaObject.of("In 'math.random': Too many arguments"));
             return null;
         }
         return LuaObject.of(rnd.nextLong(m, n + 1)); // [m, n]
@@ -135,7 +135,7 @@ public class LMath {
             seed = rnd.nextLong();
         } else { // extra args (2nd and beyond) are just ignored in luac 5.4 it seems
             if (!args[0].isIntCoercible()) {
-                vm.errorArgType(0, "integer", args[0]);
+                vm.error(funcArgTypeError("math.randomseed", 0, args[0], "integer"));
                 return null;
             }
             seed = args[0].asLong();
@@ -146,25 +146,25 @@ public class LMath {
 
     public static LuaObject ult(LuaVM_RT vm, LuaObject m, LuaObject n) {
         if (!m.isIntCoercible()) {
-            vm.errorArgType(0, "integer", m);
+            vm.error(funcArgTypeError("math.ult", 0, m, "integer"));
             return null;
         }
         if (!n.isIntCoercible()) {
-            vm.errorArgType(0, "integer", n);
+            vm.error(funcArgTypeError("math.ult", 1, n, "integer"));
             return null;
         }
 
         return LuaObject.of(m.asLong() < n.asLong());
     }
 
-    private static LuaObject func1d1d(LuaVM_RT vm, LuaObject x, Function<Double, Double> f) {
-        if (x.isNumber()) return LuaObject.of(f.apply(x.asDouble()));
-        vm.errorArgType(0, "number", x);
-        return null;
-    }
-
     private static void addSingleRvFunc1d1d(LuaObject table, String name, Function<Double, Double> f) {
-        table.set(name, AtomicLuaFunction.forOneResult((vm, x) -> func1d1d(vm, x, f)).obj());
+        table.set(name, AtomicLuaFunction.forOneResult((vm, x) -> {
+            if (x.isNumber()) {
+                return LuaObject.of(f.apply(x.asDouble()));
+            }
+            vm.error(funcArgTypeError(name, 1, x, "number"));
+            return null;
+        }).obj());
     }
 
     private static void addSingleRvFunc(LuaObject table, String name, LLFunction f) {
@@ -211,13 +211,14 @@ public class LMath {
                             min = arg;
                         }
                     } else if (min.isTable() || arg.isTable()) {
+                        // TODO: fix this
                         var mtf = isMax ? (min.isTable() ? min : arg) : (arg.isTable() ? arg : min);
                         var ltf = mtf.getMetaValueOrNil("__lt");
                         if (ltf == null) {
-                            vm.error(new LuaUserError("attempt to compare number with table"));
+                            vm.error(LuaObject.of("Attempt to compare number with table"));
                             return;
                         } else if (!ltf.isFunction()) {
-                            vm.error(new LuaUserError("attempt to call a %s value".formatted(ltf.getTypeAsString())));
+                            vm.error(LuaObject.of("attempt to call a %s value".formatted(ltf.getTypeAsString())));
                             return;
                         }
                         expressionStack[0] = min;

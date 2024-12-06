@@ -1,8 +1,6 @@
 package dev.asdf00.jluavm.internals;
 
 import dev.asdf00.jluavm.LuaVM;
-import dev.asdf00.jluavm.runtime.errors.AbstractLuaError;
-import dev.asdf00.jluavm.runtime.errors.LuaTypeError;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.LFunc;
@@ -16,11 +14,14 @@ import java.util.function.Supplier;
 
 @SuppressWarnings("unused")
 public class LuaVM_RT extends LuaVM {
+    // it was brought to me in a dream that this is the optimal number, for sure
+    public static final int ERROR_LOOP_GRACE_CNT = 256;
+    public static final int MAX_LUA_STACK_SIZE = 1024*1024*1024;
 
     public LuaVM_RT() {
         luaCallStack = new Stack<>();
         curFuncFrame = null;
-        returnVals = null;
+        rootReturned = null;
     }
 
     @Override
@@ -28,9 +29,10 @@ public class LuaVM_RT extends LuaVM {
         if (rootFunc == null) {
             return new VmResult(VmRunState.EXECUTION_ERROR, new LuaObject[]{LuaObject.of("Invalid root function")});
         }
+        rootFail = false;
         curFuncFrame = luaCallStack.push(new FunctionCallFrame(new LuaObject[rootFunc.getMaxLocalsSize()], rootFunc));
         execLoop();
-        return new VmResult(VmRunState.SUCCESS, returnVals);
+        return new VmResult(rootFail ? VmRunState.EXECUTION_ERROR : VmRunState.SUCCESS, rootReturned);
     }
 
     // =================================================================================================================
@@ -40,12 +42,17 @@ public class LuaVM_RT extends LuaVM {
     // magic state
     public Random lMathRandom = new Random();
 
+    private boolean isErroring;
+
     Stack<FunctionCallFrame> luaCallStack;
     FunctionCallFrame curFuncFrame;
-    private LuaObject[] returnVals;
+
+    private boolean rootFail;
+    private LuaObject[] rootReturned;
 
     private void execLoop() {
         for (; ; ) {
+            isErroring = false;
             if (curFuncFrame != null) {
                 curFuncFrame.getTopFrame().execute(this);
             } else {
@@ -54,12 +61,8 @@ public class LuaVM_RT extends LuaVM {
         }
     }
 
-    public LuaObject getCallerEnv() {
-        return luaCallStack.size() > 1 ? luaCallStack.get(luaCallStack.size() - 2).lFunc._ENV[0] : null;
-    }
-
     // =================================================================================================================
-    // scope setup methods
+    // setup methods
     // =================================================================================================================
 
     public LuaObject[] registerExpressionStack(int size) {
@@ -81,19 +84,62 @@ public class LuaVM_RT extends LuaVM {
         return curFuncFrame.getTopFrame().closables.pop();
     }
 
+    public LuaObject getCallerEnv() {
+        return luaCallStack.size() > 1 ? luaCallStack.get(luaCallStack.size() - 2).lFunc._ENV[0] : null;
+    }
+
+    public void setProtected(LuaFunction msgHandler) {
+        curFuncFrame.asProtected(msgHandler);
+    }
+
+    public boolean isFailed() {
+        return curFuncFrame.failCnt > 0;
+    }
+
+    public boolean isErroring() {
+        return isErroring;
+    }
+
     // =================================================================================================================
     // lua vm call magic setup methods (MUST be followed by return, and return must be preceded by exactly one of these, or throw internal lua error)
     // =================================================================================================================
 
-    public void error(AbstractLuaError err) {
-        throw new UnsupportedOperationException("errors not supported yet");
-    }
-
-    public void errorArgType(int argumentIndex, String expectedType, LuaObject actualObject) {
-        error(new LuaTypeError("Expected argument #%s to be of type '%s', but it was of type '%s'!".formatted(argumentIndex + 1, expectedType, actualObject.getTypeAsString())));
+    public void error(LuaObject errMsg) {
+        // setup vm for error
+        isErroring = true;
+        int frmIdx;
+        for (frmIdx = luaCallStack.size() - 1; frmIdx >= 0 && !luaCallStack.get(frmIdx).isProtected; frmIdx--) {
+            // set all stack frames from the current one until the first protected frame to be un-resumable
+            luaCallStack.get(frmIdx).isResumable = false;
+        }
+        if (frmIdx < 0) {
+            // root failure
+            // TODO gather stack trace
+            rootFail = true;
+            rootReturned = new LuaObject[]{errMsg};
+            luaCallStack.clear();
+            curFuncFrame = null;
+        } else {
+            var frame = luaCallStack.get(frmIdx);
+            frame.failCnt++;
+            if (frame.failCnt > ERROR_LOOP_GRACE_CNT) {
+                // failed too often in xpcall message handler, we break the loop by not calling the handler again
+                frame.getTopFrame().rvals = new LuaObject[]{LuaObject.of("error in error handling")};
+                curFuncFrame = frame;
+            } else if (frame.msgHandler != null) {
+                // call message handler
+                setupCall(frame.msgHandler, errMsg);
+            }
+        }
     }
 
     private void setupCall(LuaFunction externalTarget, LuaObject... args) {
+        if (luaCallStack.size() >= MAX_LUA_STACK_SIZE) {
+            rootFail = true;
+            rootReturned = new LuaObject[]{LuaObject.of("stack overflow error")};
+            luaCallStack.clear();
+            return;
+        }
         // setup new stack frame for call
         LuaObject[] nuStackFrame = new LuaObject[externalTarget.getMaxLocalsSize()];
         int srcArgIdx = 0;
@@ -199,9 +245,8 @@ public class LuaVM_RT extends LuaVM {
 
     public void tailCall(LuaFunction externalTarget, LuaObject... args) {
         if (curFuncFrame.lFunc != externalTarget) {
-            // this is sadly not a tail call, replace current stack frame with new call,
-            // thereby forwarding the return value
-            luaCallStack.pop();
+            // this is sadly not a tail call
+            curFuncFrame.isResumable = false;
             setupCall(externalTarget, args);
             return;
         }
@@ -228,10 +273,12 @@ public class LuaVM_RT extends LuaVM {
     public void returnValue(LuaObject... values) {
         assert Arrays.stream(values).noneMatch(Objects::isNull) : "null in return vals";
         // function exit
-        luaCallStack.pop();
+        do {
+            luaCallStack.pop();
+        } while (!luaCallStack.isEmpty() && !luaCallStack.peek().isResumable);
         if (luaCallStack.isEmpty()) {
             // root function returned
-            returnVals = values;
+            rootReturned = values;
             curFuncFrame = null;
         } else {
             curFuncFrame = luaCallStack.peek();

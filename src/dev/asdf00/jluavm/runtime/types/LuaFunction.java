@@ -3,9 +3,6 @@ package dev.asdf00.jluavm.runtime.types;
 import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
 import dev.asdf00.jluavm.exceptions.LuaRuntimeError;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
-import dev.asdf00.jluavm.runtime.errors.LuaArgumentError;
-import dev.asdf00.jluavm.runtime.errors.LuaForeignCallError;
-import dev.asdf00.jluavm.runtime.errors.LuaTypeError;
 import dev.asdf00.jluavm.runtime.utils.RTUtils;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 
@@ -94,7 +91,7 @@ public abstract class LuaFunction {
                 try {
                     return obj.get(idx);
                 } catch (LuaRuntimeError ex) {
-                    vm.error(new LuaForeignCallError());
+                    vm.error(LuaObject.of("Foreign call error: " + ex.getMessage()));
                     return null;
                 }
             } else {
@@ -103,7 +100,9 @@ public abstract class LuaFunction {
             }
         } else {
             // invalid type for indexed get
-            vm.error(new LuaTypeError());
+            // LUAC DEVIATION. Indexing a string value yields nil for every index in lua c. We believe this behavior to
+            // be inconsistent and error the same way we would do for the rest of the non-indexable types.
+            vm.error(LuaObject.of("Attempt to index a %s value".formatted(obj.getTypeAsString())));
             return null;
         }
     }
@@ -128,7 +127,7 @@ public abstract class LuaFunction {
                 try {
                     return obj.get(idx);
                 } catch (LuaRuntimeError ex) {
-                    vm.error(new LuaForeignCallError());
+                    vm.error(LuaObject.of("Foreign call error: " + ex.getMessage()));
                     return null;
                 }
             } else {
@@ -145,7 +144,7 @@ public abstract class LuaFunction {
         if (obj.isTable()) {
             LuaObject key = RTUtils.tryCoerceFloatToInt(idx);
             if (key.isNil() || key.isNaN()) {
-                vm.error(new LuaArgumentError());
+                vm.error(LuaObject.of("Table index can not be Nil or NaN"));
                 return true;
             }
             if (obj.hasKey(key)) {
@@ -168,7 +167,7 @@ public abstract class LuaFunction {
                     obj.set(idx, val);
                     return false;
                 } catch (LuaRuntimeError ex) {
-                    vm.error(new LuaForeignCallError());
+                    vm.error(LuaObject.of("Foreign call error: " + ex.getMessage()));
                     return true;
                 }
             } else {
@@ -177,7 +176,7 @@ public abstract class LuaFunction {
             }
         } else {
             // invalid type for indexed set
-            vm.error(new LuaTypeError());
+            vm.error(LuaObject.of("Attempt to set an index for a %s value".formatted(obj.getTypeAsString())));
             return true;
         }
     }
@@ -213,9 +212,25 @@ public abstract class LuaFunction {
             return LuaObject.of(obj.asMap().luaLen());
         } else {
             // type incompatible with length-of operator
-            vm.error(new LuaTypeError());
+            vm.error(LuaObject.of("Attempt to get length of a %s value".formatted(obj.getTypeAsString())));
             return null;
         }
+    }
+
+    protected static boolean numericForCheck(LuaVM_RT vm, LuaObject initial, LuaObject limit, LuaObject step) {
+        if (!initial.isNumberCoercible()) {
+            vm.error(LuaObject.of("Bad 'for' initial value (number expected, got %s)".formatted(initial.getTypeAsString())));
+            return true;
+        }
+        if (!limit.isNumberCoercible()) {
+            vm.error(LuaObject.of("Bad 'for' limit (number expected, got %s)".formatted(limit.getTypeAsString())));
+            return true;
+        }
+        if (!step.isNumberCoercible()) {
+            vm.error(LuaObject.of("Bad 'for' step (number expected, got %s)".formatted(step.getTypeAsString())));
+            return true;
+        }
+        return false;
     }
 
     // =================================================================================================================
@@ -334,7 +349,7 @@ public abstract class LuaFunction {
                 t1 = t0.getMetaValueOrNil(Singletons.__call);
                 if (t1.isNil()) {
                     // non-callable value
-                    vm.error(new LuaTypeError());
+                    vm.error(LuaObject.of("Trying to call a nil value"));
                     return;
                 }
                 if (t1.isFunction()) {
@@ -382,7 +397,7 @@ public abstract class LuaFunction {
                     t3 = t2.getMetaValueOrNil(t0);
                     if (t3.isNil()) {
                         // type incompatible with given binary operation
-                        vm.error(new LuaTypeError());
+                        vm.error(LuaObject.of("Attempt operation '%s' on a '%s' with a '%s'".formatted(t0.asString().substring(2), t1.getTypeAsString(), t2.getTypeAsString())));
                         return;
                     }
                 }
@@ -425,7 +440,7 @@ public abstract class LuaFunction {
                 t0 = t1.getMetaValueOrNil(t0);
                 if (t0.isNil()) {
                     // type incompatible with given unary operation
-                    vm.error(new LuaTypeError());
+                    vm.error(LuaObject.of("Attempt operation '%s' on a '%s' with a '%s'".formatted(t0.asString().substring(2), t1.getTypeAsString())));
                     return;
                 }
                 if (t0.isFunction()) {
@@ -469,7 +484,8 @@ public abstract class LuaFunction {
             case 1 -> {
                 t0 = expressionStack[0];
             }
-            case 2 -> { }
+            case 2 -> {
+            }
             default -> throw new InternalLuaRuntimeError("unknown resume point " + resume);
         }
         switch (resume) {

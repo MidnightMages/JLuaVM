@@ -2,28 +2,17 @@ package dev.asdf00.jluavm.runtime.stdlib;
 
 import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
-import dev.asdf00.jluavm.runtime.errors.LuaArgumentError;
-import dev.asdf00.jluavm.runtime.errors.LuaUserError;
 import dev.asdf00.jluavm.runtime.types.AtomicLuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
+import dev.asdf00.jluavm.runtime.utils.RTUtils;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 
 import java.util.Arrays;
 
-public class LGlobal {
+import static dev.asdf00.jluavm.runtime.utils.RTUtils.*;
 
-    private static boolean errorIfTableIndexNilOrNaN(LuaVM_RT vm, LuaObject x) {
-        if (x.isNil()) {
-            vm.error(new LuaUserError("table index is nil"));
-            return true;
-        }
-        if (x.isDouble() && Double.isNaN(x.asDouble())) {
-            vm.error(new LuaUserError("table index is NaN"));
-            return true;
-        }
-        return false;
-    }
+public class LGlobal {
 
     public static LuaObject getTable(boolean includeUnconstrainedFunctions) {
         var rv = LuaObject.table();
@@ -37,6 +26,8 @@ public class LGlobal {
          */
         }
 
+        // errors
+
         /* TODO, add the following ones: https://www.lua.org/manual/5.4/manual.html#6.1
         collectgarbage
         error
@@ -47,6 +38,11 @@ public class LGlobal {
         warn
         xpcall
          */
+
+        rv.set("pcall", pcall);
+        rv.set("xpcall", xpcall);
+        rv.set("error", AtomicLuaFunction.forZeroResults((vm, err) -> vm.error(err)).obj());
+
         rv.set("ipairs", ipairs);
         rv.set("pairs", pairs);
         rv.set("next", next);
@@ -54,17 +50,17 @@ public class LGlobal {
             // https://www.lua.org/manual/5.4/manual.html#pdf-load
             // TODO support function for args[0]; make it return nil, error message on error, and function, nil on success
             if (args.length == 0) {
-                vm.error(new LuaArgumentError(0, "load", "value expected"));
+                vm.error(funcArgTypeError("load", 0, null, "string"));
                 return null;
             }
             var code = args[0];
             if (!code.isString()) {
-                vm.error(new LuaArgumentError(0, "load", "string expected"));
+                vm.error(funcArgTypeError("load", 0, code, "string"));
                 return null;
             }
             var env = args.length > 1 ? args[1] : null;
             if (env != null && !env.isTable()) {
-                vm.error(new LuaArgumentError(1, "load", "table or nothing expected"));
+                vm.error(funcArgAnyTypeError("load", 1, code, "table", "nothing"));
                 return null;
             }
             var rv2 = vm.load(code.getString(), env == null ? vm.getCallerEnv() : env);
@@ -73,7 +69,7 @@ public class LGlobal {
 
         rv.set("assert", AtomicLuaFunction.vaForManyResults((vm, params) -> {
             if (params.length == 0) {
-                vm.error(new LuaArgumentError(0, "assert", "value expected"));
+                vm.error(funcArgTypeError("assert", 0, null, "any"));
                 return null;
             }
 
@@ -81,7 +77,7 @@ public class LGlobal {
                 return params;
 
             // LUAC DEVIATION. Our assertion returns tostring(msg) instead of just the type of that argument for nil and boolean
-            vm.error(new LuaUserError(params.length < 2 ? "assertion failed!" : params[1].asString()));
+            vm.error(LuaObject.of(params.length < 2 ? "assertion failed!" : params[1].asString()));
             return null;
         }).obj());
         rv.set("getmetatable", AtomicLuaFunction.forOneResult((vm, t) -> {
@@ -107,7 +103,7 @@ public class LGlobal {
         }).obj());
         rv.set("rawget", AtomicLuaFunction.forOneResult((vm, tbl, k) -> {
             if (!tbl.isTable()) {
-                vm.error(new LuaArgumentError(0, "rawget", "table expected, got %s".formatted(tbl.getTypeAsString())));
+                vm.error(funcArgTypeError("rawget", 0, tbl, "table"));
                 return null;
             }
             if (k.isNil() || k.isDouble() && Double.isNaN(k.asDouble()))
@@ -118,37 +114,39 @@ public class LGlobal {
         }).obj());
         rv.set("rawlen", AtomicLuaFunction.forOneResult((vm, v) -> {
             if (!v.isTable() && !v.isString()) {
-                vm.error(new LuaArgumentError(0, "rawlen", "table or string expected, got %s".formatted(v.getTypeAsString())));
+                vm.error(funcArgAnyTypeError("rawlen", 0, v, "table", "string"));
                 return null;
             }
             return v.len();
         }).obj());
         rv.set("rawset", AtomicLuaFunction.forOneResult((vm, tbl, k, v) -> {
             if (!tbl.isTable()) {
-                vm.error(new LuaArgumentError(0, "rawset", "table expected, got %s".formatted(tbl.getTypeAsString())));
+                vm.error(funcArgTypeError("rawset", 0, tbl, "table"));
                 return null;
             }
-            if (errorIfTableIndexNilOrNaN(vm, k))
+            if (k.isNil() || k.isNaN()) {
+                vm.error(funcBadArgError("rawset", 1, "table index can not be Nil or NaN"));
                 return null;
+            }
 
-            tbl.set(k, v); // dont call a metamethod, this is a 'raw' function
+            tbl.set(RTUtils.tryCoerceFloatToInt(k), v); // dont call a metamethod, this is a 'raw' function
             return tbl;
         }).obj());
         rv.set("select", AtomicLuaFunction.vaForManyResults((vm, args) -> {
             if (args.length == 0) {
-                vm.error(new LuaArgumentError(0, "select", "number or \"#\" expected, got no value"));
+                vm.error(funcBadArgError("select", 0, "number or \"#\" expected, got no value"));
             }
 
             var idx = args[0];
             if (idx.isNumber()) {
                 if (!idx.isLong()) {
-                    vm.error(new LuaArgumentError(0, "select", "number has no integer representation"));
+                    vm.error(funcBadArgError("select", 0, "number has no integer representation"));
                     return null;
                 }
                 return Arrays.stream(args).skip(idx.asLong()).toArray(LuaObject[]::new);
             } else {
                 if (!(idx.isString() && idx.asString().equals("#"))) {
-                    vm.error(new LuaArgumentError(0, "select", "number or \"#\" expected, got %s".formatted(idx.getTypeAsString())));
+                    vm.error(funcBadArgError("select", 0, "number or \"#\" expected, got %s".formatted(idx.getTypeAsString())));
                     return null;
                 }
                 // must be "#" then
@@ -157,16 +155,17 @@ public class LGlobal {
         }).obj());
         rv.set("setmetatable", AtomicLuaFunction.forOneResult((vm, tbl, mt) -> {
             if (!tbl.isTable()) {
-                vm.error(new LuaArgumentError(0, "setmetatable", "table expected, got %s".formatted(tbl.getTypeAsString())));
+                vm.error(funcArgTypeError("setmetatable", 0, tbl, "table"));
                 return null;
             }
             if (!mt.isTable()) {
-                vm.error(new LuaArgumentError(1, "setmetatable", "table or nil expected, got %s".formatted(tbl.getTypeAsString())));
+                vm.error(funcArgTypeError("setmetatable", 1, mt, "table"));
                 return null;
             }
 
             if (!tbl.getMetaValueOrNil("__metatable").isNil()) {
-                vm.error(new LuaUserError("cannot change a protected metatable"));
+                vm.error(LuaObject.of("cannot change a protected metatable"));
+                return null;
             }
 
             var existingMt = tbl.getMetaTable();
@@ -296,11 +295,11 @@ public class LGlobal {
             if (!myTbl.isTable()) {
                 // LUAC DEVIATION. We exclusively allow tables here, luac just behaves normally on tables, returns nil on
                 // strings and errors on all other types. We error on all types but tables.
-                itrVm.error(new LuaArgumentError(0, "ipairs$iterator", "table expected"));
+                itrVm.error(funcArgTypeError("ipairs$iterator", 0, myTbl, "table"));
                 return null;
             }
             if (!ctrl.isNumberCoercible()) {
-                itrVm.error(new LuaArgumentError(0, "ipairs$iterator", "number expected"));
+                itrVm.error(funcArgTypeError("ipairs$iterator", 1, ctrl, "number"));
                 return null;
             }
             var nextIdx = ctrl.add(LuaObject.of(1));
@@ -359,7 +358,7 @@ public class LGlobal {
 
     private static final LuaObject next = AtomicLuaFunction.forManyResults(((vm, table, index) -> {
         if (!table.isTable()) {
-            vm.error(new LuaArgumentError(0, "ipairs$iterator", "table expected"));
+            vm.error(funcArgTypeError("ipairs$iterator", 0, table, "table"));
             return null;
         }
         var tbl = table.asMap();
@@ -367,12 +366,102 @@ public class LGlobal {
         if (index.isNil()) {
             nidx = tbl.getFirstKey();
         } else {
-            if (!tbl.containsKey(index)) {
-                vm.error(new LuaArgumentError());
-                return null;
-            }
-            nidx = tbl.getKeyAfter(index);
+            // this might break when setting the next index to nil before the next iteration
+            nidx = tbl.containsKey(index) ? tbl.getKeyAfter(index) : LuaObject.nil();
         }
         return nidx.isNil() ? new LuaObject[]{LuaObject.nil(), LuaObject.nil()} : new LuaObject[]{nidx, table.get(nidx)};
     })).obj();
+
+    private static final LuaObject pcall = LuaObject.of(new LuaFunction() {
+        @Override
+        public int getMaxLocalsSize() {
+            return 2;
+        }
+
+        @Override
+        public int getArgCount() {
+            return 2;
+        }
+
+        @Override
+        public boolean hasParamsArg() {
+            return true;
+        }
+
+        @Override
+        public void invoke(LuaVM_RT vm, LuaObject[] stackFrame, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
+            if (resume == -1) {
+                vm.registerLocals(1);
+            }
+            switch (resume) {
+                case -1:
+                    if (!stackFrame[0].isFunction()) {
+                        vm.error(funcArgTypeError("pcall", 0, stackFrame[0], "function"));
+                        return;
+                    }
+                    vm.setProtected(null);
+                    vm.callExternal(0, stackFrame[0].getFunc(), stackFrame[1].asArray());
+                    return;
+                case 0:
+                    if (vm.isFailed()) {
+                        vm.returnValue(LuaObject.of(false), returned.length > 0 ? returned[0] : LuaObject.nil());
+                        return;
+                    } else {
+                        vm.returnValue(LuaObject.of(true), LuaObject.of(returned));
+                        return;
+                    }
+                default:
+                    throw new InternalLuaRuntimeError("unknown resume point " + resume);
+            }
+        }
+    });
+
+    private static final LuaObject xpcall = LuaObject.of(new LuaFunction() {
+        @Override
+        public int getMaxLocalsSize() {
+            return 3;
+        }
+
+        @Override
+        public int getArgCount() {
+            return 3;
+        }
+
+        @Override
+        public boolean hasParamsArg() {
+            return true;
+        }
+
+        @Override
+        public void invoke(LuaVM_RT vm, LuaObject[] stackFrame, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
+            if (resume == -1) {
+                vm.registerLocals(1);
+            }
+            switch (resume) {
+                case -1:
+                    if (!stackFrame[0].isFunction()) {
+                        vm.error(funcArgTypeError("xpcall", 0, stackFrame[0], "function"));
+                        vm.error(LuaObject.of("Expected argument #1 to be of type 'function', but it was of type '%s'!".formatted(stackFrame[0].getTypeAsString())));
+                        return;
+                    }
+                    if (!stackFrame[1].isFunction()) {
+                        vm.error(funcArgTypeError("xpcall", 1, stackFrame[1], "function"));
+                        return;
+                    }
+                    vm.setProtected(stackFrame[1].getFunc());
+                    vm.callExternal(0, stackFrame[0].getFunc(), stackFrame[2].asArray());
+                    return;
+                case 0:
+                    if (vm.isFailed()) {
+                        vm.returnValue(LuaObject.of(false), returned.length > 0 ? returned[0] : LuaObject.nil());
+                        return;
+                    } else {
+                        vm.returnValue(LuaObject.of(true), LuaObject.of(returned));
+                        return;
+                    }
+                default:
+                    throw new InternalLuaRuntimeError("unknown resume point " + resume);
+            }
+        }
+    });
 }

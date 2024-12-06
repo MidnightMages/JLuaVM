@@ -1,11 +1,9 @@
 package dev.asdf00.jluavm;
 
-import dev.asdf00.jluavm.lualoaded.GeneratedLuaFunc_0;
 import org.joor.Reflect;
 import org.joor.ReflectException;
 import org.junit.jupiter.api.Test;
 
-import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -79,7 +77,7 @@ public class ClassLoadingTest {
     public void debugDumpedStuff() throws Exception {
         var vm = LuaVM.create();
         vm.withStdLib();
-        vm.withDumpedRoot(Files.readString(Path.of("test/dev/asdf00/jluavm/lualoaded/depts.txt")), GeneratedLuaFunc_0.class);
-        vm.run();
+        // vm.withDumpedRoot(Files.readString(Path.of("test/dev/asdf00/jluavm/lualoaded/depts.txt")), GeneratedLuaFunc_0.class);
+        var cres = vm.run();
     }
 }
