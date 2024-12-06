@@ -1,11 +1,13 @@
 package dev.asdf00.jluavm.runtime.stdlib;
 
 import dev.asdf00.jluavm.internals.LuaVM_RT;
-import dev.asdf00.jluavm.runtime.errors.LuaArgumentError;
 import dev.asdf00.jluavm.runtime.types.AtomicLuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 
 import java.util.Locale;
+
+import static dev.asdf00.jluavm.runtime.utils.RTUtils.funcArgAnyTypeError;
+import static dev.asdf00.jluavm.runtime.utils.RTUtils.funcArgTypeError;
 
 public class LString {
     public static LuaObject getTable() {
@@ -24,17 +26,17 @@ public class LString {
          */
         rv.set("byte", AtomicLuaFunction.vaForOneResult((vm, va) -> {
             if (va.length < 1 || !va[0].isType(LuaObject.Types.ARITHMETIC)) {
-                vm.error(new LuaArgumentError(0, "byte", "string expected, got %s".formatted(va.length < 1 ? "no value" : va[0].getTypeAsString())));
+                vm.error(funcArgTypeError("string.byte", 0, va.length > 0 ? va[0] : null, "string"));
                 return null;
             }
 
             if (va.length > 1 && !va[1].hasLongRepr()) {
-                vm.error(new LuaArgumentError(1, "byte", "integer expected, got %s".formatted(va[1].getTypeAsString())));
+                vm.error(funcArgTypeError("string.byte", 1, va[1], "integer"));
                 return null;
             }
 
             if (va.length > 2 && !va[2].isNil() && !va[2].hasLongRepr()) {
-                vm.error(new LuaArgumentError(2, "byte", "integer, nil or no value expected, got %s".formatted(va[2].getTypeAsString())));
+                vm.error(funcArgAnyTypeError("string.byte", 2, va[2], "integer", "nil", "nothing"));
                 return null;
             }
             return sub(vm, va);
@@ -46,11 +48,11 @@ public class LString {
                     if (va[i].hasLongRepr()) {
                         r2.append(va[i].asLong());
                     } else {
-                        vm.error(new LuaArgumentError(i, "char", "number has no integer representation"));
+                        vm.error(funcArgTypeError("string.char", i, va[i], "integer"));
                         return null;
                     }
                 } else {
-                    vm.error(new LuaArgumentError(i, "char", "number expected, got %s".formatted(va[i].getTypeAsString())));
+                    vm.error(funcArgTypeError("string.char", i, va[i], "integer"));
                     return null;
                 }
             }
@@ -58,26 +60,26 @@ public class LString {
         }).obj());
         rv.set("len", AtomicLuaFunction.forOneResult((vm, s) -> {
             if (!s.isType(LuaObject.Types.ARITHMETIC)) {
-                vm.error(new LuaArgumentError(0, "len", "string expected, got %s".formatted(s.getTypeAsString())));
+                vm.error(funcArgTypeError("string.len", 0, s, "string"));
                 return null;
             }
             return LuaObject.of(s.asString().length());
         }).obj());
         rv.set("lower", AtomicLuaFunction.forOneResult((vm, s) -> {
             if (!s.isType(LuaObject.Types.ARITHMETIC)) {
-                vm.error(new LuaArgumentError(0, "lower", "string expected, got %s".formatted(s.getTypeAsString())));
+                vm.error(funcArgTypeError("string.lower", 0, s, "string"));
                 return null;
             }
             return LuaObject.of(s.asString().toLowerCase(Locale.US));
         }).obj());
         rv.set("rep", AtomicLuaFunction.vaForOneResult((vm, va) -> {
             if (va.length < 1 || !va[0].isType(LuaObject.Types.ARITHMETIC)) {
-                vm.error(new LuaArgumentError(0, "rep", "string expected, got %s".formatted(va.length < 1 ? "no value" : va[0].getTypeAsString())));
+                vm.error(funcArgTypeError("string.rep", 0, va.length > 0 ? va[0] : null, "string"));
                 return null;
             }
 
             if (va.length < 2 || !va[1].hasLongRepr()) {
-                vm.error(new LuaArgumentError(1, "rep", "integer expected, got %s".formatted(va.length < 2 ? "no value" : va[1].getTypeAsString())));
+                vm.error(funcArgTypeError("string.rep", 1, va[1], "integer"));
                 return null;
             }
 
@@ -85,7 +87,7 @@ public class LString {
             assert va.length >= 2;
 
             if (va.length > 2 && !va[2].isNil() && !va[2].hasLongRepr()) {
-                vm.error(new LuaArgumentError(2, "rep", "string, nil or no value expected, got %s".formatted(va[2].getTypeAsString())));
+                vm.error(funcArgAnyTypeError("string.rep", 2, va[2], "integer", "nil", "nothing"));
                 return null;
             }
             var cnt = (int) (va[1].asLong());
@@ -97,7 +99,7 @@ public class LString {
         }).obj());
         rv.set("reverse", AtomicLuaFunction.forOneResult((vm, s) -> {
             if (!s.isType(LuaObject.Types.ARITHMETIC)) {
-                vm.error(new LuaArgumentError(0, "reverse", "string expected, got %s".formatted(s.getTypeAsString())));
+                vm.error(funcArgTypeError("string.reverse", 0, s, "string"));
                 return null;
             }
             return LuaObject.of(new StringBuilder(s.asString()).reverse().toString());
@@ -105,7 +107,7 @@ public class LString {
         rv.set("sub", AtomicLuaFunction.vaForOneResult(LString::sub).obj());
         rv.set("upper", AtomicLuaFunction.forOneResult((vm, s) -> {
             if (!s.isType(LuaObject.Types.ARITHMETIC)) {
-                vm.error(new LuaArgumentError(0, "upper", "string expected, got %s".formatted(s.getTypeAsString())));
+                vm.error(funcArgTypeError("string.upper", 0, s, "string"));
                 return null;
             }
             return LuaObject.of(s.asString().toUpperCase(Locale.US));
@@ -124,12 +126,12 @@ public class LString {
     // =================================================================================================================
     private static LuaObject sub(LuaVM_RT vm, LuaObject[] va) {// TODO add unittests
         if (va.length < 1 || !va[0].isType(LuaObject.Types.ARITHMETIC)) {
-            vm.error(new LuaArgumentError(0, "sub", "string expected, got %s".formatted(va.length < 1 ? "no value" : va[0].getTypeAsString())));
+            vm.error(funcArgTypeError("string.sub", 0, va.length > 0 ? va[0] : null, "string"));
             return null;
         }
 
         if (va.length < 2 || !va[1].hasLongRepr()) {
-            vm.error(new LuaArgumentError(1, "sub", "integer expected, got %s".formatted(va.length < 2 ? "no value" : va[1].getTypeAsString())));
+            vm.error(funcArgTypeError("string.sub", 1, va[1], "integer"));
             return null;
         }
 
@@ -137,7 +139,7 @@ public class LString {
         assert va.length >= 2;
 
         if (va.length > 2 && !va[2].isNil() && !va[2].hasLongRepr()) {
-            vm.error(new LuaArgumentError(2, "sub", "integer, nil or no value expected, got %s".formatted(va[2].getTypeAsString())));
+            vm.error(funcArgAnyTypeError("string.sub", 2, va[2], "integer", "nil", "nothing"));
             return null;
         }
         var s = va[0].asString();
@@ -152,7 +154,7 @@ public class LString {
         if (i > j)
             return LuaObject.of("");
 
-        return LuaObject.of(s.substring((int) i-1, (int) j));
+        return LuaObject.of(s.substring((int) i - 1, (int) j));
     }
 
 }
