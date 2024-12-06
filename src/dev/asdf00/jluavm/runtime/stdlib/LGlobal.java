@@ -11,6 +11,9 @@ import dev.asdf00.jluavm.runtime.utils.Singletons;
 
 import java.util.Arrays;
 
+import static dev.asdf00.jluavm.runtime.utils.RTUtils.funcArgAnyTypeError;
+import static dev.asdf00.jluavm.runtime.utils.RTUtils.funcArgTypeError;
+
 public class LGlobal {
 
     private static boolean errorIfTableIndexNilOrNaN(LuaVM_RT vm, LuaObject x) {
@@ -61,17 +64,17 @@ public class LGlobal {
             // https://www.lua.org/manual/5.4/manual.html#pdf-load
             // TODO support function for args[0]; make it return nil, error message on error, and function, nil on success
             if (args.length == 0) {
-                vm.error(new LuaArgumentError(0, "load", "value expected"));
+                vm.error(funcArgTypeError("load", 0, null, "string"));
                 return null;
             }
             var code = args[0];
             if (!code.isString()) {
-                vm.error(new LuaArgumentError(0, "load", "string expected"));
+                vm.error(funcArgTypeError("load", 0, code, "string"));
                 return null;
             }
             var env = args.length > 1 ? args[1] : null;
             if (env != null && !env.isTable()) {
-                vm.error(new LuaArgumentError(1, "load", "table or nothing expected"));
+                vm.error(funcArgAnyTypeError("load", 1, code, "table", "nothing"));
                 return null;
             }
             var rv2 = vm.load(code.getString(), env == null ? vm.getCallerEnv() : env);
@@ -80,7 +83,7 @@ public class LGlobal {
 
         rv.set("assert", AtomicLuaFunction.vaForManyResults((vm, params) -> {
             if (params.length == 0) {
-                vm.error(new LuaArgumentError(0, "assert", "value expected"));
+                vm.error(funcArgTypeError("assert", 0, null, "any"));
                 return null;
             }
 
@@ -88,7 +91,7 @@ public class LGlobal {
                 return params;
 
             // LUAC DEVIATION. Our assertion returns tostring(msg) instead of just the type of that argument for nil and boolean
-            vm.error(new LuaUserError(params.length < 2 ? "assertion failed!" : params[1].asString()));
+            vm.error(LuaObject.of(params.length < 2 ? "assertion failed!" : params[1].asString()));
             return null;
         }).obj());
         rv.set("getmetatable", AtomicLuaFunction.forOneResult((vm, t) -> {
@@ -303,11 +306,11 @@ public class LGlobal {
             if (!myTbl.isTable()) {
                 // LUAC DEVIATION. We exclusively allow tables here, luac just behaves normally on tables, returns nil on
                 // strings and errors on all other types. We error on all types but tables.
-                itrVm.error(new LuaArgumentError(0, "ipairs$iterator", "table expected"));
+                itrVm.error(funcArgTypeError("ipairs$iterator", 0, myTbl, "table"));
                 return null;
             }
             if (!ctrl.isNumberCoercible()) {
-                itrVm.error(new LuaArgumentError(0, "ipairs$iterator", "number expected"));
+                itrVm.error(funcArgTypeError("ipairs$iterator", 1, ctrl, "number"));
                 return null;
             }
             var nextIdx = ctrl.add(LuaObject.of(1));
@@ -374,11 +377,8 @@ public class LGlobal {
         if (index.isNil()) {
             nidx = tbl.getFirstKey();
         } else {
-            if (!tbl.containsKey(index)) {
-                vm.error(new LuaArgumentError());
-                return null;
-            }
-            nidx = tbl.getKeyAfter(index);
+            // this might break when setting the next index to nil before the next iteration
+            nidx = tbl.containsKey(index) ? tbl.getKeyAfter(index) : LuaObject.nil();
         }
         return nidx.isNil() ? new LuaObject[]{LuaObject.nil(), LuaObject.nil()} : new LuaObject[]{nidx, table.get(nidx)};
     })).obj();
@@ -407,7 +407,7 @@ public class LGlobal {
             switch (resume) {
                 case -1:
                     if (!stackFrame[0].isFunction()) {
-                        vm.error(LuaObject.of("Expected argument #1 to be of type 'function', but it was of type '%s'!".formatted(stackFrame[0].getTypeAsString())));
+                        vm.error(funcArgTypeError("pcall", 0, stackFrame[0], "function"));
                         return;
                     }
                     vm.setProtected(null);
@@ -451,11 +451,12 @@ public class LGlobal {
             switch (resume) {
                 case -1:
                     if (!stackFrame[0].isFunction()) {
+                        vm.error(funcArgTypeError("xpcall", 0, stackFrame[0], "function"));
                         vm.error(LuaObject.of("Expected argument #1 to be of type 'function', but it was of type '%s'!".formatted(stackFrame[0].getTypeAsString())));
                         return;
                     }
                     if (!stackFrame[1].isFunction()) {
-                        vm.error(LuaObject.of("Expected argument #2 to be of type 'function', but it was of type '%s'!".formatted(stackFrame[0].getTypeAsString())));
+                        vm.error(funcArgTypeError("xpcall", 1, stackFrame[1], "function"));
                         return;
                     }
                     vm.setProtected(stackFrame[1].getFunc());
