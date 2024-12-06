@@ -23,8 +23,7 @@ public class CoerceNumericForNode extends Node {
         String ub = getLocalExpression(upperBoundVar);
         String sv = getLocalExpression(stepVar);
         return """
-                if (!%s.isNumberCoercible() || !%s.isNumberCoercible() || !%s.isNumberCoercible()) {
-                    vm.error(new LuaTypeError());
+                if (numericForCheck(vm, %s, %s, %s)) {
                     return;
                 } else if (!%s.isLong() || !%s.isLong() || !%s.isLong()) {
                     %s

@@ -383,7 +383,6 @@ public final class CompilationState {
                     import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
                     import dev.asdf00.jluavm.exceptions.LuaRuntimeError;
                     import dev.asdf00.jluavm.internals.LuaVM_RT;
-                    import dev.asdf00.jluavm.runtime.errors.*;
                     import dev.asdf00.jluavm.runtime.types.*;
                     import dev.asdf00.jluavm.runtime.utils.*;
                     

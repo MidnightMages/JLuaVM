@@ -1,6 +1,5 @@
 package dev.asdf00.jluavm.runtime.stdlib;
 
-import dev.asdf00.jluavm.runtime.errors.LuaArgumentError;
 import dev.asdf00.jluavm.runtime.types.AtomicLuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 
@@ -38,7 +37,6 @@ public class LTable {
             var j = args.length < 4 ? tbl.len().asLong() : (args[3].hasLongRepr() ? args[3].asLong() : -1);
             if (j < 0) {
                 vm.error(funcArgAnyTypeError("table.concat", 3, args.length > 3 ? args[3] : null, "number", "nil", "nothing"));
-                vm.error(new LuaArgumentError(3, "concat", "number, nil or nothing"));
                 return null;
             }
 

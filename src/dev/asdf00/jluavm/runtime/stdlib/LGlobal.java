@@ -2,31 +2,17 @@ package dev.asdf00.jluavm.runtime.stdlib;
 
 import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
-import dev.asdf00.jluavm.runtime.errors.LuaArgumentError;
-import dev.asdf00.jluavm.runtime.errors.LuaUserError;
 import dev.asdf00.jluavm.runtime.types.AtomicLuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
+import dev.asdf00.jluavm.runtime.utils.RTUtils;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 
 import java.util.Arrays;
 
-import static dev.asdf00.jluavm.runtime.utils.RTUtils.funcArgAnyTypeError;
-import static dev.asdf00.jluavm.runtime.utils.RTUtils.funcArgTypeError;
+import static dev.asdf00.jluavm.runtime.utils.RTUtils.*;
 
 public class LGlobal {
-
-    private static boolean errorIfTableIndexNilOrNaN(LuaVM_RT vm, LuaObject x) {
-        if (x.isNil()) {
-            vm.error(new LuaUserError("table index is nil"));
-            return true;
-        }
-        if (x.isDouble() && Double.isNaN(x.asDouble())) {
-            vm.error(new LuaUserError("table index is NaN"));
-            return true;
-        }
-        return false;
-    }
 
     public static LuaObject getTable(boolean includeUnconstrainedFunctions) {
         var rv = LuaObject.table();
@@ -117,7 +103,7 @@ public class LGlobal {
         }).obj());
         rv.set("rawget", AtomicLuaFunction.forOneResult((vm, tbl, k) -> {
             if (!tbl.isTable()) {
-                vm.error(new LuaArgumentError(0, "rawget", "table expected, got %s".formatted(tbl.getTypeAsString())));
+                vm.error(funcArgTypeError("rawget", 0, tbl, "table"));
                 return null;
             }
             if (k.isNil() || k.isDouble() && Double.isNaN(k.asDouble()))
@@ -128,37 +114,39 @@ public class LGlobal {
         }).obj());
         rv.set("rawlen", AtomicLuaFunction.forOneResult((vm, v) -> {
             if (!v.isTable() && !v.isString()) {
-                vm.error(new LuaArgumentError(0, "rawlen", "table or string expected, got %s".formatted(v.getTypeAsString())));
+                vm.error(funcArgAnyTypeError("rawlen", 0, v, "table", "string"));
                 return null;
             }
             return v.len();
         }).obj());
         rv.set("rawset", AtomicLuaFunction.forOneResult((vm, tbl, k, v) -> {
             if (!tbl.isTable()) {
-                vm.error(new LuaArgumentError(0, "rawset", "table expected, got %s".formatted(tbl.getTypeAsString())));
+                vm.error(funcArgTypeError("rawset", 0, tbl, "table"));
                 return null;
             }
-            if (errorIfTableIndexNilOrNaN(vm, k))
+            if (k.isNil() || k.isNaN()) {
+                vm.error(funcBadArgError("rawset", 1, "table index can not be Nil or NaN"));
                 return null;
+            }
 
-            tbl.set(k, v); // dont call a metamethod, this is a 'raw' function
+            tbl.set(RTUtils.tryCoerceFloatToInt(k), v); // dont call a metamethod, this is a 'raw' function
             return tbl;
         }).obj());
         rv.set("select", AtomicLuaFunction.vaForManyResults((vm, args) -> {
             if (args.length == 0) {
-                vm.error(new LuaArgumentError(0, "select", "number or \"#\" expected, got no value"));
+                vm.error(funcBadArgError("select", 0, "number or \"#\" expected, got no value"));
             }
 
             var idx = args[0];
             if (idx.isNumber()) {
                 if (!idx.isLong()) {
-                    vm.error(new LuaArgumentError(0, "select", "number has no integer representation"));
+                    vm.error(funcBadArgError("select", 0, "number has no integer representation"));
                     return null;
                 }
                 return Arrays.stream(args).skip(idx.asLong()).toArray(LuaObject[]::new);
             } else {
                 if (!(idx.isString() && idx.asString().equals("#"))) {
-                    vm.error(new LuaArgumentError(0, "select", "number or \"#\" expected, got %s".formatted(idx.getTypeAsString())));
+                    vm.error(funcBadArgError("select", 0, "number or \"#\" expected, got %s".formatted(idx.getTypeAsString())));
                     return null;
                 }
                 // must be "#" then
@@ -167,16 +155,17 @@ public class LGlobal {
         }).obj());
         rv.set("setmetatable", AtomicLuaFunction.forOneResult((vm, tbl, mt) -> {
             if (!tbl.isTable()) {
-                vm.error(new LuaArgumentError(0, "setmetatable", "table expected, got %s".formatted(tbl.getTypeAsString())));
+                vm.error(funcArgTypeError("setmetatable", 0, tbl, "table"));
                 return null;
             }
             if (!mt.isTable()) {
-                vm.error(new LuaArgumentError(1, "setmetatable", "table or nil expected, got %s".formatted(tbl.getTypeAsString())));
+                vm.error(funcArgTypeError("setmetatable", 1, mt, "table"));
                 return null;
             }
 
             if (!tbl.getMetaValueOrNil("__metatable").isNil()) {
-                vm.error(new LuaUserError("cannot change a protected metatable"));
+                vm.error(LuaObject.of("cannot change a protected metatable"));
+                return null;
             }
 
             var existingMt = tbl.getMetaTable();
@@ -369,7 +358,7 @@ public class LGlobal {
 
     private static final LuaObject next = AtomicLuaFunction.forManyResults(((vm, table, index) -> {
         if (!table.isTable()) {
-            vm.error(new LuaArgumentError(0, "ipairs$iterator", "table expected"));
+            vm.error(funcArgTypeError("ipairs$iterator", 0, table, "table"));
             return null;
         }
         var tbl = table.asMap();

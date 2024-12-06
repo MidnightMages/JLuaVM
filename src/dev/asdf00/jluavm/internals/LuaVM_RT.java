@@ -1,7 +1,6 @@
 package dev.asdf00.jluavm.internals;
 
 import dev.asdf00.jluavm.LuaVM;
-import dev.asdf00.jluavm.runtime.errors.AbstractLuaError;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.LFunc;
@@ -104,10 +103,6 @@ public class LuaVM_RT extends LuaVM {
     // =================================================================================================================
     // lua vm call magic setup methods (MUST be followed by return, and return must be preceded by exactly one of these, or throw internal lua error)
     // =================================================================================================================
-
-    public void error(AbstractLuaError err) {
-        throw new UnsupportedOperationException("errors not supported yet");
-    }
 
     public void error(LuaObject errMsg) {
         // setup vm for error

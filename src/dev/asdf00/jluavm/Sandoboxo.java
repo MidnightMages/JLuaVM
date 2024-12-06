@@ -1,11 +1,11 @@
 package dev.asdf00.jluavm;
 
 import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
-import dev.asdf00.jluavm.exceptions.LuaRuntimeError;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
-import dev.asdf00.jluavm.runtime.errors.*;
-import dev.asdf00.jluavm.runtime.types.*;
-import dev.asdf00.jluavm.runtime.utils.*;
+import dev.asdf00.jluavm.runtime.types.LuaFunction;
+import dev.asdf00.jluavm.runtime.types.LuaObject;
+import dev.asdf00.jluavm.runtime.utils.RTUtils;
+import dev.asdf00.jluavm.runtime.utils.Singletons;
 
 import java.lang.reflect.Constructor;
 
@@ -97,29 +97,8 @@ public class Sandoboxo extends LuaFunction {
                 // load constant
                 t1 = LuaObject.of("x");
                 // getExpression index
-                if (t0.isTable()) {
-                    LuaObject table = t0;
-                    LuaObject key = RTUtils.tryCoerceFloatToInt(t1);
-                    if (table.hasKey(key)) {
-                        t0 = table.get(key);
-                    } else {
-                        LuaObject mtbl = table.getMetaTable();
-                        if (mtbl == null) {
-                            t0 = LuaObject.nil();
-                        } else {
-                            vm.callInternal(0, LuaFunction::getWithMeta, table, key, mtbl);
-                            return;
-                        }
-                    }
-                } else if (t0.isUserData()) {
-                    try {
-                        t0 = t0.get(t1);
-                    } catch (LuaRuntimeError ex) {
-                        vm.error(new LuaForeignCallError());
-                        return;
-                    }
-                } else {
-                    vm.error(new LuaTypeError());
+                t0 = indexedGet(vm, 0, t0, t1);
+                if (t0 == null) {
                     return;
                 }
                 t1 = null;
@@ -148,33 +127,7 @@ public class Sandoboxo extends LuaFunction {
                 }
             case 1:
                 // set index
-                if (t0.isTable()) {
-                    LuaObject table = t0;
-                    LuaObject key = RTUtils.tryCoerceFloatToInt(t1);
-                    if (key.isNil() || key.isNaN()) {
-                        vm.error(new LuaArgumentError());
-                        return;
-                    }
-                    if (table.hasKey(key)) {
-                        table.set(key, t2);
-                    } else {
-                        LuaObject mtbl = table.getMetaTable();
-                        if (mtbl == null) {
-                            table.set(key, t2);
-                        } else {
-                            vm.callInternal(2, LuaFunction::setWithMeta, table, key, t2, mtbl);
-                            return;
-                        }
-                    }
-                } else if (t0.isUserData()) {
-                    try {
-                        t0.set(t1, t2);
-                    } catch (LuaRuntimeError ex) {
-                        vm.error(new LuaForeignCallError());
-                        return;
-                    }
-                } else {
-                    vm.error(new LuaTypeError());
+                if (indexedSet(vm, 2, t0, t1, t2)) {
                     return;
                 }
                 t2 = null;
@@ -227,34 +180,12 @@ public class Sandoboxo extends LuaFunction {
                 stackFrame[1] = t4;
                 t4 = null;
                 // set index
-                if (t1.isTable()) {
-                    LuaObject table = t1;
-                    LuaObject key = RTUtils.tryCoerceFloatToInt(t2);
-                    if (key.isNil() || key.isNaN()) {
-                        vm.error(new LuaArgumentError());
-                        return;
-                    }
-                    if (table.hasKey(key)) {
-                        table.set(key, t3);
-                    } else {
-                        LuaObject mtbl = table.getMetaTable();
-                        if (mtbl == null) {
-                            table.set(key, t3);
-                        } else {
-                            vm.callInternal(4, LuaFunction::setWithMeta, table, key, t3, mtbl);
-                            return;
-                        }
-                    }
-                } else if (t1.isUserData()) {
-                    try {
-                        t1.set(t2, t3);
-                    } catch (LuaRuntimeError ex) {
-                        vm.error(new LuaForeignCallError());
-                        return;
-                    }
-                } else {
-                    vm.error(new LuaTypeError());
-                    return;
+                if (indexedSet(vm, 4, t1, t2, t3)) {
+                    expressionStack[0] = t0;
+                    expressionStack[1] = t1;
+                    expressionStack[2] = t2;
+                    expressionStack[3] = t3;
+                    expressionStack[4] = t4;
                 }
                 t3 = null;
                 t2 = null;
@@ -290,29 +221,9 @@ public class Sandoboxo extends LuaFunction {
                             // load constant
                             t2 = LuaObject.of("x");
                             // getExpression index
-                            if (t0.isTable()) {
-                                LuaObject table = t1;
-                                LuaObject key = RTUtils.tryCoerceFloatToInt(t2);
-                                if (table.hasKey(key)) {
-                                    t1 = table.get(key);
-                                } else {
-                                    LuaObject mtbl = table.getMetaTable();
-                                    if (mtbl == null) {
-                                        t1 = LuaObject.nil();
-                                    } else {
-                                        vm.callInternal(0, LuaFunction::getWithMeta, table, key, mtbl);
-                                        return;
-                                    }
-                                }
-                            } else if (t1.isUserData()) {
-                                try {
-                                    t1 = t1.get(t2);
-                                } catch (LuaRuntimeError ex) {
-                                    vm.error(new LuaForeignCallError());
-                                    return;
-                                }
-                            } else {
-                                vm.error(new LuaTypeError());
+                            t1 = indexedGet(vm, 6, t1, t2);
+                            if (t0 == null) {
+                                stackFrame[0] = t0;
                                 return;
                             }
                             t2 = null;
