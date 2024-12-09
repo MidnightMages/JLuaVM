@@ -1,6 +1,7 @@
 package dev.asdf00.jluavm.runtime.stdlib;
 
 import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
+import dev.asdf00.jluavm.exceptions.loading.LuaParserException;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.runtime.types.AtomicLuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
@@ -46,7 +47,7 @@ public class LGlobal {
         rv.set("ipairs", ipairs);
         rv.set("pairs", pairs);
         rv.set("next", next);
-        rv.set("load", AtomicLuaFunction.vaForOneResult((vm, args) -> {
+        rv.set("load", AtomicLuaFunction.vaForManyResults((vm, args) -> {
             // https://www.lua.org/manual/5.4/manual.html#pdf-load
             // TODO support function for args[0]; make it return nil, error message on error, and function, nil on success
             if (args.length == 0) {
@@ -63,8 +64,12 @@ public class LGlobal {
                 vm.error(funcArgAnyTypeError("load", 1, code, "table", "nothing"));
                 return null;
             }
-            var rv2 = vm.load(code.getString(), env == null ? vm.getCallerEnv() : env);
-            return LuaObject.of(rv2);
+            try {
+                var rv2 = vm.load(code.getString(), env == null ? vm.getCallerEnv() : env);
+                return new LuaObject[]{LuaObject.of(rv2), LuaObject.NIL};
+            } catch (LuaParserException ex) {
+                return new LuaObject[]{LuaObject.NIL, LuaObject.of("Compilation error: "+ex.getMessage())};
+            }
         }).obj());
 
         rv.set("assert", AtomicLuaFunction.vaForManyResults((vm, params) -> {
