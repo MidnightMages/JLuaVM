@@ -143,7 +143,7 @@ public class LGlobal {
                     vm.error(funcBadArgError("select", 0, "number has no integer representation"));
                     return null;
                 }
-                return Arrays.stream(args).skip(idx.asLong()).toArray(LuaObject[]::new);
+                return Arrays.stream(args).skip(idx.asLong()).toArray(LuaObject[]::new); // TODO make work for negative idx
             } else {
                 if (!(idx.isString() && idx.asString().equals("#"))) {
                     vm.error(funcBadArgError("select", 0, "number or \"#\" expected, got %s".formatted(idx.getTypeAsString())));
