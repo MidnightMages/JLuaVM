@@ -150,10 +150,10 @@ public class LuaVM_RT extends LuaVM {
         LuaObject[] VADestArray = null;
 
         while (dstIdx < externalTarget.getArgCount()) {
-            var isLastDest = dstIdx == targetArgCnt - 1;
+            boolean isLastDest = dstIdx == targetArgCnt - 1;
             if (isLastDest && vaDest) {
                 if (srcArgIdx >= args.length) {
-                    nuStackFrame[0] = LuaObject.of(Singletons.EMPTY_LUA_OBJ_ARRAY);
+                    nuStackFrame[dstIdx] = LuaObject.of(Singletons.EMPTY_LUA_OBJ_ARRAY);
                     break;
                 }
                 boolean countingPhase = false;
@@ -207,6 +207,12 @@ public class LuaVM_RT extends LuaVM {
 
         assert ((Supplier<Boolean>) () -> {
             var allArgs = Arrays.stream(args).flatMap(x -> x.isArray() ? Arrays.stream(x.asArray()) : Arrays.stream(new LuaObject[]{x})).toArray(LuaObject[]::new);
+            if (allArgs.length < externalTarget.getArgCount() - (externalTarget.hasParamsArg() ? 1 : 0)) {
+                var prevAllArgs = allArgs;
+                allArgs = new LuaObject[externalTarget.getArgCount() - (externalTarget.hasParamsArg() ? 1 : 0)];
+                Arrays.fill(allArgs, LuaObject.nil());
+                System.arraycopy(prevAllArgs, 0, allArgs, 0, prevAllArgs.length);
+            }
 
             var expectedNuStack = new LuaObject[nuStackFrame.length];
             System.arraycopy(allArgs, 0, expectedNuStack, 0, externalTarget.getArgCount() - (externalTarget.hasParamsArg() ? 1 : 0));

@@ -204,6 +204,10 @@ public abstract class LuaVM {
     public abstract VmResult run();
 
     public record VmResult(VmRunState state, LuaObject[] returnVars) {
+        public static VmResult of(VmRunState state, LuaObject... returnVars) {
+            return new VmResult(state, returnVars);
+        }
+
         @Override
         public boolean equals(Object obj) {
             if (obj instanceof VmResult other) {

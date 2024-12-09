@@ -728,4 +728,17 @@ public class VmTest {
                 }), res);
     }
 
+    @Test
+    public void simplePCall() {
+        var vm = LuaVM.create().withStdLib();
+        assertDoesNotThrow(() -> vm.withRootFunc("""
+                local function test(t)
+                    return "received " .. tostring(t)
+                end 
+                return pcall(test)
+                """));
+        var res = vm.run();
+        assertEquals(LuaVM.VmResult.of(LuaVM.VmRunState.SUCCESS, LuaObject.of(true), LuaObject.of("received nil")), res);
+    }
+
 }
