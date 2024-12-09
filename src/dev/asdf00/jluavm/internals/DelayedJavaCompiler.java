@@ -10,7 +10,13 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
-public class DelayedJavaC {
+/**
+ * This class offers support for compiling and loading Java code generated at runtime.
+ * <br/><br/>
+ * This class is largely taken from the Java Object Oriented Reflection library (jOOR) distributed under the Apache
+ * License Version 2.0 with the source code available at <a href="https://github.com/jOOQ/jOOR">jOOR on Github</a>.
+ */
+public class DelayedJavaCompiler {
     public static Class<?> compileAndLoad(ClassLoader parentLdr, String className, String content) {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         if (compiler == null)
