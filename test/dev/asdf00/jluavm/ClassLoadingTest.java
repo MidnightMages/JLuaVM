@@ -1,7 +1,7 @@
 package dev.asdf00.jluavm;
 
 import dev.asdf00.jluavm.exceptions.DelayedJavaCompilationException;
-import dev.asdf00.jluavm.internals.DelayedJavaC;
+import dev.asdf00.jluavm.internals.DelayedJavaCompiler;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import org.junit.jupiter.api.Test;
 
@@ -42,7 +42,7 @@ public class ClassLoadingTest {
             }""";
 
     private static Class<?> compileSimpleClass(String className) {
-        return DelayedJavaC.compileAndLoad(LuaFunction.class.getClassLoader(), "dev.asdf00.jluavm.lualoaded." + className, VERY_SIMPLE_CLASS.formatted(className, className, className));
+        return DelayedJavaCompiler.compileAndLoad(LuaFunction.class.getClassLoader(), "dev.asdf00.jluavm.lualoaded." + className, VERY_SIMPLE_CLASS.formatted(className, className, className));
     }
 
     @Test
@@ -54,7 +54,7 @@ public class ClassLoadingTest {
 
     @Test
     public void javacFailure() {
-        assertThrows(DelayedJavaCompilationException.class, () -> DelayedJavaC.compileAndLoad(LuaFunction.class.getClassLoader(), "dev.asdf00.jluavm.lualoaded.Fail0", "00asdf"));
+        assertThrows(DelayedJavaCompilationException.class, () -> DelayedJavaCompiler.compileAndLoad(LuaFunction.class.getClassLoader(), "dev.asdf00.jluavm.lualoaded.Fail0", "00asdf"));
     }
 
     // @Test
