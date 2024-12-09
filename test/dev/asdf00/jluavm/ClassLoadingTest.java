@@ -1,13 +1,13 @@
 package dev.asdf00.jluavm;
 
-import org.joor.Reflect;
-import org.joor.ReflectException;
+import dev.asdf00.jluavm.exceptions.DelayedJavaCompilationException;
+import dev.asdf00.jluavm.internals.DelayedJavaC;
+import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
 
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class ClassLoadingTest {
     private static final String VERY_SIMPLE_CLASS = """
@@ -41,8 +41,8 @@ public class ClassLoadingTest {
                 }
             }""";
 
-    private static Class<?> compileSimpleClass(String className) throws ReflectException {
-        return Reflect.compile("dev.asdf00.jluavm.lualoaded." + className, VERY_SIMPLE_CLASS.formatted(className, className, className)).type();
+    private static Class<?> compileSimpleClass(String className) {
+        return DelayedJavaC.compileAndLoad(LuaFunction.class.getClassLoader(), "dev.asdf00.jluavm.lualoaded." + className, VERY_SIMPLE_CLASS.formatted(className, className, className));
     }
 
     @Test
@@ -54,13 +54,7 @@ public class ClassLoadingTest {
 
     @Test
     public void javacFailure() {
-        ReflectException ex = null;
-        try {
-            Reflect.compile("dev.asdf00.jluavm.lualoaded.Fail0", "00asdf").type();
-        } catch (ReflectException e) {
-            ex = e;
-        }
-        assertNotNull(ex);
+        assertThrows(DelayedJavaCompilationException.class, () -> DelayedJavaC.compileAndLoad(LuaFunction.class.getClassLoader(), "dev.asdf00.jluavm.lualoaded.Fail0", "00asdf"));
     }
 
     // @Test
