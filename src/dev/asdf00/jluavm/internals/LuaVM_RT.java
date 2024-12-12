@@ -21,7 +21,6 @@ public class LuaVM_RT extends LuaVM {
     public LuaVM_RT() {
         luaCallStack = new Stack<>();
         curFuncFrame = null;
-        rootReturned = null;
     }
 
     @Override
@@ -29,10 +28,11 @@ public class LuaVM_RT extends LuaVM {
         if (rootFunc == null) {
             return new VmResult(VmRunState.EXECUTION_ERROR, new LuaObject[]{LuaObject.of("Invalid root function")});
         }
-        rootFail = false;
-        curFuncFrame = luaCallStack.push(new FunctionCallFrame(new LuaObject[rootFunc.getMaxLocalsSize()], rootFunc));
+        rootCoroutine = Coroutine.create(rootFunc);
+        rootCoroutine.isYieldable = false;
+        setCoroutine(rootCoroutine);
         execLoop();
-        return new VmResult(rootFail ? VmRunState.EXECUTION_ERROR : VmRunState.SUCCESS, rootReturned);
+        return new VmResult(rootCoroutine.rootFail ? VmRunState.EXECUTION_ERROR : VmRunState.SUCCESS, rootCoroutine.rootReturned);
     }
 
     // =================================================================================================================
@@ -47,11 +47,8 @@ public class LuaVM_RT extends LuaVM {
     private Coroutine rootCoroutine;
     private Coroutine currentCoroutine;
 
-    Stack<FunctionCallFrame> luaCallStack;
-    FunctionCallFrame curFuncFrame;
-
-    private boolean rootFail;
-    private LuaObject[] rootReturned;
+    private Stack<FunctionCallFrame> luaCallStack;
+    private FunctionCallFrame curFuncFrame;
 
     private void execLoop() {
         for (; ; ) {
@@ -103,8 +100,14 @@ public class LuaVM_RT extends LuaVM {
         return isErroring;
     }
 
+    /**
+     * Installs the given coroutine as the currently running coroutine and sets its state to RUNNING.
+     */
     public void setCoroutine(Coroutine coroutine) {
-        // TODO: set current state to match the new coroutine
+        currentCoroutine = coroutine;
+        luaCallStack = coroutine.luaCallStack;
+        curFuncFrame = luaCallStack.peek();
+        coroutine.state = Coroutine.State.RUNNING;
     }
 
     public Coroutine getRootCoroutine() {
@@ -113,12 +116,6 @@ public class LuaVM_RT extends LuaVM {
 
     public Coroutine getCurrentCoroutine() {
         return currentCoroutine;
-    }
-
-    public void updateCoroutineWithState(Coroutine coroutine) {
-        // TODO
-        coroutine.rootFail = rootFail;
-        coroutine.rootReturned = rootReturned;
     }
 
     // =================================================================================================================
@@ -134,12 +131,20 @@ public class LuaVM_RT extends LuaVM {
             luaCallStack.get(frmIdx).isResumable = false;
         }
         if (frmIdx < 0) {
-            // root failure
+            // root failure of current coroutine
             // TODO gather stack trace
-            rootFail = true;
-            rootReturned = new LuaObject[]{errMsg};
+            currentCoroutine.rootFail = true;
+            currentCoroutine.rootReturned = new LuaObject[]{errMsg};
             luaCallStack.clear();
-            curFuncFrame = null;
+            currentCoroutine.state = Coroutine.State.DEAD;
+            if (currentCoroutine.yieldTo != null) {
+                // there is a resuming coroutine
+                Coroutine stoppingCo = currentCoroutine;
+                setCoroutine(currentCoroutine.yieldTo);
+            } else {
+                assert currentCoroutine == rootCoroutine : "non-root coroutine without resuming coroutine";
+                curFuncFrame = null;
+            }
         } else {
             var frame = luaCallStack.get(frmIdx);
             frame.failCnt++;
@@ -154,15 +159,7 @@ public class LuaVM_RT extends LuaVM {
         }
     }
 
-    private void setupCall(LuaFunction externalTarget, LuaObject... args) {
-        if (luaCallStack.size() >= MAX_LUA_STACK_SIZE) {
-            rootFail = true;
-            rootReturned = new LuaObject[]{LuaObject.of("stack overflow error")};
-            luaCallStack.clear();
-            return;
-        }
-        // setup new stack frame for call
-        LuaObject[] nuStackFrame = new LuaObject[externalTarget.getMaxLocalsSize()];
+    public static void packArgsInto(LuaObject[] nuStackFrame, LuaFunction externalTarget, LuaObject... args) {
         int srcArgIdx = 0;
         int srcArgElemIdx = 0;
         int dstIdx = 0;
@@ -252,6 +249,18 @@ public class LuaVM_RT extends LuaVM {
             }
             return true;
         }).get();
+    }
+
+    private void setupCall(LuaFunction externalTarget, LuaObject... args) {
+        if (luaCallStack.size() >= MAX_LUA_STACK_SIZE) {
+            currentCoroutine.rootFail = true;
+            currentCoroutine.rootReturned = new LuaObject[]{LuaObject.of("stack overflow error")};
+            luaCallStack.clear();
+            curFuncFrame = null;
+        }
+        // setup new stack frame for call
+        LuaObject[] nuStackFrame = new LuaObject[externalTarget.getMaxLocalsSize()];
+        packArgsInto(nuStackFrame, externalTarget, args);
         curFuncFrame = luaCallStack.push(new FunctionCallFrame(nuStackFrame, externalTarget));
     }
 
@@ -304,9 +313,17 @@ public class LuaVM_RT extends LuaVM {
             luaCallStack.pop();
         } while (!luaCallStack.isEmpty() && !luaCallStack.peek().isResumable);
         if (luaCallStack.isEmpty()) {
-            // root function returned
-            rootReturned = values;
-            curFuncFrame = null;
+            // root function of coroutine returned
+            currentCoroutine.rootReturned = values;
+            currentCoroutine.state = Coroutine.State.DEAD;
+            if (currentCoroutine.yieldTo != null) {
+                // there is a resuming coroutine
+                Coroutine stoppingCo = currentCoroutine;
+                setCoroutine(currentCoroutine.yieldTo);
+            } else {
+                assert currentCoroutine == rootCoroutine : "non-root coroutine without resuming coroutine";
+                curFuncFrame = null;
+            }
         } else {
             curFuncFrame = luaCallStack.peek();
             curFuncFrame.getTopFrame().rvals = values;

@@ -6,10 +6,7 @@ import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.parsing.Parser;
 import dev.asdf00.jluavm.parsing.ir.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.IRFunction;
-import dev.asdf00.jluavm.runtime.stdlib.LGlobal;
-import dev.asdf00.jluavm.runtime.stdlib.LMath;
-import dev.asdf00.jluavm.runtime.stdlib.LString;
-import dev.asdf00.jluavm.runtime.stdlib.LTable;
+import dev.asdf00.jluavm.runtime.stdlib.*;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
@@ -54,6 +51,7 @@ public abstract class LuaVM {
         _G.set("math", LMath.getTable());
         _G.set("table", LTable.getTable());
         _G.set("string", LString.getTable());
+        _G.set("coroutine", LCoroutine.getTable());
         _G.set("_EXT", LuaObject.table(
                 LuaObject.of("nil"), LuaObject.table(),
                 LuaObject.of("boolean"), LuaObject.table(),
@@ -220,7 +218,7 @@ public abstract class LuaVM {
         public String toString() {
             return "VmResult[" +
                     "state=" + state +
-                    ", returnVars=" + Arrays.toString(returnVars) +
+                    ", returnVars=" + Arrays.toString(returnVars).replace("\\", "\\\\").replace("\n", "\\n") +
                     ']';
         }
     }

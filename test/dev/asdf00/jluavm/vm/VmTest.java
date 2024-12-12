@@ -741,4 +741,83 @@ public class VmTest {
         assertEquals(LuaVM.VmResult.of(LuaVM.VmRunState.SUCCESS, LuaObject.of(true), LuaObject.of("received nil")), res);
     }
 
+    @Test
+    public void errorPCall() {
+        var vm = LuaVM.create().withStdLib();
+        assertDoesNotThrow(() -> vm.withRootFunc("""
+                local function test(t)
+                    error("catch me")
+                end 
+                return pcall(test)
+                """));
+        var res = vm.run();
+        assertEquals(LuaVM.VmResult.of(LuaVM.VmRunState.SUCCESS, LuaObject.of(false), LuaObject.of("catch me")), res);
+    }
+
+    @Test
+    public void simpleCoroutineTest() {
+        var vm = LuaVM.create().withStdLib();
+        assertDoesNotThrow(() -> vm.withRootFunc("""
+                pres = ""
+                local function print(a)
+                    pres = pres .. tostring(a) .. "\\n"
+                end
+                local co = coroutine.create(
+                    function (a)
+                        print("initial received: " .. tostring(a))
+                        local b = coroutine.yield(1)
+                        print("post-yield received: " .. tostring(b))
+                        return 2
+                    end)
+                local state1, one = coroutine.resume(co, "first")
+                local state2, two = coroutine.resume(co, "second")
+                return pres, state1, one, state2, two
+                """));
+        var res = vm.run();
+        assertEquals(
+                LuaVM.VmResult.of(LuaVM.VmRunState.SUCCESS,
+                        LuaObject.of("""
+                                initial received: first
+                                post-yield received: second
+                                """),
+                        LuaObject.of(true),
+                        LuaObject.of(1),
+                        LuaObject.of(true),
+                        LuaObject.of(2)),
+                res);
+    }
+
+    @Test
+    public void wrappedCoroutineTest() {
+        var vm = LuaVM.create().withStdLib();
+        assertDoesNotThrow(() -> vm.withRootFunc("""
+                pres = ""
+                local function print(a)
+                    pres = pres .. tostring(a) .. "\\n"
+                end
+                local wCo = coroutine.wrap(
+                    function (a)
+                        print("initial received: " .. tostring(a))
+                        local b = coroutine.yield(1)
+                        print("post-yield received: " .. tostring(b))
+                        error("i am an error")
+                    end)
+                local one = wCo("first")
+                local state, msg = pcall(wCo, "second")
+                return pres, one, state, msg
+                """));
+        var res = vm.run();
+        assertEquals(
+                LuaVM.VmResult.of(LuaVM.VmRunState.SUCCESS,
+                        LuaObject.of("""
+                                initial received: first
+                                post-yield received: second
+                                """),
+                        LuaObject.of(1),
+                        LuaObject.of(false),
+                        LuaObject.of("i am an error")),
+                res);
+    }
+
+
 }

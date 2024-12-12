@@ -472,4 +472,11 @@ public class LGlobal {
             }
         }
     });
+
+    public static LuaObject unimplementedFunction(String name) {
+        return AtomicLuaFunction.forManyResults(vm -> {
+            vm.error(LuaObject.of("UNIMPLEMENTED FUNCTION '%s'".formatted(name)));
+            return null;
+        }).obj();
+    }
 }
