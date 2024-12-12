@@ -149,12 +149,18 @@ public class LuaVM_RT extends LuaVM {
             var frame = luaCallStack.get(frmIdx);
             frame.failCnt++;
             if (frame.failCnt > ERROR_LOOP_GRACE_CNT) {
-                // failed too often in xpcall message handler, we break the loop by not calling the handler again
-                frame.getTopFrame().rvals = new LuaObject[]{LuaObject.of("error in error handling")};
-                curFuncFrame = frame;
+                // failed too often in XPCALL message handler, we break the loop by not calling the handler again
+                returnValue(LuaObject.of("error in error handling"));
             } else if (frame.msgHandler != null) {
-                // call message handler
+                /**
+                 * By setting all frames between the current frame and the XPCALL to not be resumable, the return values
+                 * produced by the message handler that is called here are implicitly passed all the way through to the
+                 * XPCALL thereby allowing the XPCALL to access the error message.
+                 */
                 setupCall(frame.msgHandler, errMsg);
+            } else {
+                // return through all frames to the top resumable frame which in this case should be a PCALL
+                returnValue(errMsg);
             }
         }
     }
