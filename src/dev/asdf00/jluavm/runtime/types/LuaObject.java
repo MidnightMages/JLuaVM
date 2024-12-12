@@ -2,6 +2,7 @@ package dev.asdf00.jluavm.runtime.types;
 
 import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
 import dev.asdf00.jluavm.exceptions.loading.InternalLuaLexerError;
+import dev.asdf00.jluavm.internals.Coroutine;
 import dev.asdf00.jluavm.parsing.Lexer;
 
 import java.nio.charset.StandardCharsets;
@@ -874,6 +875,13 @@ public final class LuaObject {
     // getter methods
     // =================================================================================================================
 
+    public Coroutine asCoroutine() {
+        if (!isThread()) {
+            throw new InternalLuaRuntimeError("This is not a thread!");
+        }
+        return (Coroutine) refVal;
+    }
+
     public LuaFunction getFunc() {
         if (!isFunction()) {
             throw new InternalLuaRuntimeError("This is not a function!");
@@ -1083,6 +1091,10 @@ public final class LuaObject {
 
     public static LuaObject of(LuaObject... val) {
         return new LuaObject(val, 0, 0, Types.ARRAY);
+    }
+
+    public static LuaObject of(Coroutine coroutine) {
+        return new LuaObject(coroutine, 0, 0, Types.THREAD);
     }
 
     public static LuaObject table(LuaObject... val) {

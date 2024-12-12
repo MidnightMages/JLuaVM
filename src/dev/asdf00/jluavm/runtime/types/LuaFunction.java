@@ -2,6 +2,7 @@ package dev.asdf00.jluavm.runtime.types;
 
 import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
 import dev.asdf00.jluavm.exceptions.LuaRuntimeError;
+import dev.asdf00.jluavm.internals.Coroutine;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.runtime.utils.RTUtils;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
@@ -89,7 +90,12 @@ public abstract class LuaFunction {
             LuaObject mtbl = obj.getMetaTable();
             if (mtbl == null || !mtbl.isTable() || !mtbl.hasKey(Singletons.__index)) {
                 try {
-                    return obj.get(idx);
+                    Coroutine cco = vm.getCurrentCoroutine();
+                    boolean prevYieldable = cco.isYieldable;;
+                    cco.isYieldable = false;
+                    var r = obj.get(idx);
+                    cco.isYieldable = prevYieldable;
+                    return r;
                 } catch (LuaRuntimeError ex) {
                     vm.error(LuaObject.of("Foreign call error: " + ex.getMessage()));
                     return null;
@@ -125,7 +131,12 @@ public abstract class LuaFunction {
             LuaObject mtbl = obj.getMetaTable();
             if (mtbl == null || !mtbl.isTable() || !mtbl.hasKey(Singletons.__index)) {
                 try {
-                    return obj.get(idx);
+                    Coroutine cco = vm.getCurrentCoroutine();
+                    boolean prevYieldable = cco.isYieldable;;
+                    cco.isYieldable = false;
+                    var r = obj.get(idx);
+                    cco.isYieldable = prevYieldable;
+                    return r;
                 } catch (LuaRuntimeError ex) {
                     vm.error(LuaObject.of("Foreign call error: " + ex.getMessage()));
                     return null;
@@ -164,7 +175,11 @@ public abstract class LuaFunction {
             LuaObject mtbl = obj.getMetaTable();
             if (mtbl == null || !mtbl.hasKey(Singletons.__newindex)) {
                 try {
+                    Coroutine cco = vm.getCurrentCoroutine();
+                    boolean prevYieldable = cco.isYieldable;;
+                    cco.isYieldable = false;
                     obj.set(idx, val);
+                    cco.isYieldable = prevYieldable;
                     return false;
                 } catch (LuaRuntimeError ex) {
                     vm.error(LuaObject.of("Foreign call error: " + ex.getMessage()));

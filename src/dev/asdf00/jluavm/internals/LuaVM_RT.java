@@ -117,7 +117,6 @@ public class LuaVM_RT extends LuaVM {
 
     public void updateCoroutineWithState(Coroutine coroutine) {
         // TODO
-        coroutine.luaCallStack = luaCallStack;
         coroutine.rootFail = rootFail;
         coroutine.rootReturned = rootReturned;
     }

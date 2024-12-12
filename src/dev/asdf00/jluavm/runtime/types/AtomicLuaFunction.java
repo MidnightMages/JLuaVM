@@ -1,6 +1,7 @@
 package dev.asdf00.jluavm.runtime.types;
 
 import dev.asdf00.jluavm.api.lambdas.*;
+import dev.asdf00.jluavm.internals.Coroutine;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 
@@ -23,22 +24,37 @@ public final class AtomicLuaFunction extends LuaFunction {
     // helpers for lua functions of type F(a); F(a,b); F(a,b,...)
     public static AtomicLuaFunction forZeroResults(LLConsumer c) {
         return new AtomicLuaFunction((vm, args) -> {
+            Coroutine cco = vm.getCurrentCoroutine();
+            boolean prevYieldability = cco.isYieldable;
+            cco.isYieldable = false;
             c.accept(vm, args[0]);
-            return vm.isErroring() ? null : Singletons.EMPTY_LUA_OBJ_ARRAY;
+            var r = vm.isErroring() ? null : Singletons.EMPTY_LUA_OBJ_ARRAY;
+            cco.isYieldable = prevYieldability;
+            return r;
         }, 1, false);
     }
 
     public static AtomicLuaFunction forZeroResults(LLBiConsumer c) {
         return new AtomicLuaFunction((vm, args) -> {
+            Coroutine cco = vm.getCurrentCoroutine();
+            boolean prevYieldability = cco.isYieldable;
+            cco.isYieldable = false;
             c.accept(vm, args[0], args[1]);
-            return vm.isErroring() ? null : Singletons.EMPTY_LUA_OBJ_ARRAY;
+            var r = vm.isErroring() ? null : Singletons.EMPTY_LUA_OBJ_ARRAY;
+            cco.isYieldable = prevYieldability;
+            return r;
         }, 2, false);
     }
 
     public static AtomicLuaFunction vaForZeroResults(LLVaVoidFunction c) {
         return new AtomicLuaFunction((vm, args) -> {
+            Coroutine cco = vm.getCurrentCoroutine();
+            boolean prevYieldability = cco.isYieldable;
+            cco.isYieldable = false;
             c.accept(vm, args[0].asArray());
-            return vm.isErroring() ? null : Singletons.EMPTY_LUA_OBJ_ARRAY;
+            var r = vm.isErroring() ? null : Singletons.EMPTY_LUA_OBJ_ARRAY;
+            cco.isYieldable = prevYieldability;
+            return r;
         }, 1, true);
     }
     // ... more if necessary
@@ -46,55 +62,108 @@ public final class AtomicLuaFunction extends LuaFunction {
     // helpers for lua functions of type F(a)->r; F(a,b)->r; F(a,b,...)->r
     public static AtomicLuaFunction forOneResult(LLSupplier c) {
         return new AtomicLuaFunction((vm, args) -> {
+            Coroutine cco = vm.getCurrentCoroutine();
+            boolean prevYieldability = cco.isYieldable;
+            cco.isYieldable = false;
             var iRes = c.apply(vm);
-            return iRes == null ? null : new LuaObject[]{iRes};
+            var r = iRes == null ? null : new LuaObject[]{iRes};
+            cco.isYieldable = prevYieldability;
+            return r;
         }, 0, false);
     }
 
     public static AtomicLuaFunction forOneResult(LLFunction c) {
         return new AtomicLuaFunction((vm, args) -> {
+            Coroutine cco = vm.getCurrentCoroutine();
+            boolean prevYieldability = cco.isYieldable;
+            cco.isYieldable = false;
             var iRes = c.apply(vm, args[0]);
-            return iRes == null ? null : new LuaObject[]{iRes};
+            var r = iRes == null ? null : new LuaObject[]{iRes};
+            cco.isYieldable = prevYieldability;
+            return r;
         }, 1, false);
     }
 
     public static AtomicLuaFunction forOneResult(LLBiFunction c) {
         return new AtomicLuaFunction((vm, args) -> {
+            Coroutine cco = vm.getCurrentCoroutine();
+            boolean prevYieldability = cco.isYieldable;
+            cco.isYieldable = false;
             var iRes = c.apply(vm, args[0], args[1]);
-            return iRes == null ? null : new LuaObject[]{iRes};
+            var r = iRes == null ? null : new LuaObject[]{iRes};
+            cco.isYieldable = prevYieldability;
+            return r;
         }, 2, false);
     }
 
     public static AtomicLuaFunction forOneResult(LLTriFunction c) {
         return new AtomicLuaFunction((vm, args) -> {
+            Coroutine cco = vm.getCurrentCoroutine();
+            boolean prevYieldability = cco.isYieldable;
+            cco.isYieldable = false;
             var iRes = c.apply(vm, args[0], args[1], args[2]);
-            return iRes == null ? null : new LuaObject[]{iRes};
+            var r = iRes == null ? null : new LuaObject[]{iRes};
+            cco.isYieldable = prevYieldability;
+            return r;
         }, 3, false);
     }
 
     public static AtomicLuaFunction vaForOneResult(LLVaFunction c) {
         return new AtomicLuaFunction((vm, args) -> {
+            Coroutine cco = vm.getCurrentCoroutine();
+            boolean prevYieldability = cco.isYieldable;
+            cco.isYieldable = false;
             var iRes = c.apply(vm, args[0].asArray());
-            return iRes == null ? null : new LuaObject[]{iRes};
+            var r = iRes == null ? null : new LuaObject[]{iRes};
+            cco.isYieldable = prevYieldability;
+            return r;
         }, 1, true);
     }
     // ... more if necessary
 
     // helpers for lua functions of type F(a)->r[]; F(a,b)->r[]; F(a,b,...)->r[]
     public static AtomicLuaFunction forManyResults(LLMultiSupplier c) {
-        return new AtomicLuaFunction((vm, args) -> c.apply(vm), 0, false);
+        return new AtomicLuaFunction((vm, args) -> {
+            Coroutine cco = vm.getCurrentCoroutine();
+            boolean prevYieldability = cco.isYieldable;
+            cco.isYieldable = false;
+            var r = c.apply(vm);
+            cco.isYieldable = prevYieldability;
+            return r;
+        }, 0, false);
     }
 
     public static AtomicLuaFunction forManyResults(LLMultiFunction c) {
-        return new AtomicLuaFunction((vm, args) -> c.apply(vm, args[0]), 1, false);
+        return new AtomicLuaFunction((vm, args) -> {
+            Coroutine cco = vm.getCurrentCoroutine();
+            boolean prevYieldability = cco.isYieldable;
+            cco.isYieldable = false;
+            var r = c.apply(vm, args[0]);
+            cco.isYieldable = prevYieldability;
+            return r;
+        }, 1, false);
     }
 
     public static AtomicLuaFunction forManyResults(LLBiMultiFunction c) {
-        return new AtomicLuaFunction((vm, args) -> c.apply(vm, args[0], args[1]), 2, false);
+        return new AtomicLuaFunction((vm, args) -> {
+            Coroutine cco = vm.getCurrentCoroutine();
+            boolean prevYieldability = cco.isYieldable;
+            cco.isYieldable = false;
+            var r = c.apply(vm, args[0], args[1]);
+            cco.isYieldable = prevYieldability;
+            return r;
+        }, 2, false);
     }
 
     public static AtomicLuaFunction vaForManyResults(LLVaMultiFunction c) {
-        return new AtomicLuaFunction((vm, args) -> c.apply(vm, args[0].asArray()), 1, true);
+        return new AtomicLuaFunction((vm, args) -> {
+            Coroutine cco = vm.getCurrentCoroutine();
+            boolean prevYieldability = cco.isYieldable;
+            cco.isYieldable = false;
+            var r = c.apply(vm, args[0].asArray());
+            cco.isYieldable = prevYieldability;
+            return r;
+        }, 1, true);
     }
     // ... more if necessary
 
