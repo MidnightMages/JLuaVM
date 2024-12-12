@@ -44,6 +44,9 @@ public class LuaVM_RT extends LuaVM {
 
     private boolean isErroring;
 
+    private Coroutine rootCoroutine;
+    private Coroutine currentCoroutine;
+
     Stack<FunctionCallFrame> luaCallStack;
     FunctionCallFrame curFuncFrame;
 
@@ -98,6 +101,25 @@ public class LuaVM_RT extends LuaVM {
 
     public boolean isErroring() {
         return isErroring;
+    }
+
+    public void setCoroutine(Coroutine coroutine) {
+        // TODO: set current state to match the new coroutine
+    }
+
+    public Coroutine getRootCoroutine() {
+        return rootCoroutine;
+    }
+
+    public Coroutine getCurrentCoroutine() {
+        return currentCoroutine;
+    }
+
+    public void updateCoroutineWithState(Coroutine coroutine) {
+        // TODO
+        coroutine.luaCallStack = luaCallStack;
+        coroutine.rootFail = rootFail;
+        coroutine.rootReturned = rootReturned;
     }
 
     // =================================================================================================================
