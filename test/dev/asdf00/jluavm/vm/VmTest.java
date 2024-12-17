@@ -819,5 +819,34 @@ public class VmTest {
                 res);
     }
 
+    @Test
+    public void runWithArgs() {
+        var vm = LuaVM.create().withStdLib().withRootFunc("""
+                return table.pack(...)[1]
+                """);
+        var res = vm.runWithArgs(LuaObject.of(2));
+        assertEquals(
+                LuaVM.VmResult.of(
+                        LuaVM.VmRunState.SUCCESS,
+                        LuaObject.of(2)),
+                res);
+    }
+
+    @Test
+    public void loadAndCallWithArgs() {
+        var vm = LuaVM.create().withStdLib().withRootFunc("""
+                local function f(...)
+                    return table.pack(...)[1]
+                end
+                return f(42)
+                """);
+        var res = vm.run();
+        assertEquals(
+                LuaVM.VmResult.of(
+                        LuaVM.VmRunState.SUCCESS,
+                        LuaObject.of(42)),
+                res);
+    }
+
 
 }

@@ -199,7 +199,11 @@ public abstract class LuaVM {
         }
     }
 
-    public abstract VmResult run();
+    public final VmResult run() {
+        return runWithArgs(Singletons.EMPTY_LUA_OBJ_ARRAY);
+    }
+
+    public abstract VmResult runWithArgs(LuaObject... rootArgs);
 
     public record VmResult(VmRunState state, LuaObject[] returnVars) {
         public static VmResult of(VmRunState state, LuaObject... returnVars) {

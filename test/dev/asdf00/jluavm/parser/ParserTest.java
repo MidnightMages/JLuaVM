@@ -218,4 +218,11 @@ public class ParserTest {
             int i = 0;
         }
     }
+
+    @Test
+    void testGlobalVarargs() {
+        var parser = parse("""
+                table.pack(...)
+                """);
+    }
 }

@@ -24,12 +24,13 @@ public class LuaVM_RT extends LuaVM {
     }
 
     @Override
-    public VmResult run() {
+    public VmResult runWithArgs(LuaObject... rootArgs) {
         if (rootFunc == null) {
             return new VmResult(VmRunState.EXECUTION_ERROR, new LuaObject[]{LuaObject.of("Invalid root function")});
         }
         rootCoroutine = Coroutine.create(rootFunc);
         rootCoroutine.isYieldable = false;
+        rootCoroutine.luaCallStack.peek().getTopFrame().locals[0] = LuaObject.of(rootArgs);
         setCoroutine(rootCoroutine);
         execLoop();
         return new VmResult(rootCoroutine.rootFail ? VmRunState.EXECUTION_ERROR : VmRunState.SUCCESS, rootCoroutine.rootReturned);

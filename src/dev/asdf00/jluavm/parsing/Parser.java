@@ -111,11 +111,13 @@ public final class Parser {
     private IRFunction Chunk() {
         Position _pos = la.pos();
         symTab.enterFunctionScope(true);
+        var tdot = new Token(TDOT, _pos, "...");
+        symTab.add(tdot, false, false);
         var innerStats = Block();
         int maxLocalCnt = symTab.getMaxFuncLocals();
         VarScope scp = symTab.exitScope();
         check(EOF);
-        return new IRFunction(_pos, innerStats.toArray(Node[]::new), scp.getLocalsCount(), scp.getClosableCount(), maxLocalCnt, 0, false);
+        return new IRFunction(_pos, innerStats.toArray(Node[]::new), scp.getLocalsCount(), scp.getClosableCount(), maxLocalCnt, 1, true);
     }
 
     private ArrayList<Node> Block() {
