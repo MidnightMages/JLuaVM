@@ -460,6 +460,11 @@ public class LexerTest {
     }
 
     @Test
+    void funnyHexNumber() {
+        lexAssertTokens("0X1.921FB54442D18P+1", "3.1415926535898");
+    }
+
+    @Test
     void simpleCall() {
         var test = lexAndCollectTokens("""
                 print("hi")
