@@ -123,6 +123,7 @@ public class LuaHashMap {
             return;
         }
         boolean alreadyExists = backing.containsKey(key);
+        KeyNode assocKey;
         if (!alreadyExists) {
             if (tail == null) {
                 // init entry list
@@ -136,8 +137,11 @@ public class LuaHashMap {
             if (key.isLong() && key.asLong() > 0) {
                 plugHole(key.asLong());
             }
+            assocKey = tail;
+        } else {
+            assocKey = backing.get(key).y();
         }
-        backing.put(key, new Tuple<>(value, tail));
+        backing.put(key, new Tuple<>(value, assocKey));
     }
 
     @SuppressWarnings("UnusedReturnValue")
