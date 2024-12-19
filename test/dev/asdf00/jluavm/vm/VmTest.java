@@ -61,7 +61,8 @@ public class VmTest {
         for (var expanded : expandOptions(s)) {
             var vm = LuaVM.create().withStdLib();
             assertDoesNotThrow(() -> vm.withRootFunc(expanded));
-            assertDoesNotThrow(vm::run);
+            var res = assertDoesNotThrow(vm::run);
+            Assertions.assertEquals(LuaVM.VmRunState.SUCCESS, res.state());
         }
     }
 
