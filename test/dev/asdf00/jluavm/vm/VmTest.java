@@ -848,5 +848,171 @@ public class VmTest {
                 res);
     }
 
+    @Test
+    void monteCarloSimulationPi() {
+        loadAssertSuccessAndRv("""
+                math.randomseed(123)
+                local inside = 0
+                local total = 0
+                for i=1,100000,1 do
+                    local x = (math.random()) * 2 - 1
+                    local y = (math.random()) * 2 - 1
+                    local d = math.sqrt(x^2 + y^2)
+                    total = total + 1
+                    if d < 1 then
+                        inside = inside + 1
+                    end
+                end
+                piEstimate = (inside / total) * 4
+                return tostring(piEstimate)
+                """, LuaObject.of("3.14072"));
+    }
 
+    @Test
+    void randomNumberSeed() {
+        loadAssertSuccessAndRv("""
+                math.randomseed(0)
+                return tostring(math.random())
+                """, LuaObject.of("0.24691184196099"));
+    }
+
+    @Test
+    void pseudoRandomNumberGenerator() {
+        loadAssertSuccessAndRv("""
+                local seed = 123
+                
+                local function randomNumber()
+                    local a = 1664525
+                    local c = 1013904223
+                    local m = 2^32
+                    seed = (a * seed + c) % m
+                    return seed / m
+                end
+                
+                local result = ""
+                for i = 1, 3 do
+                    result = result .. tostring(randomNumber())
+                end
+                
+                return result
+                """, LuaObject.of("0.283736921381210.435130023630340.038651257753372"));
+    }
+
+    @Test
+    void binaryToDecimalConversion() {
+        loadAssertSuccessAndRv("""
+                local function binaryToDecimal(binaryString)
+                    local decimal = 0
+                    local length = #binaryString
+                    for i=1,length do
+                        -- local bit = tonumber(string.sub(binaryString, i, i))
+                        local char = string.sub(binaryString, i, i)
+                        local bit = nill
+                        if char == "1" then
+                            bit = 1
+                        else
+                            bit = 0
+                        end
+                        decimal = decimal + bit * 2^(length - i)
+                    end
+                    return decimal
+                end
+
+                return tostring(binaryToDecimal("101010"))
+            """, LuaObject.of("42.0"));
+    }
+
+    @Test
+    void toNumber() {
+        loadAssertSuccessAndRv("""
+                local num = tonumber("123.4")
+                return num
+            """, LuaObject.of(123.4));
+    }
+
+    @Test
+    void mathFloor() {
+        loadAssertSuccessAndRv("""
+                local num = math.floor(2.7)
+                return num
+            """, LuaObject.of(2));
+    }
+
+    @Test
+    void recursionTest() {
+        loadAssertSuccessAndRv("""
+                local function recursionTest(i)
+                    if i <= 0 then
+                        return i
+                    end
+                    return recursionTest(i - 1)
+                end
+                return recursionTest(10)
+            """, LuaObject.of(0));
+    }
+
+    @Test
+    void mergeSort() {
+        loadAssertSuccessAndRv("""
+                local function merge(arr, low, high, left, right)
+                    local i, j, k = 1, 1, 1
+                
+                    while i <= left and j <= right do
+                        if low[i] <= high[j] then
+                            arr[k] = low[i]
+                            i = i + 1
+                        else
+                            arr[k] = high[j]
+                            j = j + 1
+                        end
+                        k = k + 1
+                    end
+                
+                    while i <= left do
+                        arr[k] = low[i]
+                        i = i + 1
+                        k = k + 1
+                    end
+                
+                    while j <= right do
+                        arr[k] = high[j]
+                        j = j + 1
+                        k = k + 1
+                    end
+                end
+                
+                local function mergeSort(arr, n)
+                    if n < 2 then
+                        return
+                    end
+                
+                    local low, high = {}, {}
+                    local mid = math.floor(n / 2)
+                    local left = mid
+                    local right = n - mid
+                
+                    -- split the array into left and right
+                    for i = 1, left do
+                        table.insert(low, arr[i])
+                    end
+                    for i = 1, right do
+                        table.insert(high, arr[i + left])
+                    end
+                
+                    mergeSort(low, left)
+                    mergeSort(high, right)
+                    merge(arr, low, high, left, right)
+                end
+                
+                local array = {58, 75, -58, 73, -46, 77, 78, -87, 38, 71}
+                local n = #array
+                mergeSort(array, n)
+                
+                local result = ""
+                for i = 1, n do
+                    result = result .. tostring(array[i]) .. ";"
+                end
+                return result
+            """, LuaObject.of("-87;-58;-46;38;58;71;73;75;77;78;"));
+    }
 }
