@@ -920,7 +920,7 @@ public class VmTest {
                 end
 
                 return tostring(binaryToDecimal("101010"))
-            """, LuaObject.of("42.0"));
+                """, LuaObject.of("42.0"));
     }
 
     @Test
@@ -928,7 +928,7 @@ public class VmTest {
         loadAssertSuccessAndRv("""
                 local num = tonumber("123.4")
                 return num
-            """, LuaObject.of(123.4));
+                """, LuaObject.of(123.4));
     }
 
     @Test
@@ -936,7 +936,7 @@ public class VmTest {
         loadAssertSuccessAndRv("""
                 local num = math.floor(2.7)
                 return num
-            """, LuaObject.of(2));
+                """, LuaObject.of(2));
     }
 
     @Test
@@ -949,7 +949,7 @@ public class VmTest {
                     return recursionTest(i - 1)
                 end
                 return recursionTest(10)
-            """, LuaObject.of(0));
+                """, LuaObject.of(0));
     }
 
     @Test
@@ -1014,6 +1014,17 @@ public class VmTest {
                     result = result .. tostring(array[i]) .. ";"
                 end
                 return result
-            """, LuaObject.of("-87;-58;-46;38;58;71;73;75;77;78;"));
+                """, LuaObject.of("-87;-58;-46;38;58;71;73;75;77;78;"));
+    }
+
+    @Test
+    void delayedLocalShadowing() {
+        loadAssertSuccessAndRv("""
+                local x = 1
+                do
+                    local x = x + 1
+                    return x
+                end
+                """, LuaObject.of(2));
     }
 }
