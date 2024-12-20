@@ -1026,4 +1026,191 @@ public class VmTest {
                 return sum
                 """, LuaObject.of(3));
     }
+
+    @Test
+    void tableArithmeticOperation() {
+        loadAssertRuntimeError("""
+                local t = {}
+                local x = t + 1
+            """);
+    }
+
+    /*
+    @Test
+    void infiniteRecursion() {
+        loadAssertRuntimeError("""
+                local function recurse() 
+                    recurse() 
+                end
+                recurse()
+                """);
+    }*/
+
+    @Test
+    void negativeSubStringArguments() {
+        loadAssertSuccessAndRv("""
+                return "test123":sub(3, -3)
+                """, LuaObject.of("st1"));
+    }
+
+    @Test
+    void chainCallsWithState() {
+        loadAssertSuccessAndRv("""
+                x = 0
+                function outer()
+                    x = x + 1
+                    return outer
+                end
+                outer()()()
+                return x
+                """, LuaObject.of(3));
+    }
+
+    @Test
+    void tableWithOverlappingKeys() {
+        loadAssertSuccessAndRv("""
+                local t = { [1]="one", ["1"]="string_one", [1.0]="float_one" }
+                result = ""
+                for k, v in pairs(t) do
+                    result = result .. k .. v .. ";"
+                end
+                return result
+                """, LuaObject.of("1float_one;1string_one;"));
+    }
+
+    @Test
+    void unusualTableKeys() {
+        loadAssertSuccess("""
+                local t = {[true] = "true", [{}] = "table"}
+                """);
+    }
+
+    @Test
+    void arithmeticAndStringManipulations() {
+        loadAssertSuccessAndRv("""
+                local x = ("hello" .. 5):rep(3):sub(2, 7) .. (1 / 0)
+                return x
+                """, LuaObject.of("ello5hinf"));
+    }
+
+    @Test
+    void implicitCoercion() {
+        loadAssertSuccessAndRv("""
+                local x = "5" + 3 * 2 .. "123" % 2
+                return x
+                """, LuaObject.of("111"));
+    }
+
+    @Test
+    void arithmeticsOnBooleans() {
+        loadAssertRuntimeError("""
+                local x = ((1 and 0) + (not nil))
+                """);
+    }
+
+    @Test
+    void stringGsub() {
+        loadAssertSuccessAndRv("""
+                local s = ("aaa"):gsub("a", "1")
+                return s
+                """, LuaObject.of("111"));
+    }
+
+    @Test
+    void unusualTableKeys2() {
+        loadAssertSuccessAndRv("""
+                local t = {[({})] = "abc", [{}] = 123}
+                local ret = t[next(t)]:rep(2)
+                return ret
+                """, LuaObject.of("abcabc"));
+    }
+
+    @Test
+    void nestedLoopsWithTable() {
+        loadAssertSuccess("""
+                local function test()
+                    local t = { 1, 2, 3 }
+                    for i = 1, #t do
+                        for j = 1, #t do
+                        end
+                    end
+                end
+                test()
+                """);
+    }
+
+    @Test
+    void randomCode()
+    {
+        loadAssertSuccessAndRv("""
+                local function test()
+                    local a, b = 7, -3
+                    local x = a * b + (b > a and 1 or 0)
+                    local y = ""
+                    for i = 1, 4 do
+                        y = y .. ((i % 3 == 0) and "a" or "b")
+                    end
+                    local z = 0
+                    for i = -5, 2 do
+                        z = z + (i % 2 == 0 and 0 or i)
+                    end
+                    local q, r = {}, {}
+                    for i = 1, 3 do
+                        q[i] = i * i
+                        r[i] = q[i] - i
+                    end
+                    local s = ""
+                    for i = 3, 1, -1 do
+                        s = s .. r[i]
+                    end
+                    local t = a
+                    for _ = 1, 5 do
+                        t = t + 1
+                    end
+                    local u = (t % 2 == 0 and t / 2 or t * 3)
+                    return x .. y .. z .. s .. u
+                end
+                
+                return test()
+                """, LuaObject.of("-21bbab-86206.0"));
+    }
+
+    @Test
+    void randomCode2()
+    {
+        loadAssertSuccessAndRv("""
+                local function test()
+                    local a, b, c = 5, 3, -8
+                    local x = (a + b * c) % 7
+                    local t = {}
+                    for i = 1, 4 do
+                        t[i] = (i % 2 == 0 and i * c or b - i * a)
+                    end
+                    local u = 0
+                    for i = 1, 4 do
+                        u = u + (t[i] > 0 and 1 or 0)
+                    end
+                    local v = ""
+                    for i = 1, 4 do
+                        v = v .. (t[i] % 2 == 0 and "+" or "-")
+                    end
+                    local z = {}
+                    for i = -2, 2 do
+                        z[i] = i * (i < 0 and b or c)
+                    end
+                    local w = ""
+                    for i = -2, 2 do
+                        w = w .. (z[i] < 0 and "n" or "p")
+                    end
+                    local p = 1
+                    for i = 1, 3 do
+                        p = p * (i + z[i - 3] + (t[4] % i))
+                    end
+                    local res = ((x + u) > 0 and v .. w or p)
+                    return x .. u .. v .. w .. res
+                end
+                
+                return test()
+                """, LuaObject.of("20++++nnpnn++++nnpnn"));
+    }
 }
