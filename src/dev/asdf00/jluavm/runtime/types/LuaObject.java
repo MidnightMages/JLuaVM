@@ -577,11 +577,11 @@ public final class LuaObject {
 
         if (isNumber()) {
             if (isLong() && other.isLong())
-                return LuaObject.of(lVal < other.lVal);
+                return LuaObject.of(lVal <= other.lVal);
 
             var dx = isLong() ? (double) lVal : dVal;
             var dy = other.isLong() ? (double) other.lVal : other.dVal;
-            return LuaObject.of(dx < dy);
+            return LuaObject.of(dx <= dy);
         }
 
         var sx = getString();

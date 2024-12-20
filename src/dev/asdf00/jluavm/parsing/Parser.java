@@ -390,8 +390,10 @@ public final class Parser {
                     check(IDENT);
                     Position tpos = cur.pos();
                     SpecificVarInfo target = define(cur, 0);
+                    var definition = new AssignmentNode(tpos, new Node[]{new LocalAccessNode(tpos, target)}, new Node[]{ConstantNode.ofNil(tpos)});
+                    target.baseInfo().setWritten();
                     var func = FuncBody(false);
-                    statement = new AssignmentNode(tpos, new Node[]{new LocalAccessNode(tpos, target)}, new Node[]{func});
+                    statement = new SequenceNode(tpos, definition, new AssignmentNode(tpos, new Node[]{new LocalAccessNode(tpos, target)}, new Node[]{func}));
                 } else {
                     check(IDENT);
                     var localList = new ArrayList<LocalAccessNode>();
