@@ -1016,11 +1016,14 @@ public class VmTest {
     @Test
     void delayedLocalShadowing() {
         loadAssertSuccessAndRv("""
+                local sum = 0
                 local x = 1
                 do
                     local x = x + 1
-                    return x
+                    sum = sum + x
                 end
-                """, LuaObject.of(2));
+                sum = sum + x
+                return sum
+                """, LuaObject.of(3));
     }
 }

@@ -396,17 +396,17 @@ public final class Parser {
                     statement = new SequenceNode(tpos, definition, new AssignmentNode(tpos, new Node[]{new LocalAccessNode(tpos, target)}, new Node[]{func}));
                 } else {
                     check(IDENT);
-                    var localList = new ArrayList<LocalAccessNode>();
+                    var localList = new ArrayList<Tuple<Token, Integer>>();
                     Token locVar = cur;
                     Position apos = cur.pos();
                     int attributes = Attrib();
-                    localList.add(new LocalAccessNode(locVar.pos(), define(locVar, attributes)));
+                    localList.add(new Tuple<>(locVar, attributes));
                     while (ltok == COMMA) {
                         scan();
                         check(IDENT);
                         locVar = cur;
                         attributes = Attrib();
-                        localList.add(new LocalAccessNode(locVar.pos(), define(locVar, attributes)));
+                        localList.add(new Tuple<>(locVar, attributes));
                     }
                     Node[] expressions;
                     if (ltok == ASSIGN) {
@@ -416,7 +416,7 @@ public final class Parser {
                     } else {
                         expressions = new Node[0];
                     }
-                    statement = new AssignmentNode(apos, localList.toArray(Node[]::new), expressions);
+                    statement = new AssignmentNode(apos, localList.stream().map(t -> new LocalAccessNode(t.x().pos(), define(t.x(), t.y()))).toArray(Node[]::new), expressions);
                 }
             }
             case IDENT, LPAR -> {
