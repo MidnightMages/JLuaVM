@@ -8,9 +8,6 @@ import dev.asdf00.jluavm.runtime.types.LuaObject;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import java.util.Arrays;
-import java.util.stream.Collectors;
-
 import static dev.asdf00.jluavm.Util.expandOptions;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -35,8 +32,7 @@ public class VmTest {
         for (var expanded : expandOptions(code)) {
             var vm = LuaVM.create().withStdLib().withRootFunc(expanded);
             var res = vm.run();
-            assertEquals(LuaVM.VmRunState.SUCCESS, res.state(), () -> res.state() + " : " + Arrays.stream(res.returnVars()).map(Object::toString).collect(Collectors.joining()));
-            Assertions.assertArrayEquals(expectedRets, res.returnVars());
+            assertEquals(LuaVM.VmResult.of(LuaVM.VmRunState.SUCCESS, expectedRets), res);
         }
     }
 
@@ -881,7 +877,7 @@ public class VmTest {
     void pseudoRandomNumberGenerator() {
         loadAssertSuccessAndRv("""
                 local seed = 123
-                
+                                
                 local function randomNumber()
                     local a = 1664525
                     local c = 1013904223
@@ -889,12 +885,12 @@ public class VmTest {
                     seed = (a * seed + c) % m
                     return seed / m
                 end
-                
+                                
                 local result = ""
                 for i = 1, 3 do
                     result = result .. tostring(randomNumber())
                 end
-                
+                                
                 return result
                 """, LuaObject.of("0.283736921381210.435130023630340.038651257753372"));
     }
@@ -957,7 +953,7 @@ public class VmTest {
         loadAssertSuccessAndRv("""
                 local function merge(arr, low, high, left, right)
                     local i, j, k = 1, 1, 1
-                
+                                
                     while i <= left and j <= right do
                         if low[i] <= high[j] then
                             arr[k] = low[i]
@@ -968,30 +964,30 @@ public class VmTest {
                         end
                         k = k + 1
                     end
-                
+                                
                     while i <= left do
                         arr[k] = low[i]
                         i = i + 1
                         k = k + 1
                     end
-                
+                                
                     while j <= right do
                         arr[k] = high[j]
                         j = j + 1
                         k = k + 1
                     end
                 end
-                
+                                
                 local function mergeSort(arr, n)
                     if n < 2 then
                         return
                     end
-                
+                                
                     local low, high = {}, {}
                     local mid = math.floor(n / 2)
                     local left = mid
                     local right = n - mid
-                
+                                
                     -- split the array into left and right
                     for i = 1, left do
                         table.insert(low, arr[i])
@@ -999,16 +995,16 @@ public class VmTest {
                     for i = 1, right do
                         table.insert(high, arr[i + left])
                     end
-                
+                                
                     mergeSort(low, left)
                     mergeSort(high, right)
                     merge(arr, low, high, left, right)
                 end
-                
+                                
                 local array = {58, 75, -58, 73, -46, 77, 78, -87, 38, 71}
                 local n = #array
                 mergeSort(array, n)
-                
+                                
                 local result = ""
                 for i = 1, n do
                     result = result .. tostring(array[i]) .. ";"
