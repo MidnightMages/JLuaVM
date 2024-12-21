@@ -2,6 +2,7 @@ package dev.asdf00.jluavm.runtime.stdlib;
 
 import dev.asdf00.jluavm.runtime.types.AtomicLuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
+import dev.asdf00.jluavm.runtime.utils.Singletons;
 
 import static dev.asdf00.jluavm.runtime.types.LuaObject.Types.*;
 import static dev.asdf00.jluavm.runtime.utils.RTUtils.funcArgAnyTypeError;
@@ -55,7 +56,53 @@ public class LTable {
             return LuaObject.of(sb.toString());
         }).obj());
 
-        // TODO add table.insert
+        rv.set("insert", AtomicLuaFunction.vaForManyResults((vm, args) -> {
+            // LuaC deviation (as the lua way seems inconsistent across sequences and dicts):
+            // take all elements tbl[pos] until, excluding the next hole (or nil) and shift them up by 1 (all raw, no metatable interaction)
+            // then check if tbl has a metamethod __newindex and, if so, call __newindex, else rawset tbl[pos] to element
+
+            var tbl = args.length < 1 ? null : args[0];
+            if (tbl == null || !tbl.isTable()) {
+                vm.error(funcArgTypeError("table.insert", 0, tbl, "table"));
+                return null;
+            }
+
+            assert tbl != null;
+
+            var pos = args.length > 2 ? args[1] : null;
+            var value = args.length > 2 ? args[2] : args[1];
+            if (pos != null && !pos.hasLongRepr()) {
+                vm.error(funcArgAnyTypeError("table.insert", 1, pos, "integer", "nothing"));
+                return null;
+            }
+            if (value == null) {
+                vm.error(funcArgAnyTypeError("table.insert", args.length > 2 ? 2 : 1, value, "any value"));
+                return null;
+            }
+
+            var map = tbl.asMap();
+            // TODO call the __len metamethod instead if it exists maybe?
+            var idx = LuaObject.of(pos != null ? pos.asLong() : (map.luaLen() + 1));
+
+            var elementBuffer = value;
+            while (true) {
+                var replaceCandidate = map.getOrDefault(idx, LuaObject.nil());
+                if (!replaceCandidate.isNil()) { // shift it up
+                    map.put(idx, elementBuffer);
+                    elementBuffer = replaceCandidate;
+                    idx = LuaObject.of(idx.lVal + 1);
+                } else { // insert this one and stop
+                    var mtf = tbl.getMetaValueOrNil("__newindex");
+                    if (mtf.isNil()) { // no mt func, do a direct insert and we are done
+                        map.put(idx, elementBuffer);
+                        return Singletons.EMPTY_LUA_OBJ_ARRAY;
+                    } else {
+                        // TODO call mt func
+                        throw new UnsupportedOperationException("table insert mt operation is not yet implemented.");
+                    }
+                }
+            }
+        }).obj());
 
         // TODO add table.move
 
