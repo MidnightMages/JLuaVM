@@ -875,9 +875,9 @@ public class VmTest {
 
     @Test
     void pseudoRandomNumberGenerator() {
-        loadAssertSuccessAndRv("""
+        var code = """
                 local seed = 123
-                                
+                
                 local function randomNumber()
                     local a = 1664525
                     local c = 1013904223
@@ -885,14 +885,25 @@ public class VmTest {
                     seed = (a * seed + c) % m
                     return seed / m
                 end
-                                
+                
                 local result = ""
                 for i = 1, 3 do
-                    result = result .. tostring(randomNumber())
+                    result = result .. "," .. tostring(randomNumber())
                 end
-                                
+                
                 return result
-                """, LuaObject.of("0.283736921381210.435130023630340.038651257753372"));
+                """;
+
+        var vm = LuaVM.create().withStdLib().withRootFunc(code);
+        var res = vm.run();
+        assertEquals(LuaVM.VmRunState.SUCCESS, res.state());
+        var rvs = res.returnVars();
+        assertEquals(1, rvs.length);
+        var retInts = rvs[0].asString().substring(1).split(",", 3);
+        var expected = new double[]{0.28373692138121, 0.43513002363034, 0.038651257753372};
+        for (int i = 0; i < 3; i++) {
+            assertTrue(Double.parseDouble(retInts[i]) - expected[i] < 1e-12);
+        }
     }
 
     @Test
