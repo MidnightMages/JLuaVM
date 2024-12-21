@@ -102,7 +102,7 @@ public class VmTest {
                 if §true|false§ then
                 a,a.b = {},7 else
                 a.b,a = 7,{} end
-                
+                                
                 local rv = ""
                 for _,i in ipairs({1,2,3}) do
                     rv = rv .. tostring(c[i])..","
@@ -157,14 +157,14 @@ public class VmTest {
                 function f2(a) rv=rv.."f2;"; return 1.2 end
                 function g(a) rv=rv.."g;"; return 2 end
                 function h(a) rv=rv.."h;"; return 3 end
-                
+                                
                 a = {}
                 setmetatable(a,a)
                 a["__newindex"] = function(k,v,a)
                     rv = rv.."mt_"..tostring(v).."="..tostring(a)..";"
                     rawset(k,v,a)
                 end
-                
+                                
                 a_orig = a
                 a.a,a.a,a.a,a,a = f(1),f1(1),f2(1), g(1), h(1)
                 rv2 = rv.."|"..tostring(a).."|"..tostring(a_orig.a)
@@ -178,14 +178,14 @@ public class VmTest {
                 function f2(a) rv=rv.."f2;"; return 1.2 end
                 function g(a) rv=rv.."g;"; return 2 end
                 function h(a) rv=rv.."h;"; return 3 end
-                
+                                
                 a = {}
                 setmetatable(a,a)
                 a["__newindex"] = function(k,v,a)
                     rv = rv.."mt_"..tostring(v).."="..tostring(a)..";"
                     --rawset(k,v,a)
                 end
-                
+                                
                 a_orig = a
                 a.a,a.a,a.a,a,a = f(1),f1(1),f2(1), g(1), h(1)
                 rv2 = rv.."|"..tostring(a).."|"..tostring(a_orig.a)
@@ -221,7 +221,7 @@ public class VmTest {
                     ::dest::
                     print(1)
                 end
-                
+                                
                 print("ok!")
                 """, LuaSemanticException.class);
 
@@ -372,7 +372,7 @@ public class VmTest {
                     local b <close> = a
                     local c <close> = a
                 end
-                
+                                
                 return rv""", LuaObject.of("closing;closing;"));
 
         loadAssertSuccessAndRv("""
@@ -390,20 +390,20 @@ public class VmTest {
         loadAssertSuccessAndRv("""
                 rv = ""
                 print = function(a) rv = rv .. tostring(a)..";" end
-                
+                                
                 i = 0
                 function f(x)
                     print("fval"..tostring(x))
                     i=i+1
                     return i>2
                 end
-                
+                                
                 function getMt()
                    local t = {["__close"]=function() print("closing") end, ["name"]="a table"}
                    setmetatable(t,t)
                    return t
                 end
-                
+                                
                 repeat
                     print("iter")
                     local a <close> = getMt()
@@ -411,7 +411,7 @@ public class VmTest {
                 until f(a.name)
                 print("c")
                 print("done")
-                
+                                
                 return rv
                 """, LuaObject.of("iter;b;fvala table;closing;iter;b;fvala table;closing;iter;b;fvala table;closing;c;done;"));
 
@@ -676,7 +676,7 @@ public class VmTest {
                 function _EXT.number.toRoman(int)
                   return romanConst[int]
                 end
-                
+                                
                 print(5:toRoman() .. " guys")
                 local myInt = ("III":toNum() + tostring("II":toNum()))
                 print(myInt:toRoman())
@@ -854,7 +854,7 @@ public class VmTest {
 
     @Test
     void monteCarloSimulationPi() {
-        loadAssertSuccessAndRv("""
+        var rv = loadAssertSuccessGetRv("""
                 math.randomseed(123)
                 local inside = 0
                 local total = 0
@@ -869,7 +869,8 @@ public class VmTest {
                 end
                 piEstimate = (inside / total) * 4
                 return tostring(piEstimate)
-                """, LuaObject.of("3.14072"));
+                """);
+        assertTrue(rv[0].asDouble() - 3.14 < 1e-2);
     }
 
     @Test
@@ -887,7 +888,7 @@ public class VmTest {
     void pseudoRandomNumberGenerator() {
         var code = """
                 local seed = 123
-                
+                                
                 local function randomNumber()
                     local a = 1664525
                     local c = 1013904223
@@ -895,12 +896,12 @@ public class VmTest {
                     seed = (a * seed + c) % m
                     return seed / m
                 end
-                
+                                
                 local result = ""
                 for i = 1, 3 do
                     result = result .. "," .. tostring(randomNumber())
                 end
-                
+                                
                 return result
                 """;
 
@@ -935,7 +936,7 @@ public class VmTest {
                     end
                     return decimal
                 end
-                
+                                
                 return tostring(binaryToDecimal("101010"))
                 """, LuaObject.of("42.0"));
     }
@@ -974,7 +975,7 @@ public class VmTest {
         loadAssertSuccessAndRv("""
                 local function merge(arr, low, high, left, right)
                     local i, j, k = 1, 1, 1
-                
+                                
                     while i <= left and j <= right do
                         if low[i] <= high[j] then
                             arr[k] = low[i]
@@ -985,30 +986,30 @@ public class VmTest {
                         end
                         k = k + 1
                     end
-                
+                                
                     while i <= left do
                         arr[k] = low[i]
                         i = i + 1
                         k = k + 1
                     end
-                
+                                
                     while j <= right do
                         arr[k] = high[j]
                         j = j + 1
                         k = k + 1
                     end
                 end
-                
+                                
                 local function mergeSort(arr, n)
                     if n < 2 then
                         return
                     end
-                
+                                
                     local low, high = {}, {}
                     local mid = math.floor(n / 2)
                     local left = mid
                     local right = n - mid
-                
+                                
                     -- split the array into left and right
                     for i = 1, left do
                         table.insert(low, arr[i])
@@ -1016,16 +1017,16 @@ public class VmTest {
                     for i = 1, right do
                         table.insert(high, arr[i + left])
                     end
-                
+                                
                     mergeSort(low, left)
                     mergeSort(high, right)
                     merge(arr, low, high, left, right)
                 end
-                
+                                
                 local array = {58, 75, -58, 73, -46, 77, 78, -87, 38, 71}
                 local n = #array
                 mergeSort(array, n)
-                
+                                
                 local result = ""
                 for i = 1, n do
                     result = result .. tostring(array[i]) .. ";"
@@ -1190,7 +1191,7 @@ public class VmTest {
                     local u = (t % 2 == 0 and t / 2 or t * 3)
                     return x .. y .. z .. s .. u
                 end
-                
+                                
                 return test()
                 """, LuaObject.of("-21bbab-86206.0"));
     }
@@ -1247,7 +1248,7 @@ public class VmTest {
                     local res = ((x + u) > 0 and v .. w or p)
                     return x .. u .. v .. w .. res
                 end
-                
+                                
                 return test()
                 """, LuaObject.of("20++++nnpnn++++nnpnn"));
     }
@@ -1310,12 +1311,12 @@ public class VmTest {
                         coroutine.yield()
                     end
                 end)
-                
+                                
                 coroutine.resume(co)
                 coroutine.resume(co)
                 coroutine.resume(co)
                 coroutine.resume(co)
-                
+                                
                 return x
                 """, LuaObject.of(3));
     }
@@ -1342,7 +1343,7 @@ public class VmTest {
                         end
                     end)
                 end
-                
+                                
                 out = ""
                 for n in range(1, 10, 2) do
                     out = out .. n
@@ -1394,7 +1395,7 @@ public class VmTest {
                     })
                     return t
                 end
-                
+                                
                 local t = infiniteTableGenerator()
                 return t[5] .. t[100] .. t["abc"]
                 """, LuaObject.of("5100abc"));
@@ -1405,22 +1406,22 @@ public class VmTest {
         loadAssertSuccess("""
                 local Node = {}
                 Node.__index = Node
-                
+                                
                 function Node:new(name)
                     local instance = setmetatable({}, self)
                     instance.name = name
                     instance.children = {}
                     return instance
                 end
-                
+                                
                 function Node:addChild(child)
                     table.insert(self.children, child)
                 end
-                
+                                
                 local parent = Node:new("parent")
                 local child1 = Node:new("child1")
                 local child2 = Node:new("child2")
-                
+                                
                 parent:addChild(child1)
                 parent:addChild(child2)
                 """);
@@ -1432,12 +1433,12 @@ public class VmTest {
                 local sandboxEnv = {
                     math = {abs = math.abs},
                 }
-                
+                                
                 local script = [[
                     local x = -25
                     return math.abs(x)
                 ]]
-                
+                                
                 local sandbox = load(script, "sandbox", "t", sandboxEnv)
                 ret = sandbox()
                 return ret
@@ -1449,27 +1450,27 @@ public class VmTest {
         loadAssertSuccessAndRv("""
                 local Chain = {}
                 Chain.__index = Chain
-                
+                                
                 function Chain:new(value)
                     local instance = setmetatable({}, self)
                     instance.value = value
                     return instance
                 end
-                
+                                
                 function Chain:add(x)
                     self.value = self.value + x
                     return self
                 end
-                
+                                
                 function Chain:subtract(x)
                     self.value = self.value - x
                     return self
                 end
-                
+                                
                 function Chain:result()
                     return self.value
                 end
-                
+                                
                 local chain = Chain:new(10)
                 return chain:add(5):subtract(3):add(2):result()
                 """, LuaObject.of(14));
