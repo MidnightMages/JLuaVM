@@ -6,6 +6,7 @@ import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.runtime.types.AtomicLuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
+import dev.asdf00.jluavm.runtime.types.LuaObject.Types;
 import dev.asdf00.jluavm.runtime.utils.RTUtils;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 
@@ -49,23 +50,35 @@ public class LGlobal {
         rv.set("next", next);
         rv.set("load", AtomicLuaFunction.vaForManyResults((vm, args) -> {
             // https://www.lua.org/manual/5.4/manual.html#pdf-load
-            // TODO support function for args[0]; make it return nil, error message on error, and function, nil on success
-            if (args.length == 0) {
-                vm.error(funcArgTypeError("load", 0, null, "string"));
+            // TODO support function for args[0];
+            var chunk = args.length > 0 ? args[0] : null;
+            var chunkName = args.length > 1 ? args[1] : null; // TODO make use of chunkname
+            var mode = args.length > 2 ? args[2] : null;
+            var env = args.length > 3 ? args[3] : null;
+
+            if (chunk == null || !chunk.isString()) {
+                vm.error(funcArgTypeError("load", 0, chunk, "string"));
                 return null;
             }
-            var code = args[0];
-            if (!code.isString()) {
-                vm.error(funcArgTypeError("load", 0, code, "string"));
+            if (chunkName != null && !chunkName.isType(Types.ARITHMETIC | Types.NIL)) {
+                vm.error(funcArgAnyTypeError("load", 1, chunkName,"string", "number", "nil", "nothing"));
                 return null;
             }
-            var env = args.length > 1 ? args[1] : null;
+            if (mode != null && !(mode.isString() && (mode.asString().equals("t"))) && !mode.isNil()) {
+                vm.error(funcArgAnyTypeError("load", 2, mode, "string: \"t\"", "nil", "nothing"));
+                return null;
+            }
             if (env != null && !env.isTable()) {
-                vm.error(funcArgAnyTypeError("load", 1, code, "table", "nothing"));
+                vm.error(funcArgAnyTypeError("load", 3, env, "table", "nothing"));
                 return null;
             }
+
+            //noinspection all
+            assert chunk.isString();
+
+
             try {
-                var rv2 = vm.load(code.getString(), env == null ? vm.getCallerEnv() : env);
+                var rv2 = vm.load(chunk.getString(), env == null ? vm.getCallerEnv() : env);
                 return new LuaObject[]{LuaObject.of(rv2), LuaObject.NIL};
             } catch (LuaParserException ex) {
                 return new LuaObject[]{LuaObject.NIL, LuaObject.of("Compilation error: "+ex.getMessage())};
@@ -97,14 +110,14 @@ public class LGlobal {
         }).obj());
         rv.set("rawequal", AtomicLuaFunction.forOneResult((vm, v1, v2) -> {
             var t1 = v1.getType();
-            if (t1 == LuaObject.Types.LONG || t1 == LuaObject.Types.DOUBLE)
-                t1 = LuaObject.Types.NUMBER;
+            if (t1 == Types.LONG || t1 == Types.DOUBLE)
+                t1 = Types.NUMBER;
 
             var t2 = v2.getType();
-            if (t2 == LuaObject.Types.LONG || t2 == LuaObject.Types.DOUBLE)
-                t2 = LuaObject.Types.NUMBER;
+            if (t2 == Types.LONG || t2 == Types.DOUBLE)
+                t2 = Types.NUMBER;
 
-            return LuaObject.of(t1 == t2 && ((t1 == LuaObject.Types.NUMBER || t1 == LuaObject.Types.STRING) ? v1.eq(v2).getBool() : v1 == v2));
+            return LuaObject.of(t1 == t2 && ((t1 == Types.NUMBER || t1 == Types.STRING) ? v1.eq(v2).getBool() : v1 == v2));
         }).obj());
         rv.set("rawget", AtomicLuaFunction.forOneResult((vm, tbl, k) -> {
             if (!tbl.isTable()) {
