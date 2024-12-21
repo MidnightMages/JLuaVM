@@ -22,6 +22,9 @@ public class CoerceNumericForNode extends Node {
         String itr = getLocalExpression(iteratorVar);
         String ub = getLocalExpression(upperBoundVar);
         String sv = getLocalExpression(stepVar);
+        var call = cState.generateEStackCallInfo(1);
+        String checkSpot = cState.pushEStack();
+        cState.popEStack();
         return """
                 if (numericForCheck(vm, %s, %s, %s)) {
                     return;
@@ -29,11 +32,26 @@ public class CoerceNumericForNode extends Node {
                     %s
                     %s
                     %s
+                }
+                %s = areEqual(vm, %d, %s, LuaObject.of(0));
+                if (%s == null) {
+                    %s
+                    return;
+                }
+                case %d:
+                if (RTUtils.isTruthy(%s)) {
+                    vm.error(LuaObject.of("'for' step is zero"));
+                    return;
                 }""".formatted(sv, ub, itr,
                 sv, ub, itr,
                 setLocalStatement(stepVar, "LuaObject.of(%s.asDouble())".formatted(sv)),
                 setLocalStatement(upperBoundVar, "LuaObject.of(%s.asDouble())".formatted(ub)),
-                setLocalStatement(iteratorVar, "LuaObject.of(%s.asDouble())".formatted(itr)));
+                setLocalStatement(iteratorVar, "LuaObject.of(%s.asDouble())".formatted(itr)),
+                checkSpot, call.resumeLabel(), sv,
+                checkSpot,
+                call.saveEStack(),
+                call.resumeLabel(),
+                checkSpot);
     }
 
     public static String getLocalExpression(SpecificVarInfo info) {

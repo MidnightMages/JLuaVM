@@ -304,8 +304,22 @@ public final class Parser {
                     // we add the for-step to the end of the internal statements
                     // the step might break the loop if an integer addition over/under-flows and must therefore close stuff in that case
                     innerStats.add(new StepForNode(cur.pos(), internalControlVar, stepVar, innerLoopScp.getClosableCount()));
-                    Node entryCondition = new RelationalOpNode(setupPos, LE.metatableFuncNameBinary, false,
-                            new LocalAccessNode(setupPos, internalControlVar), new LocalAccessNode(ubPos, ubVar));
+
+                    Node entryCondition = new LogicBinaryOpNode(setupPos, true,
+                            new LogicBinaryOpNode(setupPos, false,
+                                    new RelationalOpNode(setupPos, LT.metatableFuncNameBinary, false,
+                                            ConstantNode.ofLong(setupPos, 0),
+                                            new LocalAccessNode(setupPos, stepVar)),
+                                    new RelationalOpNode(setupPos, LE.metatableFuncNameBinary, false,
+                                            new LocalAccessNode(setupPos, internalControlVar), new LocalAccessNode(ubPos, ubVar))
+                            ),
+                            new LogicBinaryOpNode(setupPos, false,
+                                    new RelationalOpNode(setupPos, LT.metatableFuncNameBinary, true,
+                                            ConstantNode.ofLong(setupPos, 0),
+                                            new LocalAccessNode(setupPos, stepVar)),
+                                    new RelationalOpNode(setupPos, LE.metatableFuncNameBinary, true,
+                                            new LocalAccessNode(setupPos, internalControlVar), new LocalAccessNode(ubPos, ubVar))
+                            ));
 
                     // build for-loop
                     statement = new DoEndNode(_pos, new Node[]{
