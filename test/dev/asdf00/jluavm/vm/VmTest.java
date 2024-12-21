@@ -1485,4 +1485,20 @@ public class VmTest {
                 return chain:add(5):subtract(3):add(2):result()
                 """, LuaObject.of(14));
     }
+
+    @Test
+    void luacComplianceWeirdTableConstruction() {
+        loadAssertSuccessAndRv("""
+                local rv = ""
+                local function f(x)
+                    rv = rv .. "hi:" .. x .. ";"
+                    return x
+                end
+                local t = {f("a"), f("b"), [2] = f("override")}
+                for i, v in pairs(t) do
+                    rv = rv.. tostring(i) .. "-" .. v .. ";"
+                end
+                return rv
+                """, LuaObject.of("hi:a;hi:b;hi:override;2-b;1-a;"));
+    }
 }
