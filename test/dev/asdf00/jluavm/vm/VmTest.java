@@ -1187,8 +1187,18 @@ public class VmTest {
     }
 
     @Test
-    void randomCode2()
-    {
+    void reversedForLoop() {
+        loadAssertSuccessAndRv("""
+                s = ""
+                for i = 3, 1, -1 do
+                    s = s .. tostring(i)
+                end
+                return s
+                """, LuaObject.of("321"));
+    }
+
+    @Test
+    void randomCode2() {
         loadAssertSuccessAndRv("""
                 local function test()
                     local a, b, c = 5, 3, -8
