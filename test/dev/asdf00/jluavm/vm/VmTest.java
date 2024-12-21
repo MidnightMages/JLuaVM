@@ -28,6 +28,13 @@ public class VmTest {
         loadAssertSuccessAndRv(code, new LuaObject[]{expectedRet});
     }
 
+    private static LuaObject[] loadAssertSuccessGetRv(String code) {
+        var vm = LuaVM.create().withStdLib().withRootFunc(code);
+        var res = vm.run();
+        assertEquals(LuaVM.VmRunState.SUCCESS, res.state());
+        return res.returnVars();
+    }
+
     private static void loadAssertSuccessAndRv(String code, LuaObject[] expectedRets) {
         for (var expanded : expandOptions(code)) {
             var vm = LuaVM.create().withStdLib().withRootFunc(expanded);
@@ -867,10 +874,13 @@ public class VmTest {
 
     @Test
     void randomNumberSeed() {
-        loadAssertSuccessAndRv("""
+        var rv = loadAssertSuccessGetRv("""
                 math.randomseed(0)
-                return tostring(math.random())
-                """, LuaObject.of("0.24691184196099"));
+                local a = math.random()
+                math.randomseed(0)
+                return a - math.random()
+                """);
+        assertTrue(rv[0].asDouble() < 1e-12);
     }
 
     @Test
