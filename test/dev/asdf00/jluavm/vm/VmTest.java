@@ -479,6 +479,7 @@ public class VmTest {
 
     @Test
     public void simplePairsLoop() {
+        // pairs iteration order is not compliant to LuaC, as this is an implementation detail according to spec
         var vm = LuaVM.create();
         vm.withStdLib();
         vm.withRootFunc("""
@@ -492,10 +493,10 @@ public class VmTest {
         assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS, new LuaObject[]{LuaObject.of("""
                 result:
                 a = 1
-                1 = 2
                 1.5 = 3
-                2 = nil
                 bsdf = 5
+                1 = 2
+                2 = nil
                 3 = 6""")}), result);
     }
 
