@@ -971,7 +971,11 @@ public final class Parser {
         } else {
             keyVals = FieldList();
         }
-        return new ConstructedTableNode(tpos, keyVals);
+        if (keyVals.length == 2 && keyVals[1] instanceof LocalAccessNode maybeVarArgs && maybeVarArgs.info.baseInfo().name.equals("...")) {
+            return new VarArgsTableNode(tpos, keyVals[1]);
+        } else {
+            return new ConstructedTableNode(tpos, keyVals);
+        }
     }
 
     private Node[] FieldList() {

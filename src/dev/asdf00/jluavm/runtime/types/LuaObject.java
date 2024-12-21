@@ -1110,7 +1110,12 @@ public final class LuaObject {
         assert (val.length & 1) == 0;
         var rv = new LuaHashMap();
         for (int i = 0; i < val.length; i += 2) {
-            rv.put(val[i], val[i + 1]);
+            LuaObject insertion = val[i + 1];
+            if (insertion.isArray()) {
+                LuaObject[] arr = insertion.asArray();
+                insertion = arr.length > 0 ? arr[0] : LuaObject.nil();
+            }
+            rv.put(val[i], insertion);
             assert !val[i].isDouble() || val[i].isDouble() && !val[i].isIntCoercible();
         }
         return new LuaObject(rv, -1, -1, Types.TABLE);
