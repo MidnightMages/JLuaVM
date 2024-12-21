@@ -1213,4 +1213,227 @@ public class VmTest {
                 return test()
                 """, LuaObject.of("20++++nnpnn++++nnpnn"));
     }
+
+    @Test
+    void localVariableShadowing() {
+        loadAssertSuccessAndRv("""
+                local x = 1
+                local x = 2
+                return x
+                """, LuaObject.of(2));
+    }
+
+    @Test
+    void greekVariableName() {
+        loadAssertSuccessAndRv("""
+                λ = 123
+                return λ
+                """, LuaObject.of(123));
+    }
+
+    @Test
+    void invalidIdentifierTable() {
+        loadAssertRuntimeError("""
+                local t = { ["a.b"] = -1}
+                x = t.a.b
+                """);
+    }
+
+    @Test
+    void mathOverride() {
+        loadAssertSuccessAndRv("""
+                math = {["abs"] = function(x) return x end}
+                return math.abs(-1)
+                """, LuaObject.of(-1));
+    }
+
+    @Test
+    void variableArgumentsSumFunction() {
+        loadAssertSuccessAndRv("""
+                function sum(...)
+                    local args = {...}
+                    local total = 0
+                    for _, v in ipairs(args) do
+                        total = total + v
+                    end
+                    return total
+                end
+                return sum(1, 2, 3)
+                """, LuaObject.of(6));
+    }
+
+    @Test
+    void coroutinesTest() {
+        loadAssertSuccessAndRv("""
+                x = 0
+                local co = coroutine.create(function()
+                    for i = 1, 3 do
+                        x = x + 1
+                        coroutine.yield()
+                    end
+                end)
+                
+                coroutine.resume(co)
+                coroutine.resume(co)
+                coroutine.resume(co)
+                coroutine.resume(co)
+                
+                return x
+                """, LuaObject.of(3));
+    }
+
+    @Test
+    void selfReferencingTable() {
+        loadAssertSuccessAndRv("""
+                local t = {}
+                t.self = t
+                return t.self.self.self == t
+                """, LuaObject.of(true));
+    }
+
+    @Test
+    void generatorsWithCoroutines() {
+        loadAssertSuccessAndRv("""
+                function range(start, finish, step)
+                    step = step or 1
+                    local current = start
+                    return coroutine.wrap(function()
+                        while current <= finish do
+                            coroutine.yield(current)
+                            current = current + step
+                        end
+                    end)
+                end
+                
+                out = ""
+                for n in range(1, 10, 2) do
+                    out = out .. n
+                end
+                return out
+                """, LuaObject.of("13579"));
+    }
+
+    @Test
+    void tableSorting() {
+        loadAssertSuccessAndRv("""
+                local numbers = {5, 3, 8, 1}
+                table.sort(numbers, function(a, b) return a < b end)
+                result = ""
+                for _, v in ipairs(numbers) do
+                    result = result .. v .. ","
+                end
+                return result
+                """, LuaObject.of("1,3,5,8,"));
+    }
+
+    @Test
+    void fibonacci() {
+        loadAssertSuccessAndRv("""
+                local mem = {}
+                function fibonacci(n)
+                    if n <= 1 then
+                        return n
+                    end
+                    if mem[n] then
+                        return mem[n]
+                    end
+                    mem[n] = fibonacci(n - 1) + fibonacci(n - 2)
+                    return mem[n]
+                end
+                return fibonacci(42)
+                """, LuaObject.of(267914296));
+    }
+
+    @Test
+    void infiniteTable() {
+        loadAssertSuccessAndRv("""
+                function infiniteTableGenerator()
+                    local t = {}
+                    setmetatable(t, {
+                        __index = function(_, key)
+                            return key
+                        end
+                    })
+                    return t
+                end
+                
+                local t = infiniteTableGenerator()
+                return t[5] .. t[100] .. t["abc"]
+                """, LuaObject.of("5100abc"));
+    }
+
+    @Test
+    void classLikeBehavior() {
+        loadAssertSuccess("""
+                local Node = {}
+                Node.__index = Node
+                
+                function Node:new(name)
+                    local instance = setmetatable({}, self)
+                    instance.name = name
+                    instance.children = {}
+                    return instance
+                end
+                
+                function Node:addChild(child)
+                    table.insert(self.children, child)
+                end
+                
+                local parent = Node:new("parent")
+                local child1 = Node:new("child1")
+                local child2 = Node:new("child2")
+                
+                parent:addChild(child1)
+                parent:addChild(child2)
+                """);
+    }
+
+    @Test
+    void sandboxEnv() {
+        loadAssertSuccessAndRv("""
+                local sandboxEnv = {
+                    math = {abs = math.abs},
+                }
+                
+                local script = [[
+                    local x = -25
+                    return math.abs(x)
+                ]]
+                
+                local sandbox = load(script, "sandbox", "t", sandboxEnv)
+                ret = sandbox()
+                return ret
+                """, LuaObject.of(25));
+    }
+
+    @Test
+    void arithmeticOperatorChaining() {
+        loadAssertSuccessAndRv("""
+                local Chain = {}
+                Chain.__index = Chain
+                
+                function Chain:new(value)
+                    local instance = setmetatable({}, self)
+                    instance.value = value
+                    return instance
+                end
+                
+                function Chain:add(x)
+                    self.value = self.value + x
+                    return self
+                end
+                
+                function Chain:subtract(x)
+                    self.value = self.value - x
+                    return self
+                end
+                
+                function Chain:result()
+                    return self.value
+                end
+                
+                local chain = Chain:new(10)
+                return chain:add(5):subtract(3):add(2):result()
+                """, LuaObject.of(14));
+    }
 }
