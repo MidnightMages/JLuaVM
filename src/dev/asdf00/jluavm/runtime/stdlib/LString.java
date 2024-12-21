@@ -6,6 +6,7 @@ import dev.asdf00.jluavm.runtime.types.LuaObject;
 
 import java.util.Locale;
 
+import static dev.asdf00.jluavm.runtime.types.LuaObject.Types.*;
 import static dev.asdf00.jluavm.runtime.utils.RTUtils.funcArgAnyTypeError;
 import static dev.asdf00.jluavm.runtime.utils.RTUtils.funcArgTypeError;
 
@@ -25,7 +26,7 @@ public class LString {
         string.unpack(fmt, s [, pos])
          */
         rv.set("byte", AtomicLuaFunction.vaForOneResult((vm, va) -> {
-            if (va.length < 1 || !va[0].isType(LuaObject.Types.ARITHMETIC)) {
+            if (va.length < 1 || !va[0].isType(ARITHMETIC)) {
                 vm.error(funcArgTypeError("string.byte", 0, va.length > 0 ? va[0] : null, "string"));
                 return null;
             }
@@ -59,21 +60,21 @@ public class LString {
             return LuaObject.of(r2.toString());
         }).obj());
         rv.set("len", AtomicLuaFunction.forOneResult((vm, s) -> {
-            if (!s.isType(LuaObject.Types.ARITHMETIC)) {
+            if (!s.isType(ARITHMETIC)) {
                 vm.error(funcArgTypeError("string.len", 0, s, "string"));
                 return null;
             }
             return LuaObject.of(s.asString().length());
         }).obj());
         rv.set("lower", AtomicLuaFunction.forOneResult((vm, s) -> {
-            if (!s.isType(LuaObject.Types.ARITHMETIC)) {
+            if (!s.isType(ARITHMETIC)) {
                 vm.error(funcArgTypeError("string.lower", 0, s, "string"));
                 return null;
             }
             return LuaObject.of(s.asString().toLowerCase(Locale.US));
         }).obj());
         rv.set("rep", AtomicLuaFunction.vaForOneResult((vm, va) -> {
-            if (va.length < 1 || !va[0].isType(LuaObject.Types.ARITHMETIC)) {
+            if (va.length < 1 || !va[0].isType(ARITHMETIC)) {
                 vm.error(funcArgTypeError("string.rep", 0, va.length > 0 ? va[0] : null, "string"));
                 return null;
             }
@@ -86,19 +87,20 @@ public class LString {
             //noinspection All
             assert va.length >= 2;
 
-            if (va.length > 2 && !va[2].isNil() && !va[2].hasLongRepr()) {
-                vm.error(funcArgAnyTypeError("string.rep", 2, va[2], "integer", "nil", "nothing"));
+            var sep = va.length > 2 ? va[2].asString() : "";
+            if (va.length > 2 && !va[2].isType(ARITHMETIC | BOOLEAN | NIL)) {
+                vm.error(funcArgAnyTypeError("string.rep", 2, va[2],
+                        "string", "boolean", "integer", "nil", "nothing"));
                 return null;
             }
             var cnt = (int) (va[1].asLong());
             if (cnt <= 0)
                 return LuaObject.of("");
             var s = va[0].asString();
-            var sep = va[2] == null || !va[2].isNil() ? "" : va[2].asString();
             return LuaObject.of(s + (sep + s).repeat(cnt - 1));
         }).obj());
         rv.set("reverse", AtomicLuaFunction.forOneResult((vm, s) -> {
-            if (!s.isType(LuaObject.Types.ARITHMETIC)) {
+            if (!s.isType(ARITHMETIC)) {
                 vm.error(funcArgTypeError("string.reverse", 0, s, "string"));
                 return null;
             }
@@ -106,7 +108,7 @@ public class LString {
         }).obj());
         rv.set("sub", AtomicLuaFunction.vaForOneResult(LString::sub).obj());
         rv.set("upper", AtomicLuaFunction.forOneResult((vm, s) -> {
-            if (!s.isType(LuaObject.Types.ARITHMETIC)) {
+            if (!s.isType(ARITHMETIC)) {
                 vm.error(funcArgTypeError("string.upper", 0, s, "string"));
                 return null;
             }
@@ -125,7 +127,7 @@ public class LString {
     //  static function definitions
     // =================================================================================================================
     private static LuaObject sub(LuaVM_RT vm, LuaObject[] va) {// TODO add unittests
-        if (va.length < 1 || !va[0].isType(LuaObject.Types.ARITHMETIC)) {
+        if (va.length < 1 || !va[0].isType(ARITHMETIC)) {
             vm.error(funcArgTypeError("string.sub", 0, va.length > 0 ? va[0] : null, "string"));
             return null;
         }
