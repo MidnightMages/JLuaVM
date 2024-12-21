@@ -66,4 +66,8 @@ public final class ConstantNode extends Node {
         // therefore we effectively treat it as a list of raw UTF8 bytes and encode it with base 64 to be sure.
         return new ConstantNode(sourcePos, "LuaObject.ofB64(\"%s\")".formatted(Base64.getEncoder().encodeToString(literalString.getBytes(StandardCharsets.UTF_8))));
     }
+
+    public static ConstantNode ofNull(Position sourcePos) {
+        return new ConstantNode(sourcePos, "null");
+    }
 }

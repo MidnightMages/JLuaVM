@@ -8,6 +8,7 @@ import dev.asdf00.jluavm.parsing.Lexer;
 import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 
@@ -1111,8 +1112,21 @@ public final class LuaObject {
 
     public static LuaObject table(LuaObject... val) {
         assert (val.length & 1) == 0;
+        if (val.length == 0) {
+            return new LuaObject(new LuaHashMap(), -1, -1, Types.TABLE);
+        }
         var rv = new LuaHashMap();
+        var noIdxFields = new ArrayList<LuaObject>(val.length / 2);
+        boolean lastIsNoIdx = false;
         for (int i = 0; i < val.length; i += 2) {
+            if (val[i] == null) {
+                // delay insertion
+                noIdxFields.add(val[i + 1]);
+                if (i == val.length - 2) {
+                    lastIsNoIdx = true;
+                }
+                continue;
+            }
             LuaObject insertion = val[i + 1];
             if (insertion.isArray()) {
                 LuaObject[] arr = insertion.asArray();
@@ -1120,6 +1134,23 @@ public final class LuaObject {
             }
             rv.put(val[i], insertion);
             assert !val[i].isDouble() || val[i].isDouble() && !val[i].isIntCoercible();
+        }
+        for (int i = 0; i < noIdxFields.size(); i++) {
+            var cur = noIdxFields.get(i);
+            if (cur.isArray()) {
+                LuaObject[] arr = cur.asArray();
+                if (lastIsNoIdx && i == noIdxFields.size() - 1) {
+                    // insert entire array if last element in constructor
+                    for (int j = 0; j < arr.length; j++) {
+                        rv.put(LuaObject.of(i + 1 + j), arr[j]);
+                    }
+                } else {
+                    // only take first element
+                    rv.put(LuaObject.of(i + 1), arr.length > 0 ? arr[0] : LuaObject.nil());
+                }
+            } else {
+                rv.put(LuaObject.of(i + 1), cur);
+            }
         }
         return new LuaObject(rv, -1, -1, Types.TABLE);
     }

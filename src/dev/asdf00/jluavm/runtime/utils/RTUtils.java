@@ -6,6 +6,10 @@ import java.util.Arrays;
 
 public class RTUtils {
     public static LuaObject tryCoerceFloatToInt(LuaObject value) {
+        if (value == null) {
+            // pass null for table construction
+            return null;
+        }
         if (value.isDouble()) {
             double dn = value.dVal;
             if ((double) ((long) dn) == dn) {

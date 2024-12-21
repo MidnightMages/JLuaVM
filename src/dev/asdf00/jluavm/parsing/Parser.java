@@ -971,20 +971,15 @@ public final class Parser {
         } else {
             keyVals = FieldList();
         }
-        if (keyVals.length == 2 && keyVals[1] instanceof LocalAccessNode maybeVarArgs && maybeVarArgs.info.baseInfo().name.equals("...")) {
-            return new VarArgsTableNode(tpos, keyVals[1]);
-        } else {
-            return new ConstructedTableNode(tpos, keyVals);
-        }
+        return new ConstructedTableNode(tpos, keyVals);
     }
 
     private Node[] FieldList() {
         var fieldList = new ArrayList<Node>();
-        long freeIdx = 1;
-        freeIdx = Field(fieldList, freeIdx);
+        Field(fieldList);
         while ((ltok == COMMA || ltok == SEMICOLON) && lla.type() != RBRAC) {
             FieldSep();
-            freeIdx = Field(fieldList, freeIdx);
+            Field(fieldList);
         }
         if (ltok == COMMA || ltok == SEMICOLON) {
             FieldSep();
@@ -993,7 +988,7 @@ public final class Parser {
         return fieldList.toArray(Node[]::new);
     }
 
-    private long Field(ArrayList<Node> fieldList, long freeIdx) {
+    private void Field(ArrayList<Node> fieldList) {
         if (ltok == LBRAK) {
             scan();
             fieldList.add(Exp());
@@ -1006,11 +1001,9 @@ public final class Parser {
             scan();  // ASSIGN
             fieldList.add(Exp());
         } else {
-            fieldList.add(ConstantNode.ofLong(cur.pos(), freeIdx));
+            fieldList.add(ConstantNode.ofNull(cur.pos()));
             fieldList.add(Exp());
-            freeIdx++;
         }
-        return freeIdx;
     }
 
     private void FieldSep() {
