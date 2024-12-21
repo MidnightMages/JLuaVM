@@ -462,7 +462,7 @@ public final class LuaObject {
         if (isString()) {
             dx = getString();
         } else if (isDouble()) {
-            dx = doubleToStringFormat.format(dVal);
+            dx = formatDouble(dVal);
         } else {
             assert isLong();
             dx = longToStringFormat.format(lVal);
@@ -471,12 +471,21 @@ public final class LuaObject {
         if (other.isString()) {
             dy = other.getString();
         } else if (other.isDouble()) {
-            dy = doubleToStringFormat.format(other.dVal);
+            dy = formatDouble(other.dVal);
         } else {
             assert other.isLong();
             dy = longToStringFormat.format(other.lVal);
         }
         return LuaObject.of(dx + dy);
+    }
+
+    private static String formatDouble(double dVal) {
+        if (dVal == Double.POSITIVE_INFINITY)
+            return "inf";
+        if (dVal == Double.NEGATIVE_INFINITY)
+            return "-inf";
+
+        return doubleToStringFormat.format(dVal);
     }
 
     public LuaObject band(LuaObject other) {
@@ -950,7 +959,7 @@ public final class LuaObject {
         return switch (type) {
             case Types.NIL -> "nil";
             case Types.BOOLEAN -> this == TRUE ? "true" : "false";
-            case Types.DOUBLE -> doubleToStringFormat.format(dVal);
+            case Types.DOUBLE -> formatDouble(dVal);
             case Types.LONG -> longToStringFormat.format(lVal);
             case Types.STRING -> (String) refVal;
             case Types.FUNCTION -> "function: 0x" + Integer.toHexString(System.identityHashCode(this));
