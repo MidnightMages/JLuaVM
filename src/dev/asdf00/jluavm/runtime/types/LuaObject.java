@@ -363,8 +363,8 @@ public final class LuaObject {
             }
         }
 
-        if (doubleCalc){
-            var dres = LuaObject.of(Math.floor(dx/dy));
+        if (doubleCalc) {
+            var dres = LuaObject.of(Math.floor(dx / dy));
             return dres.hasLongRepr() ? LuaObject.of(dres.asLong()) : dres;
         }
         return LuaObject.of(lx / ly);
@@ -413,7 +413,10 @@ public final class LuaObject {
                 dy = ly;
             }
         }
-        return LuaObject.of(doubleCalc ? (long) (dx % dy) : lx % ly);
+        if (doubleCalc) {
+            return LuaObject.of(dx - Math.floor(dx / dy) * dy);
+        }
+        return LuaObject.of(lx - (long) Math.floor((double) lx / ly) * ly);
     }
 
     public LuaObject pow(LuaObject other) {
@@ -1119,7 +1122,7 @@ public final class LuaObject {
     public static LuaObject tableFromArray(LuaObject... arr) {
         var tbl = LuaObject.table();
         for (int i = 0; i < arr.length; i++) {
-            tbl.set(LuaObject.of(i+1), arr[i]);
+            tbl.set(LuaObject.of(i + 1), arr[i]);
         }
         return tbl;
     }

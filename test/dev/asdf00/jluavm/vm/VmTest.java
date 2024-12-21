@@ -1207,6 +1207,14 @@ public class VmTest {
     }
 
     @Test
+    void modulo() {
+        loadAssertSuccessAndRv("""
+                local a, b, c = 5, 3, -8
+                return (a + b * c) % 7
+                """, LuaObject.of(2));
+    }
+
+    @Test
     void randomCode2() {
         loadAssertSuccessAndRv("""
                 local function test()
