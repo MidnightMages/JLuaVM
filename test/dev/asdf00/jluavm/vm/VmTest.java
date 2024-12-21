@@ -1162,6 +1162,16 @@ public class VmTest {
     }
 
     @Test
+    void simpleNestedLoop() {
+        loadAssertSuccess("""
+                for i = 1, 3 do
+                    for j = 4, 5 do
+                    end
+                end
+                """);
+    }
+
+    @Test
     void randomCode() {
         loadAssertSuccessAndRv("""
                 local function test()
