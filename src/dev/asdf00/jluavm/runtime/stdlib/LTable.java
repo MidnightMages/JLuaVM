@@ -82,6 +82,9 @@ public class LTable {
 
             var map = tbl.asMap();
             // TODO call the __len metamethod instead if it exists maybe?
+            // the max insert position is __len +1
+            // this function must not modify any elements at position "> __len+1".
+            // If the target pos is in this forbidden error, throw an error. If this occurs during up-shifting, simply stop shifting
             var idx = LuaObject.of(pos != null ? pos.asLong() : (map.luaLen() + 1));
 
             var elementBuffer = value;
