@@ -102,7 +102,7 @@ public class VmTest {
                 if §true|false§ then
                 a,a.b = {},7 else
                 a.b,a = 7,{} end
-
+                
                 local rv = ""
                 for _,i in ipairs({1,2,3}) do
                     rv = rv .. tostring(c[i])..","
@@ -157,14 +157,14 @@ public class VmTest {
                 function f2(a) rv=rv.."f2;"; return 1.2 end
                 function g(a) rv=rv.."g;"; return 2 end
                 function h(a) rv=rv.."h;"; return 3 end
-
+                
                 a = {}
                 setmetatable(a,a)
                 a["__newindex"] = function(k,v,a)
                     rv = rv.."mt_"..tostring(v).."="..tostring(a)..";"
                     rawset(k,v,a)
                 end
-
+                
                 a_orig = a
                 a.a,a.a,a.a,a,a = f(1),f1(1),f2(1), g(1), h(1)
                 rv2 = rv.."|"..tostring(a).."|"..tostring(a_orig.a)
@@ -178,14 +178,14 @@ public class VmTest {
                 function f2(a) rv=rv.."f2;"; return 1.2 end
                 function g(a) rv=rv.."g;"; return 2 end
                 function h(a) rv=rv.."h;"; return 3 end
-
+                
                 a = {}
                 setmetatable(a,a)
                 a["__newindex"] = function(k,v,a)
                     rv = rv.."mt_"..tostring(v).."="..tostring(a)..";"
                     --rawset(k,v,a)
                 end
-
+                
                 a_orig = a
                 a.a,a.a,a.a,a,a = f(1),f1(1),f2(1), g(1), h(1)
                 rv2 = rv.."|"..tostring(a).."|"..tostring(a_orig.a)
@@ -221,7 +221,7 @@ public class VmTest {
                     ::dest::
                     print(1)
                 end
-                             
+                
                 print("ok!")
                 """, LuaSemanticException.class);
 
@@ -372,7 +372,7 @@ public class VmTest {
                     local b <close> = a
                     local c <close> = a
                 end
-                        
+                
                 return rv""", LuaObject.of("closing;closing;"));
 
         loadAssertSuccessAndRv("""
@@ -390,20 +390,20 @@ public class VmTest {
         loadAssertSuccessAndRv("""
                 rv = ""
                 print = function(a) rv = rv .. tostring(a)..";" end
-                      
+                
                 i = 0
                 function f(x)
                     print("fval"..tostring(x))
                     i=i+1
                     return i>2
                 end
-                     
+                
                 function getMt()
                    local t = {["__close"]=function() print("closing") end, ["name"]="a table"}
                    setmetatable(t,t)
                    return t
                 end
-                          
+                
                 repeat
                     print("iter")
                     local a <close> = getMt()
@@ -411,7 +411,7 @@ public class VmTest {
                 until f(a.name)
                 print("c")
                 print("done")
-                                
+                
                 return rv
                 """, LuaObject.of("iter;b;fvala table;closing;iter;b;fvala table;closing;iter;b;fvala table;closing;c;done;"));
 
@@ -676,7 +676,7 @@ public class VmTest {
                 function _EXT.number.toRoman(int)
                   return romanConst[int]
                 end
-                                
+                
                 print(5:toRoman() .. " guys")
                 local myInt = ("III":toNum() + tostring("II":toNum()))
                 print(myInt:toRoman())
@@ -935,7 +935,7 @@ public class VmTest {
                     end
                     return decimal
                 end
-
+                
                 return tostring(binaryToDecimal("101010"))
                 """, LuaObject.of("42.0"));
     }
@@ -974,7 +974,7 @@ public class VmTest {
         loadAssertSuccessAndRv("""
                 local function merge(arr, low, high, left, right)
                     local i, j, k = 1, 1, 1
-                                
+                
                     while i <= left and j <= right do
                         if low[i] <= high[j] then
                             arr[k] = low[i]
@@ -985,30 +985,30 @@ public class VmTest {
                         end
                         k = k + 1
                     end
-                                
+                
                     while i <= left do
                         arr[k] = low[i]
                         i = i + 1
                         k = k + 1
                     end
-                                
+                
                     while j <= right do
                         arr[k] = high[j]
                         j = j + 1
                         k = k + 1
                     end
                 end
-                                
+                
                 local function mergeSort(arr, n)
                     if n < 2 then
                         return
                     end
-                                
+                
                     local low, high = {}, {}
                     local mid = math.floor(n / 2)
                     local left = mid
                     local right = n - mid
-                                
+                
                     -- split the array into left and right
                     for i = 1, left do
                         table.insert(low, arr[i])
@@ -1016,16 +1016,16 @@ public class VmTest {
                     for i = 1, right do
                         table.insert(high, arr[i + left])
                     end
-                                
+                
                     mergeSort(low, left)
                     mergeSort(high, right)
                     merge(arr, low, high, left, right)
                 end
-                                
+                
                 local array = {58, 75, -58, 73, -46, 77, 78, -87, 38, 71}
                 local n = #array
                 mergeSort(array, n)
-                                
+                
                 local result = ""
                 for i = 1, n do
                     result = result .. tostring(array[i]) .. ";"
@@ -1051,9 +1051,9 @@ public class VmTest {
     @Test
     void tableArithmeticOperation() {
         loadAssertRuntimeError("""
-                local t = {}
-                local x = t + 1
-            """);
+                    local t = {}
+                    local x = t + 1
+                """);
     }
 
     /*
@@ -1161,8 +1161,7 @@ public class VmTest {
     }
 
     @Test
-    void randomCode()
-    {
+    void randomCode() {
         loadAssertSuccessAndRv("""
                 local function test()
                     local a, b = 7, -3
