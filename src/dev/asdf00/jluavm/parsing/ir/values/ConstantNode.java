@@ -35,7 +35,17 @@ public final class ConstantNode extends Node {
     }
 
     public static ConstantNode ofDouble(Position sourcePos, double dVal) {
-        return new ConstantNode(sourcePos, "LuaObject.of(%s)".formatted(Double.toString(dVal)));
+        String replacement;
+        if (dVal == Double.POSITIVE_INFINITY) {
+            replacement = "Double.POSITIVE_INFINITY";
+        } else if (dVal == Double.NEGATIVE_INFINITY) {
+            replacement = "Double.NEGATIVE_INFINITY";
+        } else if (Double.isNaN(dVal)) {
+            replacement = "Double.NaN";
+        } else {
+            replacement = Double.toString(dVal);
+        }
+        return new ConstantNode(sourcePos, "LuaObject.of(%s)".formatted(replacement));
     }
 
     public static ConstantNode ofBool(Position sourcePos, boolean bVal) {
