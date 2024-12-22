@@ -1176,9 +1176,16 @@ public class VmTest {
     void nestedForRepeat() {
         loadAssertSuccess("""
                 for j = 4, 5 do
-                    repeat
-                    until true
+                repeat
+                until true
                 end
+                """);
+    }
+
+    @Test
+    void emptyRepeatLoop() {
+        loadAssertSuccess("""
+                repeat until true
                 """);
     }
 

@@ -26,7 +26,7 @@ public class IRBlock extends Node {
     @Override
     public String generate(CompilationState cState) {
         String blockName = cState.openInnerBlock(localCnt);
-        if (statements.length < 1) {
+        if (statements.length < 1 && continueCondition == null) {
             assert closableCnt == 0;
             cState.closeInnerBlock("// empty inner block");
             return blockName;
