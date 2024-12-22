@@ -368,6 +368,9 @@ public final class LuaObject {
             var dres = LuaObject.of(Math.floor(dx / dy));
             return dres.hasLongRepr() ? LuaObject.of(dres.asLong()) : dres;
         }
+        if (ly == 0) {
+            // TODO throw lua error 'attempt to divide by zero'
+        }
         return LuaObject.of(lx / ly);
     }
 
