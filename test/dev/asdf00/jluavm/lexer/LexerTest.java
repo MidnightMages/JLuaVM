@@ -4,6 +4,7 @@ import dev.asdf00.jluavm.parsing.Lexer;
 import dev.asdf00.jluavm.parsing.container.Token;
 import dev.asdf00.jluavm.parsing.container.TokenType;
 import dev.asdf00.jluavm.exceptions.loading.LuaLexerException;
+import dev.asdf00.jluavm.runtime.types.LuaObject;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -462,6 +463,14 @@ public class LexerTest {
     @Test
     void funnyHexNumber() {
         lexAssertTokens("0X1.921FB54442D18P+1", "3.1415926535898");
+    }
+
+    @Test
+    void expNumber() {
+        var toks = lexAndCollectTokens("1e2");
+        assertEquals(toks.get(0).type(), TokenType.NUMERAL);
+        assertEquals(toks.get(0).nVal(), 100);
+        assertEquals(toks.get(1).type(), TokenType.EOF);
     }
 
     @Test

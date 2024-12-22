@@ -1746,4 +1746,46 @@ public class VmTest {
                 local c = b // a
                 """);
     }
+
+    @Test
+    void floatDivisionExhaustive() {
+        loadAssertSuccessAndRv("""
+                local a = 10/0
+                local b = 10.0/0
+                local c = 10/0.0
+                local d = 10.0/0.0
+                local e = -10/0
+                local f = -10.0/0
+                local g = -10/0.0
+                local h = -10.0/0.0
+                local i = 10/-0
+                local j = 10.0/-0
+                local k = 10/-0.0
+                local l = 10.0/-0.0
+                local m = -10/-0
+                local n = -10.0/-0
+                local o = -10/-0.0
+                local p = -10.0/-0.0
+                return(a .. b .. c .. d .. e .. f .. g .. h .. i .. j .. k .. l .. m .. n .. o .. p)
+                """, LuaObject.of("infinfinfinf-inf-inf-inf-infinfinf-inf-inf-inf-infinfinf"));
+    }
+
+    @Test
+    void intDivisionExhaustive() {
+        loadAssertSuccessAndRv("""
+                local b = 10.0//0
+                local c = 10//0.0
+                local d = 10.0//0.0
+                local f = -10.0//0
+                local g = -10//0.0
+                local h = -10.0//0.0
+                local j = 10.0//-0
+                local k = 10//-0.0
+                local l = 10.0//-0.0
+                local n = -10.0//-0
+                local o = -10//-0.0
+                local p = -10.0//-0.0
+                return(b .. c .. d .. f .. g .. h .. j .. k .. l .. n .. o .. p)
+                """, LuaObject.of("infinfinf-inf-inf-infinf-inf-inf-infinfinf"));
+    }
 }
