@@ -1519,4 +1519,231 @@ public class VmTest {
                 return rv
                 """, LuaObject.of("hi:a;hi:b;hi:override;2-b;1-a;"));
     }
+
+    @Test
+    void nestedComments() {
+        loadAssertSuccess("""
+                --[[
+                   multiline comment start
+                   --[ nested comment
+                   while
+                   if
+                   ]]
+                """);
+    }
+
+    @Test
+    void exceedingPrecisionLimit() {
+        loadAssertSuccessAndRv("""
+                local x = 1e308 * 2
+                return x
+                """, LuaObject.of(Double.POSITIVE_INFINITY));
+    }
+
+    @Test
+    void forLoopEdgeCase1() {
+        loadAssertRuntimeError("""
+                for i = 1, 10, 0 do
+                end
+                """);
+    }
+
+    @Test
+    void forLoopEdgeCase2() {
+        loadAssertSuccessAndRv("""
+                x = 0
+                for i = 1, 10, (1/0) do
+                    x = x + 1
+                end
+                return x
+                """, LuaObject.of(1));
+    }
+
+    @Test
+    void forLoopEdgeCase3() {
+        loadAssertSuccessAndRv("""
+                x = 0
+                for i = 1, 1/0, 1/0 do
+                    x = x + 1
+                    if i > 10 then
+                        break
+                    end
+                end
+                return x
+                """, LuaObject.of(2));
+    }
+
+    @Test
+    void variableShadowingDoBlock() {
+        loadAssertSuccessAndRv("""
+                local x = 10
+                do
+                    local x = -10
+                end
+                return x
+                """, LuaObject.of(10));
+    }
+
+    @Test
+    void tableLengthTest() {
+        loadAssertSuccessAndRv("""
+                local t = {
+                    [1] = "1",
+                    [true] = "true"
+                }
+                return t[1] .. t[true] .. #t
+                """, LuaObject.of("1true1"));
+    }
+
+    @Test
+    void mixedScopeReference() {
+        loadAssertSuccessAndRv("""
+                local x = 10
+                y = 20
+                out = ""
+                do
+                    local y = x + y
+                    out = out .. y
+                end
+                out = out .. y
+                return out
+                """, LuaObject.of("3020"));
+    }
+
+    @Test
+    void excessiveArguments() {
+        loadAssertSuccessAndRv("""
+                local function add(a, b)
+                    return a + b
+                end
+                x = add(1, 2, 3, 4)
+                return x
+                """, LuaObject.of(3));
+    }
+
+    @Test
+    void ambiguousTable() {
+        loadAssertSuccessAndRv("""
+                local ambiguousTable = {
+                    1,
+                    key = 2,
+                    [3] = 4,
+                    "value",
+                }
+                return ambiguousTable[1] .. ":" .. ambiguousTable["key"] .. ":" .. ambiguousTable[3] .. ":" .. ambiguousTable[2]
+                """, LuaObject.of("1:2:4:value"));
+    }
+
+    @Test
+    void forLoopVariableMutation() {
+        loadAssertSuccessAndRv("""
+                x = 0
+                for i = 1, 3 do
+                    x = x + i
+                    i = 100
+                end
+                return x
+                """, LuaObject.of(6));
+    }
+
+    @Test
+    void forLoopVariableShadowing() {
+        loadAssertSuccessAndRv("""
+                x = 0
+                for i = 1, 3 do
+                    for i = 1, 2 do
+                        x = x + 1
+                    end
+                end
+                return x
+                """, LuaObject.of(6));
+    }
+
+    @Test
+    void largeIterationLimit() {
+        loadAssertSuccessAndRv("""
+                local function whileLoop()
+                    local count = 0
+                    while true do
+                        count = count + 1
+                        if count >= 1e6 then
+                            break
+                        end
+                    end
+                    return count
+                end
+                
+                return whileLoop()
+                """, LuaObject.of(1000000));
+    }
+
+    @Test
+    void doBlockScopeTest() {
+        loadAssertSuccessAndRv("""
+                do
+                    local a = 5
+                    b = a + 10
+                end
+                return b
+                """, LuaObject.of(15));
+    }
+
+    @Test
+    void arithmeticEdgeCase() {
+        loadAssertSuccessAndRv("""
+                local x = -1e309 / 1
+                return x
+                """, LuaObject.of(Double.NEGATIVE_INFINITY));
+    }
+
+    @Test
+    void tableModificationDuringIteration() {
+        loadAssertSuccessAndRv("""
+                local t = {1, 2, 3, 4}
+                out = ""
+                for i, v in ipairs(t) do
+                    if v == 2 then
+                        table.insert(t, 5)
+                    end
+                    out = out .. v
+                end
+                return out
+                """, LuaObject.of("12345"));
+    }
+
+    @Test
+    void mixedTable() {
+        loadAssertSuccessAndRv("""
+                local t = {1, 2, key1 = "value", [true] = "boolean"}
+                return t[1] .. t[2] .. t.key1 .. t[true]
+                """, LuaObject.of("12valueboolean"));
+    }
+
+    @Test
+    void mixedFloatingPointEdgeCases() {
+        loadAssertSuccessAndRv("""
+                local nan = 0 / 0
+                local inf = 1 / 0
+                return tostring(nan == nan) .. tostring(inf + inf) .. tostring(-inf - inf) .. tostring(inf - inf)
+                """, LuaObject.of("falseinf-inf-nan"));
+    }
+
+    @Test
+    void xpcallTest() {
+        loadAssertSuccess("""
+                xpcall((0),
+                    function(...)
+                    end
+                )
+                """);
+    }
+
+    @Test
+    void floorDivisionZero() {
+        loadAssertRuntimeError("""
+                local a = 0
+                local b = 1
+                local c = b // a
+                """);
+    }
 }
