@@ -817,7 +817,7 @@ public final class Parser {
             var op = opList.pop();
             result = switch (op.x()) {
                 case NOT -> new LogicNotNode(op.y(), result);
-                case HASH -> new LenghtOfNode(op.y(), result);
+                case HASH -> new LengthOfNode(op.y(), result);
                 case SUB -> UnaryOpNode.negate(op.y(), result);
                 case BXOR -> UnaryOpNode.invert(op.y(), result);
                 default -> throw new InternalLuaLoadingError("should not reach");
