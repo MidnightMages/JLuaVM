@@ -8,6 +8,9 @@ import dev.asdf00.jluavm.runtime.types.LuaObject;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
+import java.util.stream.Collectors;
+
 import static dev.asdf00.jluavm.Util.expandOptions;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -31,7 +34,7 @@ public class VmTest {
     private static LuaObject[] loadAssertSuccessGetRv(String code) {
         var vm = LuaVM.create().withStdLib().withRootFunc(code);
         var res = vm.run();
-        assertEquals(LuaVM.VmRunState.SUCCESS, res.state());
+        assertEquals(LuaVM.VmRunState.SUCCESS, res.state(), () -> Arrays.stream(res.returnVars()).map(LuaObject::toString).collect(Collectors.joining()));
         return res.returnVars();
     }
 
@@ -65,7 +68,7 @@ public class VmTest {
             var vm = LuaVM.create().withStdLib();
             assertDoesNotThrow(() -> vm.withRootFunc(expanded));
             var res = assertDoesNotThrow(vm::run);
-            Assertions.assertEquals(LuaVM.VmRunState.SUCCESS, res.state());
+            Assertions.assertEquals(LuaVM.VmRunState.SUCCESS, res.state(), () -> Arrays.stream(res.returnVars()).map(LuaObject::toString).collect(Collectors.joining()));
         }
     }
 
@@ -1672,7 +1675,7 @@ public class VmTest {
                     end
                     return count
                 end
-                
+                                
                 return whileLoop()
                 """, LuaObject.of(1000000));
     }
