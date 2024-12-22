@@ -488,6 +488,8 @@ public final class LuaObject {
             return "inf";
         if (dVal == Double.NEGATIVE_INFINITY)
             return "-inf";
+        if (Double.isNaN(dVal))
+            return "-nan";
 
         return doubleToStringFormat.format(dVal);
     }
