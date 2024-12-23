@@ -373,38 +373,38 @@ public final class CompilationState {
             // @formatter:off
             String result = """
                     package dev.asdf00.jluavm.lualoaded;
-                                        
+                    
                     import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
                     import dev.asdf00.jluavm.exceptions.LuaRuntimeError;
                     import dev.asdf00.jluavm.internals.LuaVM_RT;
                     import dev.asdf00.jluavm.runtime.types.*;
                     import dev.asdf00.jluavm.runtime.utils.*;
-                                        
+                    
                     import java.lang.reflect.Constructor;
                     import java.util.Arrays;
-                                        
+                    
                     public final class %s extends LuaFunction {
                     public static Constructor<? extends LuaFunction>[] innerFunctions;
-                                       
+                    
                     public %s(LuaObject[] _ENV, LuaObject[] closures) {
                         super(_ENV, closures);
                     }
-                                   
+                    
                     @Override
                     public int getMaxLocalsSize() {
                         return %d;
                     }
-                                   
+                    
                     @Override
                     public int getArgCount() {
                         return %d;
                     }
-                               
+                    
                     @Override
                     public boolean hasParamsArg() {
                         return %s;
                     }
-                     
+                    
                     @Override
                     public void invoke(LuaVM_RT vm, LuaObject[] stackFrame, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
                     %s
@@ -423,7 +423,7 @@ public final class CompilationState {
                     default: throw new InternalLuaRuntimeError("should not reach end of fall-through switch");
                     }
                     }
-                         
+                    
                     // inner scopes
                     %s
                     }""".formatted(jClassName, jClassName,
