@@ -671,7 +671,7 @@ public final class LuaObject {
 
     public LuaObject unbox() {
         if (!isBox()) {
-            throw new InternalLuaRuntimeError("This is not a box!");
+            throw new InternalLuaRuntimeError("This is not a box, but is of type %s!".formatted(getTypeAsString()));
         }
         return (LuaObject) refVal;
     }
