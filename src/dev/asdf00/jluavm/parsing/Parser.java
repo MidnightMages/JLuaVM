@@ -393,6 +393,13 @@ public final class Parser {
                     check(IDENT);
                     access = new DeRefNode(cur.pos(), access, ConstantNode.ofIdent(cur));
                 }
+                if (access instanceof LocalAccessNode acNode) {
+                    var acInfo = acNode.info.baseInfo();
+                    if (acInfo.isConstant()) {
+                        throw new LuaSemanticException(cur.pos(), "Constant variable must not be written");
+                    }
+                    acInfo.setWritten();
+                }
                 var func = FuncBody(hasSelf);
                 statement = new AssignmentNode(apos, new Node[]{access}, new Node[]{func});
             }
