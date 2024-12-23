@@ -140,7 +140,8 @@ public class Lexer {
                         isHex = false;
                         continue;
                     }
-                } else if (!isExp) {
+                }
+                if (!isExp) { // TODO revise number parsing
                 // exponent?
                     if (!isValid) {
                         throw new LuaLexerException(pos, "'%s' is not a valid number".formatted(nb.toString()));
