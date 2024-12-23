@@ -117,7 +117,7 @@ public class VarScope {
     }
 
     public int getLocalsCount() {
-        return names.size() + (hasParamsArg ? 1 : 0);
+        return names.size();
     }
 
     public int getPrevFunctionLocalsCount() {
