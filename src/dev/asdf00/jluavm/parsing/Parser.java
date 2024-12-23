@@ -117,7 +117,7 @@ public final class Parser {
         int maxLocalCnt = symTab.getMaxFuncLocals();
         VarScope scp = symTab.exitScope();
         check(EOF);
-        return new IRFunction(_pos, innerStats.toArray(Node[]::new), scp.getLocalsCount(), scp.getClosableCount(), maxLocalCnt, 1, true);
+        return new IRFunction(_pos, innerStats.toArray(Node[]::new), scp.getLocalsCount(), scp.getClosableCount(), maxLocalCnt, 1, true, scp.getBoxedParameterIndices());
     }
 
     private ArrayList<Node> Block() {
@@ -914,7 +914,7 @@ public final class Parser {
         VarScope scp = symTab.exitScope();
         check(END);
         return new FunctionDefinitionNode(capPos, scp.captured.keySet().stream().map(info -> new PossiblyBoxedLocalAccessNode(capPos, info)).toArray(PossiblyBoxedLocalAccessNode[]::new),
-                new IRFunction(_pos, innerStats.toArray(Node[]::new), scp.getLocalsCount(), scp.getClosableCount(), maxLocalCnt, args.length, hasParamsArg));
+                new IRFunction(_pos, innerStats.toArray(Node[]::new), scp.getLocalsCount(), scp.getClosableCount(), maxLocalCnt, args.length, hasParamsArg, scp.getBoxedParameterIndices()));
     }
 
     private ArrayList<Token> ParList() {

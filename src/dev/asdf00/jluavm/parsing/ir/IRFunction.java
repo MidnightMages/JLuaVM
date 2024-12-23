@@ -9,8 +9,9 @@ public class IRFunction extends Node {
     public final int maxLocals;
     public final int argCnt;
     public final boolean hasParamsArg;
+    public final int[] boxedParameterIndices;
 
-    public IRFunction(Position sourcePos, Node[] statements, int localCnt, int closableCnt, int maxLocals, int argCnt, boolean hasParamsArg) {
+    public IRFunction(Position sourcePos, Node[] statements, int localCnt, int closableCnt, int maxLocals, int argCnt, boolean hasParamsArg, int[] boxedParameterIndices) {
         super(sourcePos);
         this.statements = statements;
         this.localCnt = localCnt;
@@ -18,12 +19,17 @@ public class IRFunction extends Node {
         this.maxLocals = maxLocals;
         this.argCnt = argCnt;
         this.hasParamsArg = hasParamsArg;
+        this.boxedParameterIndices = boxedParameterIndices;
     }
 
     @Override
     public String generate(CompilationState cState) {
         int innerFunctionIdx = cState.openFunction(maxLocals, argCnt, hasParamsArg, localCnt);
         var sb = new StringBuilder();
+        for (var idx : boxedParameterIndices) {
+            sb.append("stackFrame[%d] = LuaObject.box(stackFrame[%d]);\n".formatted(idx, idx));
+        }
+
         //noinspection ForLoopReplaceableByForEach
         for (int i = 0; i < statements.length; i++) {
             sb.append(statements[i].generate(cState)).append('\n');

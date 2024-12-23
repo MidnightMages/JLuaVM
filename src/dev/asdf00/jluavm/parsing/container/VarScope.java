@@ -130,4 +130,17 @@ public class VarScope {
         locals += cur.getLocalsCount();
         return locals - getLocalsCount();
     }
+
+    public int[] getBoxedParameterIndices() {
+        assert isFunctionBorder;
+        var rv = new ArrayList<Integer>();
+        int i = 0;
+        for (var n : names.values()) {
+            if (n.sitsInBox()) {
+                rv.add(i);
+            }
+            i++;
+        }
+        return rv.stream().mapToInt(x -> x).toArray();
+    }
 }
