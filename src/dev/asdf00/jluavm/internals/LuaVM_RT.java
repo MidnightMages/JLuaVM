@@ -77,6 +77,10 @@ public class LuaVM_RT extends LuaVM {
         curFuncFrame.getTopFrame().localCnt = count;
     }
 
+    public void incrementInlinedLocals(int count) {
+        curFuncFrame.getTopFrame().curInlinedLocalCnt += count;
+    }
+
     public void addClosable(LuaObject obj) {
         curFuncFrame.getTopFrame().closables.push(obj);
     }

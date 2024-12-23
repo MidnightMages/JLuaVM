@@ -32,7 +32,7 @@ public final class FunctionCallFrame extends AbstractCallStackFrame {
 
     public void enterScope(LFunc localTarget, LuaObject[] args) {
         var cTop = getTopFrame();
-        scopes.push(new InternalCallFrame(locals, cTop.startLocals + cTop.localCnt, localTarget, args));
+        scopes.push(new InternalCallFrame(locals, cTop.startLocals + cTop.localCnt + cTop.curInlinedLocalCnt, localTarget, args));
     }
 
     public void exitScope(LuaObject[] rvals) {

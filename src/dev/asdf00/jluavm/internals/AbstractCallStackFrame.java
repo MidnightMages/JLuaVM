@@ -9,6 +9,7 @@ public abstract sealed class AbstractCallStackFrame permits FunctionCallFrame, I
     public final LuaObject[] locals;
     public final int startLocals;
     public int localCnt;  // late init
+    public int curInlinedLocalCnt;  // late init
     public final Stack<LuaObject> closables;
 
     // operational fields
@@ -28,6 +29,7 @@ public abstract sealed class AbstractCallStackFrame permits FunctionCallFrame, I
         expressionStack = null;
         rvals = null;
         localCnt = 0;
+        curInlinedLocalCnt = 0;
         assert closables.isEmpty();
     }
 

@@ -26,6 +26,9 @@ public class DoEndNode extends Node {
             return "// empty do-end block";
         }
         var sb = new StringBuilder();
+        if (localCnt > 0) {
+            sb.append("vm.incrementInlinedLocals(%d);\n".formatted(localCnt));
+        }
         sb.append(block[0].generate(cState));
         assert cState.clearEStack() == 0 : "we expect the expression stack to be empty here";
         for (int i = 1; i < block.length; i++) {
@@ -38,7 +41,7 @@ public class DoEndNode extends Node {
         sb.append(IRBlock.genClose(cState, toClose));
         if (localCnt > 0) {
             // clear local variables from stackFrame
-            sb.append("\nArrays.fill(stackFrame, %d, %d, null);".formatted(startLocals, startLocals + localCnt));
+            sb.append("\nArrays.fill(stackFrame, %d, %d, null);\nvm.incrementInlinedLocals(-%d);".formatted(startLocals, startLocals + localCnt, localCnt));
         }
         return sb.toString();
     }
