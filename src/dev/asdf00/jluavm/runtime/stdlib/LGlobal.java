@@ -460,16 +460,15 @@ public class LGlobal {
             }
             switch (resume) {
                 case -1:
-                    if (!stackFrame[0].isFunction()) {
-                        vm.error(funcArgTypeError("xpcall", 0, stackFrame[0], "function"));
-                        vm.error(LuaObject.of("Expected argument #1 to be of type 'function', but it was of type '%s'!".formatted(stackFrame[0].getTypeAsString())));
-                        return;
-                    }
                     if (!stackFrame[1].isFunction()) {
                         vm.error(funcArgTypeError("xpcall", 1, stackFrame[1], "function"));
                         return;
                     }
                     vm.setProtected(stackFrame[1].getFunc());
+                    if (!stackFrame[0].isFunction()) {
+                        vm.error(funcArgTypeError("xpcall", 0, stackFrame[0], "function"));
+                        return;
+                    }
                     vm.callExternal(0, stackFrame[0].getFunc(), stackFrame[2].asArray());
                     return;
                 case 0:
