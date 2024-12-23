@@ -1791,4 +1791,222 @@ public class VmTest {
                 return(b .. c .. d .. f .. g .. h .. j .. k .. l .. n .. o .. p)
                 """, LuaObject.of("infinfinf-inf-inf-infinf-inf-inf-infinfinf"));
     }
+
+    @Test
+    void recursionTest2() {
+        loadAssertSuccessAndRv("""
+                local function recursion(n)
+                    if n == 0 then
+                        return 0
+                    end
+                    return recursion(n - 1)
+                end
+                
+                return recursion(1000000)
+                """, LuaObject.of(0));
+    }
+
+    @Test
+    void coroutinesAndMetatables() {
+        loadAssertSuccess("""
+                  local t = {}
+                  local co = coroutine.create(function()
+                      setmetatable(t, {
+                          __index = function(_, key)
+                              coroutine.yield(key)
+                              return key
+                          end
+                      })
+                      return t.some_key
+                  end)
+                  coroutine.resume(co)
+                  coroutine.resume(co)
+                """);
+    }
+
+    @Test
+    void mutualRecursion() {
+        loadAssertRuntimeError("""
+                local function func1()
+                  func2()
+                end
+                
+                local function func2()
+                  func1()
+                end
+                
+                func1()
+                """);
+    }
+
+    @Test
+    void envManipulation() {
+        loadAssertSuccessAndRv("""
+                _ENV = setmetatable({}, {__index = _G})
+                tostring(123)
+                _ENV.tostring = nil
+                return tostring(123)
+                """, LuaObject.of("123"));
+    }
+
+    @Test
+    void doBlockScopeTest2() {
+        loadAssertSuccessAndRv("""
+                y = "global"
+                do
+                  local x = "outer"
+                  do
+                      local x = "middle"
+                      do
+                          local x = "inner"
+                          y = y .. x
+                      end
+                      y = y .. x
+                  end
+                  y = y .. x
+                end
+                return y
+                """, LuaObject.of("globalinnermiddleouter"));
+    }
+
+    @Test
+    void randomCode3() {
+        loadAssertSuccessAndRv("""
+                local a, b, c = 0, "hello", 42
+                
+                local function f(x)
+                    return (x % 2 == 0) and (x + b:len()) or (x - c)
+                end
+                
+                local x = f(c)
+                local y = (function() return (x - c) end)()
+                
+                local z = (y > 10 and y / 2) or (y * 2)
+                
+                local function g(a, b)
+                    return (a + b) / 3
+                end
+                
+                local result = g(z, b:len())
+                
+                local h = function(n)
+                    for i = 1, n do
+                        if i == math.ceil(result) then return "final" end
+                    end
+                    return "ignored"
+                end
+                
+                return h(c % 7 + b:len())
+                """, LuaObject.of("final"));
+    }
+
+    @Test
+    void constantRedefinition() {
+        loadAssertException("""
+                local x <const> = 123
+                x = nil
+                """, LuaSemanticException.class);
+    }
+
+    @Test
+    void constantRedefinitionAsFunction() {
+        loadAssertException("""
+                local x <const> = 123
+                function x()
+                end
+                """, LuaSemanticException.class);
+    }
+
+    @Test
+    void minInteger() {
+        loadAssertSuccessAndRv("""
+                return tostring(math.mininteger)
+                """, LuaObject.of("-9223372036854775808"));
+    }
+
+    @Test
+    void negativeBitShiftRight() {
+        loadAssertSuccessAndRv("""
+                x = 1 >> -1
+                return x
+                """, LuaObject.of(2));
+    }
+
+    @Test
+    void negativeBitShiftLeft() {
+        loadAssertSuccessAndRv("""
+                x = 2 << -1
+                return x
+                """, LuaObject.of(1));
+    }
+
+    @Test
+    void minIntegerBitShift() {
+        loadAssertSuccessAndRv("""
+                x = 1 << 63
+                return tostring(x)
+                """, LuaObject.of("-9223372036854775808"));
+    }
+
+    @Test
+    void largeNumberBitShift() {
+        loadAssertSuccessAndRv("""
+                x = 1 << 62
+                return tostring(x)
+                """, LuaObject.of("4611686018427387904"));
+    }
+
+    @Test
+    void bitWiseAnd() {
+        loadAssertSuccessAndRv("""
+                local x = 170
+                local y = 204
+                return x & y
+                """, LuaObject.of(136));
+    }
+
+    @Test
+    void bitWiseAndNegative() {
+        loadAssertSuccessAndRv("""
+                local x = -170
+                local y = -204
+                return x & y
+                """, LuaObject.of(-236));
+    }
+
+    @Test
+    void bitWiseOr() {
+        loadAssertSuccessAndRv("""
+                local x = 170
+                local y = 204
+                return x | y
+                """, LuaObject.of(238));
+    }
+
+    @Test
+    void bitWiseXor() {
+        loadAssertSuccessAndRv("""
+                local x = 170
+                local y = 204
+                return x ~ y
+                """, LuaObject.of(102));
+    }
+
+    @Test
+    void bitWiseXorFloat() {
+        loadAssertSuccessAndRv("""
+                local x = 170.0
+                local y = 204.0
+                return x ~ y
+                """, LuaObject.of(102));
+    }
+
+    @Test
+    void bitWiseXorString() {
+        loadAssertRuntimeError("""
+                local x = "170"
+                local y = "204"
+                return x ~ y
+                """);
+    }
 }
