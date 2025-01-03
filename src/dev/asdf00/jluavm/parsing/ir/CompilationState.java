@@ -247,6 +247,9 @@ public final class CompilationState {
                 restoring.append("\n    t").append(eStackPos + 1 + i).append(" = returned.length > ").append(i)
                         .append(" ? returned[").append(i).append("] : LuaObject.nil();");
             }
+            if (expectedReturns == -1) {
+                restoring.append("\n    t").append(eStackPos + 1).append(" = LuaObject.of(returned);");
+            }
             var bucket = restoreHeaders.computeIfAbsent(restoring.toString(), k -> new ArrayList<>());
             bucket.add(curResumeLabel);
 

@@ -30,6 +30,9 @@ public class FunctionCallNode extends Node {
 
     @Override
     public String generate(CompilationState cState) {
+        if (args.length > 0 && args[args.length - 1] instanceof FunctionCallNode fcn) {
+            fcn.expectedResultCnt = -1;
+        }
         var sb = new StringBuilder();
 
         boolean isOopCall = object != null;

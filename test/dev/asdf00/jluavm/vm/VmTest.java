@@ -2009,4 +2009,30 @@ public class VmTest {
                 return x ~ y
                 """);
     }
+
+    @Test
+    void tableUnpack() {
+        loadAssertSuccessAndRv("""
+                function f(a,b,c)
+                   return a .. b .. c
+                end
+                return (f(table.unpack({1,2,3})))
+                """, new LuaObject[]{LuaObject.of("123")});
+    }
+
+    @Test
+    void returnValueUnpack() {
+        loadAssertSuccessAndRv("""
+                local a, b = (function() return 1, 2 end)()
+                return a,b
+                """, new LuaObject[]{LuaObject.of(1), LuaObject.of(2)});
+    }
+
+    @Test
+    void returnValueUnpack2() {
+        loadAssertSuccessAndRv("""
+                local t  = {(function() return 1, 2 end)()}
+                return t[1],t[2]
+                """, new LuaObject[]{LuaObject.of(1), LuaObject.of(2)});
+    }
 }

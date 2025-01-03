@@ -217,7 +217,7 @@ public class LuaVM_RT extends LuaVM {
             }
 
             if (srcArgIdx < args.length) {
-                var srcObj = args[srcArgIdx++];
+                var srcObj = args[srcArgIdx];
                 if (srcObj.isArray()) { // flatten
                     var srcObjArr = srcObj.asArray();
                     if (srcArgElemIdx >= srcObjArr.length) { // src array is empty
@@ -227,6 +227,7 @@ public class LuaVM_RT extends LuaVM {
                     }
                     nuStackFrame[dstIdx++] = srcObjArr[srcArgElemIdx++];
                 } else {
+                    srcArgIdx++;
                     nuStackFrame[dstIdx++] = srcObj;
                 }
             } else {

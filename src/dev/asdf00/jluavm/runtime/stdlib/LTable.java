@@ -130,7 +130,7 @@ public class LTable {
             }
             assert tbl != null;
 
-            var i = args.length < 2 ? 0 : (args[2].hasLongRepr() ? args[2].asLong() : -1);
+            var i = args.length < 2 ? 1 : (args[2].hasLongRepr() ? args[2].asLong() : -1);
             if (i < 0) {
                 vm.error(funcArgAnyTypeError("table.unpack", 1, args.length > 1 ? args[1] : null, "number", "nil", "nothing"));
                 return null;
@@ -146,8 +146,7 @@ public class LTable {
             var t = new LuaObject[(int) (j - i + 1)];
             int arrIdx = 0;
             for (int k = ((int) i); k <= j; k++) {
-                var idx = k - 1;
-                t[arrIdx++] = idx >= 0 && idx < args.length ? args[idx] : LuaObject.NIL;
+                t[arrIdx++] = k >= 1 && k <= tbl.len().asLong() ? tbl.get(LuaObject.of(k)) : LuaObject.NIL;
             }
             return t;
         }).obj());

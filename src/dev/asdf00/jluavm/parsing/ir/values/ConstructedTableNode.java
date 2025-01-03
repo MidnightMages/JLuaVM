@@ -4,6 +4,7 @@ import dev.asdf00.jluavm.exceptions.loading.InternalLuaLoadingError;
 import dev.asdf00.jluavm.parsing.container.Position;
 import dev.asdf00.jluavm.parsing.ir.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.Node;
+import dev.asdf00.jluavm.parsing.ir.controlflow.FunctionCallNode;
 
 public class ConstructedTableNode extends Node {
     private final Node[] keyValEntries;
@@ -18,6 +19,9 @@ public class ConstructedTableNode extends Node {
     public String generate(CompilationState cState) {
         if (keyValEntries.length % 2 == 1) {
             throw new InternalLuaLoadingError("key without argument");
+        }
+        if (keyValEntries.length > 0 && keyValEntries[keyValEntries.length - 1] instanceof FunctionCallNode fcn) {
+            fcn.expectedResultCnt = -1;
         }
         var sb = new StringBuilder();
         var spotList = new String[keyValEntries.length];

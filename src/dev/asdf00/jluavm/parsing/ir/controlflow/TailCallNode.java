@@ -15,6 +15,9 @@ public class TailCallNode extends Node {
     @Override
     public String generate(CompilationState cState) {
         assert cState.clearEStack() == 0 : "we expect the expression stack to be empty here";
+        if (call.args.length > 0 && call.args[call.args.length - 1] instanceof FunctionCallNode fcn) {
+            fcn.expectedResultCnt = -1;
+        }
         var sb = new StringBuilder();
 
         boolean isOopCall = call.object != null;
