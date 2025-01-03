@@ -2035,4 +2035,13 @@ public class VmTest {
                 return t[1],t[2]
                 """, new LuaObject[]{LuaObject.of(1), LuaObject.of(2)});
     }
+
+    @Test
+    void packLengths() {
+        loadAssertSuccessAndRv("return(#table.pack((function() return nil end)()))", new LuaObject[]{LuaObject.of(0)});
+        loadAssertSuccessAndRv("return(#table.pack((function() return end)()))", new LuaObject[]{LuaObject.of(0)});
+        loadAssertSuccessAndRv("return(#table.pack((function() return 3 end)()))", new LuaObject[]{LuaObject.of(1)});
+        loadAssertSuccessAndRv("return(#table.pack((function() return nil, 3 end)()))", new LuaObject[]{LuaObject.of(2)});
+        loadAssertSuccessAndRv("return(#table.pack((function() return 3, nil end)()))", new LuaObject[]{LuaObject.of(1)});
+    }
 }
