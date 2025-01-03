@@ -2,9 +2,7 @@ package dev.asdf00.jluavm.runtime.types;
 
 import dev.asdf00.jluavm.utils.Tuple;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.TreeSet;
+import java.util.*;
 
 public class LuaHashMap {
     private final TreeSet<Long> upperSequenceBounds = new TreeSet<>();
@@ -211,6 +209,16 @@ public class LuaHashMap {
 
     public LuaObject getFirstKey() {
         return head == null ? LuaObject.nil() : head.key;
+    }
+
+    public ArrayList<LuaObject> keys() {
+        var ks = new ArrayList<LuaObject>();
+        var cur = head;
+        while (cur != null) {
+            ks.add(cur.key);
+            cur = cur.after;
+        }
+        return ks;
     }
 
     private static final class KeyNode {

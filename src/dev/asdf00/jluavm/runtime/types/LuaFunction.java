@@ -9,6 +9,8 @@ import dev.asdf00.jluavm.runtime.utils.Singletons;
 
 import java.lang.reflect.Constructor;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 @SuppressWarnings("unused")
 public abstract class LuaFunction {
@@ -53,6 +55,8 @@ public abstract class LuaFunction {
      */
     public abstract boolean hasParamsArg();
 
+    public abstract byte[] serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs);
+
     protected void debugPoint(Object... params) {
         /**
          * To set a break point to a line in lua, enable DEBUG_MODE in CompilationState and set a conditional break
@@ -65,7 +69,7 @@ public abstract class LuaFunction {
     }
 
     // =================================================================================================================
-    // helper ops for generated code
+    // helper ops
     // =================================================================================================================
 
     /**
@@ -249,7 +253,7 @@ public abstract class LuaFunction {
     }
 
     // =================================================================================================================
-    // slow path methods for meta table involved stuff
+    // slow path methods for meta table stuff
     // =================================================================================================================
 
     /**

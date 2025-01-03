@@ -5,6 +5,7 @@ import dev.asdf00.jluavm.internals.DelayedJavaCompiler;
 import dev.asdf00.jluavm.parsing.container.LabelInfo;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
+import dev.asdf00.jluavm.runtime.utils.AbstractGeneratedLuaFunction;
 import dev.asdf00.jluavm.utils.Tuple;
 
 import java.lang.reflect.Constructor;
@@ -138,7 +139,7 @@ public final class CompilationState {
         var jClasses = (Class<? extends LuaFunction>[]) new Class<?>[functionJavaCode.size()];
         for (int i = 0; i < jClasses.length; i++) {
             var clsDef = functionJavaCode.get(i);
-            var clazz = DelayedJavaCompiler.compileAndLoad(LuaFunction.class.getClassLoader(), COMPILED_CLASSES_MODULE_PREFIX + clsDef.x(), clsDef.y());
+            var clazz = DelayedJavaCompiler.compileAndLoad(AbstractGeneratedLuaFunction.class.getClassLoader(), COMPILED_CLASSES_MODULE_PREFIX + clsDef.x(), clsDef.y());
             if (!LuaFunction.class.isAssignableFrom(clazz)) {
                 throw new InternalLuaLoadingError(clazz.getName() + " is not of type LuaFunction!");
             }
@@ -386,7 +387,7 @@ public final class CompilationState {
                     import java.lang.reflect.Constructor;
                     import java.util.Arrays;
                     
-                    public final class %s extends LuaFunction {
+                    public final class %s extends AbstractGeneratedLuaFunction {
                     public static Constructor<? extends LuaFunction>[] innerFunctions;
                     
                     public %s(LuaObject[] _ENV, LuaObject[] closures) {

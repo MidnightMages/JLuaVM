@@ -4,13 +4,13 @@ import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
 import dev.asdf00.jluavm.exceptions.loading.InternalLuaLexerError;
 import dev.asdf00.jluavm.internals.Coroutine;
 import dev.asdf00.jluavm.parsing.Lexer;
+import dev.asdf00.jluavm.utils.ByteArrayBuilder;
+import dev.asdf00.jluavm.utils.Tuple;
 
 import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Base64;
+import java.util.*;
 
 import static dev.asdf00.jluavm.parsing.Lexer.isDecDigit;
 import static dev.asdf00.jluavm.parsing.Lexer.parseHexDouble;
@@ -843,7 +843,7 @@ public final class LuaObject {
                         double a = epos < 0 ? 2 : 10;
                         int splitter = epos < 0 ? ppos : epos;
                         doubleValue = parseHexDouble(number.substring(2, point)) + Double.parseDouble(number.substring(point, splitter))
-                                                                                   * Math.pow(a, Double.parseDouble(number.substring(splitter + 1)));
+                                * Math.pow(a, Double.parseDouble(number.substring(splitter + 1)));
                     }
                 }
             } else {
@@ -1191,6 +1191,107 @@ public final class LuaObject {
         } else {
             return false;
         }
+    }
+
+    // =================================================================================================================
+    // system helpers
+    // =================================================================================================================
+
+    /**
+     * Serializes this object into serialData and adds a mapping into mappedObjs and returns its own index in serialData.
+     */
+    public int serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs) {
+        if (mappedObjs.containsKey(this)) {
+            return mappedObjs.get(this);
+        }
+        int ownIdx;
+        switch (type) {
+            case Types.NIL -> {
+                ownIdx = serialData.size();
+                mappedObjs.put(this, serialData.size());
+                serialData.add(new byte[]{Types.NIL, 0, 0, 0});
+            }
+            case Types.BOOLEAN -> {
+                ownIdx = serialData.size();
+                mappedObjs.put(this, serialData.size());
+                serialData.add(new byte[]{Types.BOOLEAN, 0, 0, 0, (byte) lVal});
+            }
+            case Types.DOUBLE -> {
+                ownIdx = serialData.size();
+                mappedObjs.put(this, serialData.size());
+                serialData.add(new ByteArrayBuilder(12)
+                        .appendLowEndian(Types.DOUBLE)
+                        .appendLowEndian(Double.doubleToRawLongBits(dVal))
+                        .toArray());
+            }
+            case Types.LONG -> {
+                ownIdx = serialData.size();
+                mappedObjs.put(this, serialData.size());
+                serialData.add(new ByteArrayBuilder(12)
+                        .appendLowEndian(Types.LONG)
+                        .appendLowEndian(lVal)
+                        .toArray());
+            }
+            case Types.STRING -> {
+                ownIdx = serialData.size();
+                mappedObjs.put(this, serialData.size());
+                serialData.add(new ByteArrayBuilder()
+                        .appendLowEndian(Types.STRING)
+                        .appendAll(asString().getBytes(StandardCharsets.UTF_8))
+                        .toArray());
+            }
+            case Types.FUNCTION -> {
+                throw new UnsupportedOperationException("unimplemented function serialization");
+            }
+            case Types.THREAD -> {
+                throw new UnsupportedOperationException("unimplemented thread serialization");
+            }
+            case Types.TABLE -> {
+                ownIdx = serialData.size();
+                // put default values for cyclic dependencies
+                mappedObjs.put(this, ownIdx);
+                serialData.add(null);
+                var bb = new ByteArrayBuilder();
+                bb.appendLowEndian(Types.TABLE);
+                bb.appendLowEndian(metaTable == null
+                        ? NIL.serialize(serialData, mappedObjs)
+                        : metaTable.serialize(serialData, mappedObjs));
+                var map = asMap();
+                for (var k : map.keys()) {
+                    assert !k.isArray();
+                    bb.appendLowEndian(k.serialize(serialData, mappedObjs));
+                    LuaObject v = map.getOrDefault(k, NIL);
+                    assert !v.isArray() && !v.isNil();
+                    bb.appendLowEndian(v.serialize(serialData, mappedObjs));
+                }
+                // fixup in serialData
+                serialData.set(ownIdx, bb.toArray());
+            }
+            case Types.ARRAY -> {
+                ownIdx = serialData.size();
+                // put default values for cyclic dependencies
+                mappedObjs.put(this, ownIdx);
+                serialData.add(null);
+                var bb = new ByteArrayBuilder();
+                bb.appendLowEndian(Types.ARRAY);
+                for (var v : asArray()) {
+                    assert v != null && !v.isArray();
+                    bb.appendLowEndian(v.serialize(serialData, mappedObjs));
+                }
+                serialData.set(ownIdx, bb.toArray());
+            }
+            case Types.BOX -> {
+                int containing = unbox().serialize(serialData, mappedObjs);
+                ownIdx = serialData.size();
+                mappedObjs.put(this, serialData.size());
+                serialData.add(new ByteArrayBuilder(8)
+                        .appendLowEndian(Types.BOX)
+                        .appendLowEndian(containing)
+                        .toArray());
+            }
+            default -> throw new IllegalStateException("Unexpected case value: " + type);
+        }
+        return ownIdx;
     }
 
     @Override

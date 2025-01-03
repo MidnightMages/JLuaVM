@@ -5,6 +5,8 @@ import dev.asdf00.jluavm.internals.Coroutine;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 
+import java.util.List;
+import java.util.Map;
 import java.util.function.BiFunction;
 
 @SuppressWarnings("unused")
@@ -194,6 +196,11 @@ public final class AtomicLuaFunction extends LuaFunction {
     @Override
     public boolean hasParamsArg() {
         return hasVararg;
+    }
+
+    @Override
+    public byte[] serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs) {
+        throw new UnsupportedOperationException("unimplemented");
     }
 
     public LuaObject obj() {
