@@ -536,7 +536,13 @@ public final class LuaObject {
 
         var lx = isLong() ? lVal : (long) dVal;
         var ly = other.isLong() ? other.lVal : (long) other.dVal;
-        return LuaObject.of(lx << ly);
+        var shl = ly >= 0;
+        var lyAbs = Math.abs(ly);
+        if (lyAbs >= 64) {
+            return LuaObject.of(0);
+        }
+
+        return LuaObject.of(shl ? lx << lyAbs : lx >>> lyAbs);
     }
 
     public LuaObject shr(LuaObject other) {
@@ -545,7 +551,13 @@ public final class LuaObject {
 
         var lx = isLong() ? lVal : (long) dVal;
         var ly = other.isLong() ? other.lVal : (long) other.dVal;
-        return LuaObject.of(lx >>> ly);
+        var shr = ly >= 0;
+        var lyAbs = Math.abs(ly);
+        if (lyAbs >= 64) {
+            return LuaObject.of(0);
+        }
+
+        return LuaObject.of(shr ? lx >>> lyAbs : lx << lyAbs);
     }
 
     public LuaObject eq(LuaObject other) {
@@ -879,8 +891,7 @@ public final class LuaObject {
                 dVal = doubleValue;
             }
             return new CoercedString(!isInteger, doubleValue, longValue);
-        }
-        catch (NumberFormatException e) {
+        } catch (NumberFormatException e) {
             throw new InternalLuaLexerError("Unexpected failure while reading number '%s'".formatted(number), e);
         }
     }
