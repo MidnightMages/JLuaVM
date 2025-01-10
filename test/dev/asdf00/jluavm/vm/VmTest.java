@@ -1811,7 +1811,7 @@ public class VmTest {
                     end
                     return recursion(n - 1)
                 end
-                
+                                
                 return recursion(1000000)
                 """, LuaObject.of(0));
     }
@@ -1840,11 +1840,11 @@ public class VmTest {
                 local function func1()
                   func2()
                 end
-                
+                                
                 local function func2()
                   func1()
                 end
-                
+                                
                 func1()
                 """);
     }
@@ -1883,29 +1883,29 @@ public class VmTest {
     void randomCode3() {
         loadAssertSuccessAndRv("""
                 local a, b, c = 0, "hello", 42
-                
+                                
                 local function f(x)
                     return (x % 2 == 0) and (x + b:len()) or (x - c)
                 end
-                
+                                
                 local x = f(c)
                 local y = (function() return (x - c) end)()
-                
+                                
                 local z = (y > 10 and y / 2) or (y * 2)
-                
+                                
                 local function g(a, b)
                     return (a + b) / 3
                 end
-                
+                                
                 local result = g(z, b:len())
-                
+                                
                 local h = function(n)
                     for i = 1, n do
                         if i == math.ceil(result) then return "final" end
                     end
                     return "ignored"
                 end
-                
+                                
                 return h(c % 7 + b:len())
                 """, LuaObject.of("final"));
     }
