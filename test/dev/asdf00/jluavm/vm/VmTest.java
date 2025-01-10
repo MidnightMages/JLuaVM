@@ -63,6 +63,16 @@ public class VmTest {
         }
     }
 
+    private static void loadAssertRuntimeError(String s, String expectedErrorMessage) {
+        for (var expanded : expandOptions(s)) {
+            var vm = LuaVM.create().withStdLib();
+            assertDoesNotThrow(() -> vm.withRootFunc(expanded));
+            var res = assertDoesNotThrow(vm::run);
+            var expectedVmResult = new LuaVM.VmResult(LuaVM.VmRunState.EXECUTION_ERROR, new LuaObject[]{LuaObject.of(expectedErrorMessage)});
+            Assertions.assertEquals(expectedVmResult, res);
+        }
+    }
+
     private static void loadAssertSuccess(String s) {
         for (var expanded : expandOptions(s)) {
             var vm = LuaVM.create().withStdLib();
@@ -1747,7 +1757,7 @@ public class VmTest {
                 local a = 0
                 local b = 1
                 local c = b // a
-                """);
+                """, "attempt to divide by zero");
     }
 
     @Test

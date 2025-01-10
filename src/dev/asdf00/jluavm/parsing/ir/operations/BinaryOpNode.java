@@ -29,19 +29,26 @@ public class BinaryOpNode extends Node {
         EStackCallInfo callInfo = cState.generateEStackCallInfo(1);
         String r = cState.pushEStack();
 
-        String result = """
-                if (%s.%s() && %s.%s()) {
-                    %s = %s.%s(%s);
-                } else {
-                    %s
-                    vm.callInternal(%d, LuaFunction::binaryOpWithMeta, Singletons.__%s, %s, %s);
-                    return;
-                }
-                case %d:""".formatted(sx, typeRestriction, sy, typeRestriction,
-                sx, sx, op, sy,
-                callInfo.saveEStack(),
-                callInfo.resumeLabel(), op, sx, sy,
-                callInfo.resumeLabel());
+        var idivPrefix = """
+            if (%s.isLong() && %s.isLong() && %s.lVal == 0) {
+                vm.error(LuaObject.of("attempt to divide by zero"));
+                return;
+            } else\s
+            """.formatted(sx, sy, sy);
+        String result = ("idiv".equals(op) ? idivPrefix : "") +
+            """
+            if (%s.%s() && %s.%s()) {
+                %s = %s.%s(%s);
+            } else {
+                %s
+                vm.callInternal(%d, LuaFunction::binaryOpWithMeta, Singletons.__%s, %s, %s);
+                return;
+            }
+            case %d:""".formatted(sx, typeRestriction, sy, typeRestriction,
+            sx, sx, op, sy,
+            callInfo.saveEStack(),
+            callInfo.resumeLabel(), op, sx, sy,
+            callInfo.resumeLabel());
         if ("concat".equals(op)) {
             result = "debugPoint(%s, %s);\n".formatted(sx, sy) + result;
         }
