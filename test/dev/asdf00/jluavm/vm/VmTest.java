@@ -7,6 +7,7 @@ import dev.asdf00.jluavm.exceptions.loading.LuaSemanticException;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import java.util.Arrays;
 import java.util.stream.Collectors;
@@ -2053,5 +2054,17 @@ public class VmTest {
         loadAssertSuccessAndRv("return(#table.pack((function() return 3 end)()))", new LuaObject[]{LuaObject.of(1)});
         loadAssertSuccessAndRv("return(#table.pack((function() return nil, 3 end)()))", new LuaObject[]{LuaObject.of(2)});
         loadAssertSuccessAndRv("return(#table.pack((function() return 3, nil end)()))", new LuaObject[]{LuaObject.of(1)});
+    }
+
+    @Test
+    @Timeout(5)
+    void innerScopeReturn() {
+        loadAssertSuccessAndRv("""
+                for a,b in ipairs({1}) do
+                    if true then
+                        return false
+                    end
+                end
+                """, new LuaObject[]{LuaObject.of(false)});
     }
 }
