@@ -2061,9 +2061,7 @@ public class VmTest {
     void innerScopeReturn() {
         loadAssertSuccessAndRv("""
                 for a,b in ipairs({1}) do
-                    if true then
-                        return false
-                    end
+                    return false
                 end
                 """, new LuaObject[]{LuaObject.of(false)});
     }
