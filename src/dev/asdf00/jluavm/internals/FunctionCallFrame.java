@@ -30,6 +30,10 @@ public final class FunctionCallFrame extends AbstractCallStackFrame {
         return scopes.isEmpty() ? this : scopes.peek();
     }
 
+    Stack<InternalCallFrame> getScopes() {
+        return scopes;
+    }
+
     public void enterScope(LFunc localTarget, LuaObject[] args) {
         var cTop = getTopFrame();
         scopes.push(new InternalCallFrame(locals, cTop.startLocals + cTop.localCnt + cTop.curInlinedLocalCnt, localTarget, args));

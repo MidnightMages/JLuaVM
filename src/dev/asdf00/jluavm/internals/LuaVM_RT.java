@@ -1,6 +1,7 @@
 package dev.asdf00.jluavm.internals;
 
 import dev.asdf00.jluavm.LuaVM;
+import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.LFunc;
@@ -16,7 +17,7 @@ import java.util.function.Supplier;
 public class LuaVM_RT extends LuaVM {
     // it was brought to me in a dream that this is the optimal number, for sure
     public static final int ERROR_LOOP_GRACE_CNT = 256;
-    public static final int MAX_LUA_STACK_SIZE = 1024*1024*1024;
+    public static final int MAX_LUA_STACK_SIZE = 1024 * 1024 * 1024;
 
     public LuaVM_RT() {
         luaCallStack = new Stack<>();
@@ -86,7 +87,19 @@ public class LuaVM_RT extends LuaVM {
     }
 
     public LuaObject getNextClosable() {
-        return curFuncFrame.getTopFrame().closables.pop();
+        var scopes = curFuncFrame.getScopes();
+        for (int i = scopes.size() - 1; i >= 0; i--) {
+            var scope = scopes.get(i);
+
+            if (!scope.closables.empty())
+                return scope.closables.pop();
+        }
+
+        if (!curFuncFrame.closables.empty()) {
+            return curFuncFrame.closables.pop();
+        }
+
+        throw new InternalLuaRuntimeError("Closable stack is empty!");
     }
 
     public LuaObject getCallerEnv() {
