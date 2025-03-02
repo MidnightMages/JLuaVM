@@ -68,4 +68,20 @@ public final class FunctionCallFrame extends AbstractCallStackFrame {
         init();
         Arrays.fill(locals, null);
     }
+
+    public LuaObject getNextClosable() {
+        var scopes = getScopes();
+        for (int i = scopes.size() - 1; i >= 0; i--) {
+            var scope = scopes.get(i);
+
+            if (!scope.closables.empty())
+                return scope.closables.pop();
+        }
+
+        if (!closables.empty()) {
+            return closables.pop();
+        }
+
+        throw new InternalLuaRuntimeError("Closable stack is empty!");
+    }
 }

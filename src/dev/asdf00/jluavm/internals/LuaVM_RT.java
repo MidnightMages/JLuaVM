@@ -87,19 +87,7 @@ public class LuaVM_RT extends LuaVM {
     }
 
     public LuaObject getNextClosable() {
-        var scopes = curFuncFrame.getScopes();
-        for (int i = scopes.size() - 1; i >= 0; i--) {
-            var scope = scopes.get(i);
-
-            if (!scope.closables.empty())
-                return scope.closables.pop();
-        }
-
-        if (!curFuncFrame.closables.empty()) {
-            return curFuncFrame.closables.pop();
-        }
-
-        throw new InternalLuaRuntimeError("Closable stack is empty!");
+        return curFuncFrame.getNextClosable();
     }
 
     public LuaObject getCallerEnv() {
