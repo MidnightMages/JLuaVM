@@ -237,7 +237,7 @@ public class LMath {
 
             @Override
             public int getArgCount() {
-                return 0;
+                return 1;
             }
 
             @Override

@@ -2065,4 +2065,18 @@ public class VmTest {
                 end
                 """, new LuaObject[]{LuaObject.of(false)});
     }
+
+    @Test
+    void mathMinArrayCopyFail() {
+        loadAssertSuccessAndRv("""
+                return math.min(1,2)
+                """, LuaObject.of(1));
+    }
+
+    @Test
+    void mathMaxArrayCopyFail() {
+        loadAssertSuccessAndRv("""
+                return math.max(1,2)
+                """, LuaObject.of(2));
+    }
 }
