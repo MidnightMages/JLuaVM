@@ -39,7 +39,7 @@ public final class Coroutine {
         RUNNING("running"),
         SUSPENDED("suspended"),
         BLOCKED("normal"),
-        DEAD("deal");
+        DEAD("dead");
 
         public final String luaName;
 
