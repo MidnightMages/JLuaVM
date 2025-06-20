@@ -2086,4 +2086,11 @@ public class VmTest {
                 return coroutine.running() == coroutine.running()
                 """, LuaObject.TRUE);
     }
+
+    @Test
+    void emptyIfStatement(){
+        loadAssertSuccessAndRv("""
+                if true then end
+                """, LuaObject.NIL);
+    }
 }
