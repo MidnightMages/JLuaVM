@@ -2079,4 +2079,11 @@ public class VmTest {
                 return math.max(1,2)
                 """, LuaObject.of(2));
     }
+
+    @Test
+    void coroutineRunningConsistency(){
+        loadAssertSuccessAndRv("""
+                return coroutine.running() == coroutine.running()
+                """, LuaObject.TRUE);
+    }
 }
