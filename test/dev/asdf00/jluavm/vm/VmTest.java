@@ -2093,4 +2093,14 @@ public class VmTest {
                 if true then end
                 """, LuaObject.NIL);
     }
+
+
+    @Test
+    void arrayIdxRemove() {
+        loadAssertSuccessAndRv("""
+                t = {1,2,3,4}
+                t[4] = nil
+                return #t
+                """, new LuaObject[]{LuaObject.of(3)});
+    }
 }
