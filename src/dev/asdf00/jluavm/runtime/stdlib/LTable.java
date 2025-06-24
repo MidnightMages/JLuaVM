@@ -50,7 +50,7 @@ public class LTable {
                     vm.error(LuaObject.of("invalid value (nil) at index %d in table for 'concat'".formatted(k)));
                     return null;
                 }
-                sb.append(elem);
+                sb.append(elem.asString());
             }
 
             return LuaObject.of(sb.toString());

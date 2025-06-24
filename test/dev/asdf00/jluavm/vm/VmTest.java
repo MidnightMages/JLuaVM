@@ -2081,9 +2081,24 @@ public class VmTest {
     }
 
     @Test
-    void coroutineRunningConsistency(){
+    void coroutineRunningConsistency() {
         loadAssertSuccessAndRv("""
                 return coroutine.running() == coroutine.running()
                 """, LuaObject.TRUE);
+    }
+
+    @Test
+    void stringToString() {
+        loadAssertSuccessAndRv("""
+                return tostring("abc")
+                """, LuaObject.of("abc"));
+    }
+
+    @Test
+    void stringTableConcat() {
+        loadAssertSuccessAndRv("""
+                local psplits = {"a","b","c"}
+                return table.concat(psplits, "/", 1, #psplits-1)
+                """, LuaObject.of("a/b"));
     }
 }
