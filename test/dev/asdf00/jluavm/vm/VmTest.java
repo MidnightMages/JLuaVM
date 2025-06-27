@@ -4,6 +4,7 @@ import dev.asdf00.jluavm.LuaVM;
 import dev.asdf00.jluavm.exceptions.LuaLoadingException;
 import dev.asdf00.jluavm.exceptions.loading.LuaParserException;
 import dev.asdf00.jluavm.exceptions.loading.LuaSemanticException;
+import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -2088,10 +2089,10 @@ public class VmTest {
     }
 
     @Test
-    void emptyIfStatement(){
+    void emptyIfStatement() {
         loadAssertSuccessAndRv("""
                 if true then end
-                """, LuaObject.NIL);
+                """, new LuaObject[0]);
     }
 
 

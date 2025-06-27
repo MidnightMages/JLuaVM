@@ -28,7 +28,10 @@ public class IRBlock extends Node {
         String blockName = cState.openInnerBlock(localCnt);
         if (statements.length < 1 && continueCondition == null) {
             assert closableCnt == 0;
-            cState.closeInnerBlock("// empty inner block");
+            cState.closeInnerBlock("""
+                    vm.internalReturn(); // empty inner block
+                    return;
+                    """);
             return blockName;
         }
         var sb = new StringBuilder();
