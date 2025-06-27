@@ -18,6 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -83,17 +84,24 @@ public abstract class LuaVM {
         return load(code, _G);
     }
 
+    private static final ConcurrentHashMap<String, Constructor<? extends LuaFunction>> compilationCache = new ConcurrentHashMap<>();
     public LuaFunction load(String code, LuaObject _ENV) throws LuaLoadingException, InternalLuaLoadingError {
         if (_ENV == null) {
             throw new InternalLuaLoadingError("got invalid _ENV");
         }
-        IRFunction rootFunc = new Parser(code).parse();
-        var javaIntermediateCode = new CompilationState(jClassNameGen);
-        rootFunc.generate(javaIntermediateCode);
-        javaIntermediateCode.resolveAllPatches();
-        var rootCtor = javaIntermediateCode.loadAndLinkAllClasses();
+
+        var cachedCtor = compilationCache.getOrDefault(code,null);
+        if (cachedCtor == null) {
+            IRFunction rootFunc = new Parser(code).parse();
+            var javaIntermediateCode = new CompilationState(jClassNameGen);
+            rootFunc.generate(javaIntermediateCode);
+            javaIntermediateCode.resolveAllPatches();
+            cachedCtor = javaIntermediateCode.loadAndLinkAllClasses();
+            compilationCache.put(code, cachedCtor); // TODO could optimize this cache by stripping comments maybe?
+        }
+
         try {
-            return rootCtor.newInstance(new LuaObject[]{_ENV}, Singletons.EMPTY_LUA_OBJ_ARRAY);
+            return cachedCtor.newInstance(new LuaObject[]{_ENV}, Singletons.EMPTY_LUA_OBJ_ARRAY);
         } catch (ReflectiveOperationException e) {
             throw new InternalLuaLoadingError(e);
         }
