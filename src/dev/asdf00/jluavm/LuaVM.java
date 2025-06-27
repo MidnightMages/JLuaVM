@@ -85,19 +85,26 @@ public abstract class LuaVM {
     }
 
     private static final ConcurrentHashMap<String, Constructor<? extends LuaFunction>> compilationCache = new ConcurrentHashMap<>();
+    private static final Object compilationCache_lockObj = new Object();
+
     public LuaFunction load(String code, LuaObject _ENV) throws LuaLoadingException, InternalLuaLoadingError {
         if (_ENV == null) {
             throw new InternalLuaLoadingError("got invalid _ENV");
         }
 
-        var cachedCtor = compilationCache.getOrDefault(code,null);
+        var cachedCtor = compilationCache.getOrDefault(code, null);
         if (cachedCtor == null) {
-            IRFunction rootFunc = new Parser(code).parse();
-            var javaIntermediateCode = new CompilationState(jClassNameGen);
-            rootFunc.generate(javaIntermediateCode);
-            javaIntermediateCode.resolveAllPatches();
-            cachedCtor = javaIntermediateCode.loadAndLinkAllClasses();
-            compilationCache.put(code, cachedCtor); // TODO could optimize this cache by stripping comments maybe?
+            synchronized (compilationCache_lockObj) {
+                cachedCtor = compilationCache.getOrDefault(code, null);
+                if (cachedCtor == null) {
+                    IRFunction rootFunc = new Parser(code).parse();
+                    var javaIntermediateCode = new CompilationState(jClassNameGen);
+                    rootFunc.generate(javaIntermediateCode);
+                    javaIntermediateCode.resolveAllPatches();
+                    cachedCtor = javaIntermediateCode.loadAndLinkAllClasses();
+                    compilationCache.put(code, cachedCtor); // TODO could optimize this cache by stripping comments maybe?
+                }
+            }
         }
 
         try {
