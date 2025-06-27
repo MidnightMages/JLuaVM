@@ -17,6 +17,7 @@ public final class Coroutine {
     public State state;
     public boolean isYieldable;
     public Coroutine yieldTo;
+    public LuaObject selfLuaObject;
 
     private Coroutine(LuaFunction rootFunc, Stack<FunctionCallFrame> luaCallStack, boolean rootFail, LuaObject[] rootReturned, State state) {
         this.rootFunc = rootFunc;
@@ -26,6 +27,8 @@ public final class Coroutine {
         this.state = state;
         isYieldable = true;
         yieldTo = null;
+
+        selfLuaObject = LuaObject.of(this);
     }
 
     public static Coroutine create(LuaFunction rootFunc) {

@@ -22,7 +22,7 @@ public class LCoroutine {
             vm.error(funcArgTypeError("coroutine.create", 0, body, "function"));
             return null;
         }
-        return LuaObject.of(Coroutine.create(body.getFunc()));
+        return Coroutine.create(body.getFunc()).selfLuaObject;
     }).obj();
 
     private static final LuaObject isyieldable = LuaObject.of(new LuaFunction() {
@@ -116,7 +116,7 @@ public class LCoroutine {
     });
 
     private static final LuaObject running = AtomicLuaFunction.forManyResults(vm -> new LuaObject[]{
-            LuaObject.of(vm.getCurrentCoroutine()),
+            vm.getCurrentCoroutine().selfLuaObject,
             LuaObject.of(vm.getCurrentCoroutine() == vm.getRootCoroutine())
     }).obj();
 
