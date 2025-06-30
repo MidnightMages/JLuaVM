@@ -40,7 +40,7 @@ public class RelationalOpNode extends Node {
                     %s = %s.%s(%s);
                 } else {
                     %s
-                    vm.callInternal(%d, LuaFunction::binaryOpWithMeta, Singletons.__%s, %s, %s);
+                    vm.callInternal(%d, LuaFunction::binaryOpWithMeta, "::binaryOpWithMeta", Singletons.__%s, %s, %s);
                     return;
                 }
                 case %d:

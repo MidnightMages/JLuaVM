@@ -6,11 +6,9 @@ import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.LFunc;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
+import dev.asdf00.jluavm.utils.ByteArrayBuilder;
 
-import java.util.Arrays;
-import java.util.Objects;
-import java.util.Random;
-import java.util.Stack;
+import java.util.*;
 import java.util.function.Supplier;
 
 @SuppressWarnings("unused")
@@ -35,6 +33,20 @@ public class LuaVM_RT extends LuaVM {
         setCoroutine(rootCoroutine);
         execLoop();
         return new VmResult(rootCoroutine.rootFail ? VmRunState.EXECUTION_ERROR : VmRunState.SUCCESS, rootCoroutine.rootReturned);
+    }
+
+    @Override
+    public byte[] serialize() {
+        ArrayList<byte[]> serialData = new ArrayList<>();
+        HashMap<LuaObject, Integer> mappedObjs = new HashMap<>();
+        int rootIdx = rootCoroutine.selfLuaObject.serialize(serialData, mappedObjs);
+        var bb = new ByteArrayBuilder(serialData.stream().mapToInt(a -> a.length + 4).sum() + 4);
+        bb.append(rootIdx);
+        for (int i = 0; i < serialData.size(); i++) {
+            var a = serialData.get(i);
+            bb.append(a.length).appendAll(a);
+        }
+        return bb.toArray();
     }
 
     // =================================================================================================================
@@ -343,14 +355,14 @@ public class LuaVM_RT extends LuaVM {
         }
     }
 
-    public void callInternal(int resume, LFunc localTarget) {
-        callInternal(resume, localTarget, Singletons.EMPTY_LUA_OBJ_ARRAY);
+    public void callInternal(int resume, LFunc localTarget, String targetName) {
+        callInternal(resume, localTarget, targetName, Singletons.EMPTY_LUA_OBJ_ARRAY);
     }
 
-    public void callInternal(int resume, LFunc localTarget, LuaObject... args) {
+    public void callInternal(int resume, LFunc localTarget, String targetName, LuaObject... args) {
         // we trust that the caller knows what they are doing and that the args are already in the correct format
         curFuncFrame.getTopFrame().resume = resume;
-        curFuncFrame.enterScope(localTarget, args);
+        curFuncFrame.enterScope(localTarget, targetName, args);
     }
 
     public void internalReturn() {

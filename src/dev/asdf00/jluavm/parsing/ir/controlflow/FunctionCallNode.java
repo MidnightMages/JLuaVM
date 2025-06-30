@@ -67,7 +67,7 @@ public class FunctionCallNode extends Node {
         String result = """
                 %s
                 if (%s.isFunction()) vm.callExternal(%d, %s.getFunc()%s);
-                else vm.callInternal(%d, LuaFunction::callWithMeta, %s%s);
+                else vm.callInternal(%d, LuaFunction::callWithMeta, "::callWithMeta", %s%s);
                 return;
                 case %d:""".formatted(callInfo.saveEStack(),
                 funcSpot,
@@ -105,7 +105,7 @@ public class FunctionCallNode extends Node {
                         %s
                         %s
                         %s
-                        vm.callInternal(%d, LuaFunction::lookupExtension, %s, LuaObject.of(%s.getTypeAsString()), %s);
+                        vm.callInternal(%d, LuaFunction::lookupExtension, "::lookupExtension", %s, LuaObject.of(%s.getTypeAsString()), %s);
                         return;
                     }
                     case %d:

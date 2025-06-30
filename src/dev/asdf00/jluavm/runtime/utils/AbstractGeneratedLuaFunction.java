@@ -1,7 +1,6 @@
 package dev.asdf00.jluavm.runtime.utils;
 
 import dev.asdf00.jluavm.exceptions.InternalLuaSerializationError;
-import dev.asdf00.jluavm.exceptions.LuaRuntimeError;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.utils.ByteArrayBuilder;
@@ -11,6 +10,14 @@ import java.util.List;
 import java.util.Map;
 
 public abstract class AbstractGeneratedLuaFunction extends LuaFunction {
+    public AbstractGeneratedLuaFunction() {
+        super();
+    }
+
+    public AbstractGeneratedLuaFunction(LuaObject[] _ENV, LuaObject[] closures) {
+        super(_ENV, closures);
+    }
+
     @Override
     public void serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs, ByteArrayBuilder bb) {
         int ownIdx = serialData.size();
@@ -22,9 +29,9 @@ public abstract class AbstractGeneratedLuaFunction extends LuaFunction {
             var codeField = clazz.getDeclaredField("luaCode");
             int dpt = cudField.getInt(null);
             byte[] code = ((String) codeField.get(null)).getBytes(StandardCharsets.UTF_8);
-            bb.appendLowEndian(LuaObject.of(_ENV).serialize(serialData, mappedObjs))
-                    .appendLowEndian(LuaObject.of(closures).serialize(serialData, mappedObjs))
-                    .appendLowEndian(dpt)
+            bb.append(LuaObject.of(_ENV).serialize(serialData, mappedObjs))
+                    .append(LuaObject.of(closures).serialize(serialData, mappedObjs))
+                    .append(dpt)
                     .appendAll(code);
         } catch (ReflectiveOperationException e) {
             throw new InternalLuaSerializationError("Reflection error while serializing a generated lua function", e);

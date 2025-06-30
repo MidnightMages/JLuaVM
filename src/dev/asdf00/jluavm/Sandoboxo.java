@@ -122,7 +122,7 @@ public class Sandoboxo extends LuaFunction {
                     // save expression stack
                     expressionStack[0] = t0;
                     expressionStack[1] = t1;
-                    vm.callInternal(1, LuaFunction::binaryOpWithMeta, Singletons.__add, t2, t3);
+                    vm.callInternal(1, LuaFunction::binaryOpWithMeta, "::binaryOpWithMeta", Singletons.__add, t2, t3);
                     return;
                 }
             case 1:
@@ -165,7 +165,7 @@ public class Sandoboxo extends LuaFunction {
                     vm.callExternal(3, t5.getFunc(), t6);
                     return;
                 } else {
-                    vm.callInternal(3, LuaFunction::callWithMeta, t5, t6);
+                    vm.callInternal(3, LuaFunction::callWithMeta, "::callWithMeta", t5, t6);
                     return;
                 }
             case 3:
@@ -199,10 +199,10 @@ public class Sandoboxo extends LuaFunction {
                 t0 = stackFrame[1];
                 // if clause
                 if (RTUtils.isTruthy(t0)) {
-                    vm.callInternal(5, this::innerScope0);
+                    vm.callInternal(5, this::innerScope0, "innerScope0");
                     return;
                 } else {
-                    vm.callInternal(5, this::innerScope1);
+                    vm.callInternal(5, this::innerScope1, "innerScope1");
                     return;
                 }
             case 5:
@@ -262,7 +262,7 @@ public class Sandoboxo extends LuaFunction {
                 if (t0.isArithmetic() && t1.isArithmetic()) {
                     t0 = t0.add(t1);
                 } else {
-                    vm.callInternal(0, LuaFunction::binaryOpWithMeta, Singletons.__add, t0, t1);
+                    vm.callInternal(0, LuaFunction::binaryOpWithMeta, "::binaryOpWithMeta", Singletons.__add, t0, t1);
                     return;
                 }
                 t1 = null;

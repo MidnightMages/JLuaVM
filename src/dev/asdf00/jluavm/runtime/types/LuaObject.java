@@ -5,7 +5,6 @@ import dev.asdf00.jluavm.exceptions.loading.InternalLuaLexerError;
 import dev.asdf00.jluavm.internals.Coroutine;
 import dev.asdf00.jluavm.parsing.Lexer;
 import dev.asdf00.jluavm.utils.ByteArrayBuilder;
-import dev.asdf00.jluavm.utils.Tuple;
 
 import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
@@ -1198,53 +1197,51 @@ public final class LuaObject {
             }
             case Types.DOUBLE -> {
                 serialData.add(new ByteArrayBuilder(12)
-                        .appendLowEndian(Types.DOUBLE)
-                        .appendLowEndian(Double.doubleToRawLongBits(dVal))
+                        .append(Types.DOUBLE)
+                        .append(Double.doubleToRawLongBits(dVal))
                         .toArray());
             }
             case Types.LONG -> {
                 serialData.add(new ByteArrayBuilder(12)
-                        .appendLowEndian(Types.LONG)
-                        .appendLowEndian(lVal)
+                        .append(Types.LONG)
+                        .append(lVal)
                         .toArray());
             }
             case Types.STRING -> {
                 serialData.add(new ByteArrayBuilder()
-                        .appendLowEndian(Types.STRING)
+                        .append(Types.STRING)
                         .appendAll(asString().getBytes(StandardCharsets.UTF_8))
                         .toArray());
             }
             case Types.FUNCTION -> {
                 // reserve space in serialData
                 serialData.add(null);
-                var bb = new ByteArrayBuilder().appendLowEndian(Types.FUNCTION);
+                var bb = new ByteArrayBuilder().append(Types.FUNCTION);
                 getFunc().serialize(serialData, mappedObjs, bb);
                 serialData.set(ownIdx, bb.toArray());
             }
             case Types.THREAD -> {
                 // reserve space in serialData
                 serialData.add(null);
-                var bb = new ByteArrayBuilder().appendLowEndian(Types.THREAD);
-                // TODO
-
+                var bb = new ByteArrayBuilder().append(Types.THREAD);
+                asCoroutine().serialize(serialData, mappedObjs, bb);
                 serialData.set(ownIdx, bb.toArray());
-                throw new UnsupportedOperationException("unimplemented thread serialization");
             }
             case Types.TABLE -> {
                 // reserve space in serialData
                 serialData.add(null);
                 var bb = new ByteArrayBuilder();
-                bb.appendLowEndian(Types.TABLE);
-                bb.appendLowEndian(metaTable == null
+                bb.append(Types.TABLE);
+                bb.append(metaTable == null
                         ? NIL.serialize(serialData, mappedObjs)
                         : metaTable.serialize(serialData, mappedObjs));
                 var map = asMap();
                 for (var k : map.keys()) {
                     assert !k.isArray();
-                    bb.appendLowEndian(k.serialize(serialData, mappedObjs));
+                    bb.append(k.serialize(serialData, mappedObjs));
                     LuaObject v = map.getOrDefault(k, NIL);
                     assert !v.isArray() && !v.isNil();
-                    bb.appendLowEndian(v.serialize(serialData, mappedObjs));
+                    bb.append(v.serialize(serialData, mappedObjs));
                 }
                 // fixup in serialData
                 serialData.set(ownIdx, bb.toArray());
@@ -1253,10 +1250,10 @@ public final class LuaObject {
                 // reserve space in serialData
                 serialData.add(null);
                 var bb = new ByteArrayBuilder();
-                bb.appendLowEndian(Types.ARRAY);
+                bb.append(Types.ARRAY);
                 for (var v : asArray()) {
                     assert v != null && !v.isArray();
-                    bb.appendLowEndian(v.serialize(serialData, mappedObjs));
+                    bb.append(v.serialize(serialData, mappedObjs));
                 }
                 serialData.set(ownIdx, bb.toArray());
             }
@@ -1265,8 +1262,8 @@ public final class LuaObject {
                 serialData.add(null);
                 int containing = unbox().serialize(serialData, mappedObjs);
                 serialData.set(ownIdx, new ByteArrayBuilder(8)
-                        .appendLowEndian(Types.BOX)
-                        .appendLowEndian(containing)
+                        .append(Types.BOX)
+                        .append(containing)
                         .toArray());
             }
             default -> throw new IllegalStateException("Unexpected case value: " + type);
@@ -1298,7 +1295,8 @@ public final class LuaObject {
                 case Types.DOUBLE -> other.isDouble() && (dVal == other.dVal);
                 case Types.LONG -> other.isLong() && (lVal == other.lVal);
                 case Types.STRING -> other.isString() && (refVal.equals(other.refVal));
-                case Types.FUNCTION, Types.USERDATA, Types.THREAD, Types.TABLE, Types.ARRAY, Types.BOX -> this == other;
+                case Types.FUNCTION, Types.THREAD -> refVal == other.refVal; // equality not based on the wrapper object
+                case Types.USERDATA, Types.TABLE, Types.ARRAY, Types.BOX -> this == other;
                 default -> throw new IllegalStateException("Unexpected case value: " + type);
             };
         } else {

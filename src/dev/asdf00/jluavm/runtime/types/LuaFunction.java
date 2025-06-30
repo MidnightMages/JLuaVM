@@ -92,7 +92,7 @@ public abstract class LuaFunction {
                 if (mtbl == null || !mtbl.isTable() || !mtbl.hasKey(Singletons.__index)) {
                     return LuaObject.nil();
                 } else {
-                    vm.callInternal(resumeLabel, LuaFunction::getWithMeta, obj, key, mtbl);
+                    vm.callInternal(resumeLabel, LuaFunction::getWithMeta, "::getWithMeta", obj, key, mtbl);
                     return null;
                 }
             }
@@ -111,7 +111,7 @@ public abstract class LuaFunction {
                     return null;
                 }
             } else {
-                vm.callInternal(resumeLabel, LuaFunction::getWithMeta, obj, idx, mtbl);
+                vm.callInternal(resumeLabel, LuaFunction::getWithMeta, "::getWithMeta", obj, idx, mtbl);
                 return null;
             }
         } else {
@@ -133,7 +133,7 @@ public abstract class LuaFunction {
                 if (mtbl == null || !mtbl.isTable() || !mtbl.hasKey(Singletons.__index)) {
                     return LuaObject.nil();
                 } else {
-                    vm.callInternal(resumeLabel, LuaFunction::getWithMeta, obj, key, mtbl);
+                    vm.callInternal(resumeLabel, LuaFunction::getWithMeta, "::getWithMeta", obj, key, mtbl);
                     return null;
                 }
             }
@@ -152,7 +152,7 @@ public abstract class LuaFunction {
                     return null;
                 }
             } else {
-                vm.callInternal(resumeLabel, LuaFunction::getWithMeta, obj, idx, mtbl);
+                vm.callInternal(resumeLabel, LuaFunction::getWithMeta, "::getWithMeta", obj, idx, mtbl);
                 return null;
             }
         } else {
@@ -177,7 +177,7 @@ public abstract class LuaFunction {
                     obj.set(key, val);
                     return false;
                 } else {
-                    vm.callInternal(resumeLabel, LuaFunction::setWithMeta, obj, key, val, mtbl);
+                    vm.callInternal(resumeLabel, LuaFunction::setWithMeta, "::setWithMeta", obj, key, val, mtbl);
                     return true;
                 }
             }
@@ -196,7 +196,7 @@ public abstract class LuaFunction {
                     return true;
                 }
             } else {
-                vm.callInternal(resumeLabel, LuaFunction::setWithMeta, obj, idx, val, mtbl);
+                vm.callInternal(resumeLabel, LuaFunction::setWithMeta, "::setWithMeta", obj, idx, val, mtbl);
                 return true;
             }
         } else {
@@ -213,7 +213,7 @@ public abstract class LuaFunction {
             if (x == y) {
                 return LuaObject.TRUE;
             } else if (!x.getMetaValueOrNil(Singletons.__eq).isNil() || !y.getMetaValueOrNil(Singletons.__eq).isNil()) {
-                vm.callInternal(resumeLabel, LuaFunction::binaryOpWithMeta, Singletons.__eq, x, y);
+                vm.callInternal(resumeLabel, LuaFunction::binaryOpWithMeta, "::binaryOpWithMeta", Singletons.__eq, x, y);
                 return null;
             } else {
                 return LuaObject.FALSE;
@@ -230,7 +230,7 @@ public abstract class LuaFunction {
         }
         var mv = obj.getMetaValueOrNil(Singletons.__len);
         if (!mv.isNil()) {
-            vm.callInternal(resumeLabel, LuaFunction::unaryOpWithMeta, Singletons.__len, obj);
+            vm.callInternal(resumeLabel, LuaFunction::unaryOpWithMeta, "::unaryOpWithMeta", Singletons.__len, obj);
             return null;
         }
         if (obj.isTable()) {
@@ -383,7 +383,7 @@ public abstract class LuaFunction {
                     var nuArgs = new LuaObject[args.length + 1];
                     nuArgs[0] = t1;
                     System.arraycopy(args, 0, nuArgs, 1, nuArgs.length);
-                    vm.callInternal(0, LuaFunction::callWithMeta, nuArgs);
+                    vm.callInternal(0, LuaFunction::callWithMeta, "::callWithMeta", nuArgs);
                 }
                 return;
             case 0:
@@ -429,7 +429,7 @@ public abstract class LuaFunction {
                 if (t3.isFunction()) {
                     vm.callExternal(0, t3.getFunc(), t1, t2);
                 } else {
-                    vm.callInternal(0, LuaFunction::callWithMeta, t3, t1, t2);
+                    vm.callInternal(0, LuaFunction::callWithMeta, "::callWithMeta", t3, t1, t2);
                 }
                 return;
             case 0:
@@ -471,7 +471,7 @@ public abstract class LuaFunction {
                 if (t0.isFunction()) {
                     vm.callExternal(0, t0.getFunc(), t1);
                 } else {
-                    vm.callInternal(0, LuaFunction::callWithMeta, t0, t1);
+                    vm.callInternal(0, LuaFunction::callWithMeta, "::callWithMeta", t0, t1);
                 }
                 return;
             case 0:

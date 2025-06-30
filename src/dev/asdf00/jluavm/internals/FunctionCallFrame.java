@@ -4,8 +4,11 @@ import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.LFunc;
+import dev.asdf00.jluavm.utils.ByteArrayBuilder;
 
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import java.util.Stack;
 
 public final class FunctionCallFrame extends AbstractCallStackFrame {
@@ -34,9 +37,9 @@ public final class FunctionCallFrame extends AbstractCallStackFrame {
         return scopes;
     }
 
-    public void enterScope(LFunc localTarget, LuaObject[] args) {
+    public void enterScope(LFunc localTarget, String targetName, LuaObject[] args) {
         var cTop = getTopFrame();
-        scopes.push(new InternalCallFrame(locals, cTop.startLocals + cTop.localCnt + cTop.curInlinedLocalCnt, localTarget, args));
+        scopes.push(new InternalCallFrame(locals, cTop.startLocals + cTop.localCnt + cTop.curInlinedLocalCnt, localTarget, targetName, args));
     }
 
     public void exitScope(LuaObject[] rvals) {
@@ -83,5 +86,26 @@ public final class FunctionCallFrame extends AbstractCallStackFrame {
         }
 
         throw new InternalLuaRuntimeError("Closable stack is empty!");
+    }
+
+    public byte[] serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs) {
+        var bb = new ByteArrayBuilder();
+        bb.append(LuaObject.of(lFunc).serialize(serialData, mappedObjs))
+                .append(failCnt)
+                .append(isResumable)
+                .append(isProtected);
+        if (msgHandler == null) {
+            bb.append(false);
+        } else {
+            bb.append(true).append(LuaObject.of(lFunc).serialize(serialData, mappedObjs));
+        }
+
+        // serialize inner scopes
+        for (int i = 0; i < scopes.size(); i++) {
+            var innerBytes = scopes.get(i).serialize(serialData, mappedObjs);
+            bb.append(innerBytes.length).appendAll(innerBytes);
+        }
+
+        return bb.toArray();
     }
 }

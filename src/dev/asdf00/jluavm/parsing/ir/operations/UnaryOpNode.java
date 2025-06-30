@@ -28,7 +28,7 @@ public class UnaryOpNode extends Node {
                     %s = %s.%s();
                 } else {
                     %s
-                    vm.callInternal(%d, LuaFunction::unaryOpWithMeta, Singletons.__%s, %s);
+                    vm.callInternal(%d, LuaFunction::unaryOpWithMeta, "::unaryOpWithMeta", Singletons.__%s, %s);
                     return;
                 }
                 case %d:""".formatted(vSpot, typeRestriction, rSpot, vSpot, op, info.saveEStack(), info.resumeLabel(), op, vSpot, info.resumeLabel());

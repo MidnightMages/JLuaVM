@@ -242,6 +242,12 @@ public abstract class LuaVM {
         }
     }
 
+    public abstract byte[] serialize();
+
+    public static LuaVM deserialize(byte[] state) {
+        throw new UnsupportedOperationException("not implemented yet");
+    }
+
     public enum VmRunState {
         SUCCESS,
         EXECUTION_ERROR,

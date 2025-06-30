@@ -234,7 +234,7 @@ public class LGlobal {
                     if (tostring.isFunction())
                         vm.tailCall(tostring.getFunc(), arg);
                     else
-                        vm.callInternal(0, LuaFunction::callWithMeta, tostring, arg);
+                        vm.callInternal(0, LuaFunction::callWithMeta, "::callWithMeta", tostring, arg);
                     return;
                 case 0:
                     var rval = returned.length > 0 ? returned[0] : LuaObject.nil();

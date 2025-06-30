@@ -2,7 +2,10 @@ package dev.asdf00.jluavm.internals;
 
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
+import dev.asdf00.jluavm.utils.ByteArrayBuilder;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Stack;
 
@@ -35,6 +38,19 @@ public final class Coroutine {
         var r = new Coroutine(Objects.requireNonNull(rootFunc), new Stack<>(), false, null, State.CREATED);
         r.luaCallStack.push(new FunctionCallFrame(new LuaObject[rootFunc.getMaxLocalsSize()], rootFunc));
         return r;
+    }
+
+    public void serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs, ByteArrayBuilder bb) {
+        bb.append(LuaObject.of(rootFunc).serialize(serialData, mappedObjs))
+                .append(LuaObject.of(rootReturned).serialize(serialData, mappedObjs))
+                .append((byte) state.ordinal())
+                .append(isYieldable)
+                .append(yieldTo.selfLuaObject.serialize(serialData, mappedObjs));
+
+        for (int i = 0; i < luaCallStack.size(); i++) {
+            var functionFrameBytes = luaCallStack.get(i).serialize(serialData, mappedObjs);
+            bb.append(functionFrameBytes.length).appendAll(functionFrameBytes);
+        }
     }
 
     public enum State {
