@@ -20,9 +20,11 @@ import java.util.function.Supplier;
 public final class CompilationState {
     public static final boolean DEBUG_MODE = true;
 
-    private final String COMPILED_CLASSES_MODULE_PREFIX = "dev.asdf00.jluavm.lualoaded.";
+    private static final String COMPILED_CLASSES_MODULE_PREFIX = "dev.asdf00.jluavm.lualoaded.";
 
     private final Supplier<String> jClassNameGenerator;
+
+    private final String luaCode;
 
     public final ArrayList<Tuple<String, String>> functionJavaCode = new ArrayList<>();
     public final ArrayList<ArrayList<Integer>> innerFunctionDependencies = new ArrayList<>();
@@ -33,8 +35,9 @@ public final class CompilationState {
     private final Stack<FunctionScope> funcStack = new Stack<>();
     private FunctionScope curFunc = null;
 
-    public CompilationState(Supplier<String> jClassNameGenerator) {
+    public CompilationState(Supplier<String> jClassNameGenerator, String luaCode) {
         this.jClassNameGenerator = jClassNameGenerator;
+        this.luaCode = luaCode;
     }
 
     // =================================================================================================================
@@ -104,8 +107,8 @@ public final class CompilationState {
 
     public void closeFunction(String content) {
         String name = jClassNameGenerator.get();
-        String result = curFunc.generateJIC(name, content);
         int dept = functionJavaCode.size();
+        String result = curFunc.generateJIC(name, content, luaCode, dept);
         functionJavaCode.add(new Tuple<>(name, result));
         innerFunctionDependencies.add(curFunc.innerFuncs);
         curFunc = funcStack.pop();
@@ -363,7 +366,7 @@ public final class CompilationState {
             return "innerScope" + innerScopes.push(new InternalScope(localsCnt, scopeCount++)).scopeId;
         }
 
-        public String generateJIC(String jClassName, String content) {
+        public String generateJIC(String jClassName, String content, String luaCompilationUnit, int dept) {
             if (shouldHit >= 0) {
                 throw new InternalLuaLoadingError("unexpected value '%d' for 'shouldHit'".formatted(shouldHit));
             }
@@ -389,6 +392,10 @@ public final class CompilationState {
                     
                     public final class %s extends AbstractGeneratedLuaFunction {
                     public static Constructor<? extends LuaFunction>[] innerFunctions;
+                    public static int compilationUnitDept = %d;
+                    public static String luaCode = \"\"\"
+                    %s
+                    \"\"\";
                     
                     public %s(LuaObject[] _ENV, LuaObject[] closures) {
                         super(_ENV, closures);
@@ -430,7 +437,10 @@ public final class CompilationState {
                     
                     // inner scopes
                     %s
-                    }""".formatted(jClassName, jClassName,
+                    }""".formatted(jClassName,
+                    dept,
+                    luaCompilationUnit,
+                    jClassName,
                     maxLocalSize, argCnt, hasParamsArg ? "true" : "false",
                     eStackDefinitions(), maxEStackSavePos >= 0 ? "vm.registerExpressionStack(%d)".formatted(maxEStackSavePos + 1) : "null", localsCount,
                     buildRestoreHeaders(),

@@ -1176,23 +1176,6 @@ public final class LuaObject {
         return tbl;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (o instanceof LuaObject other) {
-            return switch (type) {
-                case Types.NIL -> other.isNil();
-                case Types.BOOLEAN -> other.isBoolean() && (getBool() == other.getBool());
-                case Types.DOUBLE -> other.isDouble() && (dVal == other.dVal);
-                case Types.LONG -> other.isLong() && (lVal == other.lVal);
-                case Types.STRING -> other.isString() && (refVal.equals(other.refVal));
-                case Types.FUNCTION, Types.USERDATA, Types.THREAD, Types.TABLE, Types.ARRAY, Types.BOX -> this == other;
-                default -> throw new IllegalStateException("Unexpected case value: " + type);
-            };
-        } else {
-            return false;
-        }
-    }
-
     // =================================================================================================================
     // system helpers
     // =================================================================================================================
@@ -1204,52 +1187,51 @@ public final class LuaObject {
         if (mappedObjs.containsKey(this)) {
             return mappedObjs.get(this);
         }
-        int ownIdx;
+        int ownIdx = serialData.size();
+        mappedObjs.put(this, ownIdx);
         switch (type) {
             case Types.NIL -> {
-                ownIdx = serialData.size();
-                mappedObjs.put(this, serialData.size());
                 serialData.add(new byte[]{Types.NIL, 0, 0, 0});
             }
             case Types.BOOLEAN -> {
-                ownIdx = serialData.size();
-                mappedObjs.put(this, serialData.size());
                 serialData.add(new byte[]{Types.BOOLEAN, 0, 0, 0, (byte) lVal});
             }
             case Types.DOUBLE -> {
-                ownIdx = serialData.size();
-                mappedObjs.put(this, serialData.size());
                 serialData.add(new ByteArrayBuilder(12)
                         .appendLowEndian(Types.DOUBLE)
                         .appendLowEndian(Double.doubleToRawLongBits(dVal))
                         .toArray());
             }
             case Types.LONG -> {
-                ownIdx = serialData.size();
-                mappedObjs.put(this, serialData.size());
                 serialData.add(new ByteArrayBuilder(12)
                         .appendLowEndian(Types.LONG)
                         .appendLowEndian(lVal)
                         .toArray());
             }
             case Types.STRING -> {
-                ownIdx = serialData.size();
-                mappedObjs.put(this, serialData.size());
                 serialData.add(new ByteArrayBuilder()
                         .appendLowEndian(Types.STRING)
                         .appendAll(asString().getBytes(StandardCharsets.UTF_8))
                         .toArray());
             }
             case Types.FUNCTION -> {
-                throw new UnsupportedOperationException("unimplemented function serialization");
+                // reserve space in serialData
+                serialData.add(null);
+                var bb = new ByteArrayBuilder().appendLowEndian(Types.FUNCTION);
+                getFunc().serialize(serialData, mappedObjs, bb);
+                serialData.set(ownIdx, bb.toArray());
             }
             case Types.THREAD -> {
+                // reserve space in serialData
+                serialData.add(null);
+                var bb = new ByteArrayBuilder().appendLowEndian(Types.THREAD);
+                // TODO
+
+                serialData.set(ownIdx, bb.toArray());
                 throw new UnsupportedOperationException("unimplemented thread serialization");
             }
             case Types.TABLE -> {
-                ownIdx = serialData.size();
-                // put default values for cyclic dependencies
-                mappedObjs.put(this, ownIdx);
+                // reserve space in serialData
                 serialData.add(null);
                 var bb = new ByteArrayBuilder();
                 bb.appendLowEndian(Types.TABLE);
@@ -1268,9 +1250,7 @@ public final class LuaObject {
                 serialData.set(ownIdx, bb.toArray());
             }
             case Types.ARRAY -> {
-                ownIdx = serialData.size();
-                // put default values for cyclic dependencies
-                mappedObjs.put(this, ownIdx);
+                // reserve space in serialData
                 serialData.add(null);
                 var bb = new ByteArrayBuilder();
                 bb.appendLowEndian(Types.ARRAY);
@@ -1281,10 +1261,10 @@ public final class LuaObject {
                 serialData.set(ownIdx, bb.toArray());
             }
             case Types.BOX -> {
+                // reserve space in serialData
+                serialData.add(null);
                 int containing = unbox().serialize(serialData, mappedObjs);
-                ownIdx = serialData.size();
-                mappedObjs.put(this, serialData.size());
-                serialData.add(new ByteArrayBuilder(8)
+                serialData.set(ownIdx, new ByteArrayBuilder(8)
                         .appendLowEndian(Types.BOX)
                         .appendLowEndian(containing)
                         .toArray());
@@ -1307,6 +1287,23 @@ public final class LuaObject {
             case Types.BOX -> type * 31 + System.identityHashCode(this);
             default -> throw new IllegalStateException("Unexpected case value: " + type);
         };
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o instanceof LuaObject other) {
+            return switch (type) {
+                case Types.NIL -> other.isNil();
+                case Types.BOOLEAN -> other.isBoolean() && (getBool() == other.getBool());
+                case Types.DOUBLE -> other.isDouble() && (dVal == other.dVal);
+                case Types.LONG -> other.isLong() && (lVal == other.lVal);
+                case Types.STRING -> other.isString() && (refVal.equals(other.refVal));
+                case Types.FUNCTION, Types.USERDATA, Types.THREAD, Types.TABLE, Types.ARRAY, Types.BOX -> this == other;
+                default -> throw new IllegalStateException("Unexpected case value: " + type);
+            };
+        } else {
+            return false;
+        }
     }
 
     @Override

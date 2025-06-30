@@ -4,6 +4,7 @@ import dev.asdf00.jluavm.api.lambdas.*;
 import dev.asdf00.jluavm.internals.Coroutine;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
+import dev.asdf00.jluavm.utils.ByteArrayBuilder;
 
 import java.util.List;
 import java.util.Map;
@@ -196,11 +197,6 @@ public final class AtomicLuaFunction extends LuaFunction {
     @Override
     public boolean hasParamsArg() {
         return hasVararg;
-    }
-
-    @Override
-    public byte[] serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs) {
-        throw new UnsupportedOperationException("unimplemented");
     }
 
     public LuaObject obj() {

@@ -6,6 +6,7 @@ import dev.asdf00.jluavm.internals.Coroutine;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.runtime.utils.RTUtils;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
+import dev.asdf00.jluavm.utils.ByteArrayBuilder;
 
 import java.lang.reflect.Constructor;
 import java.util.Arrays;
@@ -55,7 +56,12 @@ public abstract class LuaFunction {
      */
     public abstract boolean hasParamsArg();
 
-    public abstract byte[] serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs);
+    /**
+     * This method serializes the function into the provided byte array builder.
+     */
+    public void serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs, ByteArrayBuilder bb) {
+        throw new UnsupportedOperationException("Unimplemented parent");
+    }
 
     protected void debugPoint(Object... params) {
         /**

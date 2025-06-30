@@ -98,7 +98,7 @@ public abstract class LuaVM {
                 cachedCtor = compilationCache.getOrDefault(code, null);
                 if (cachedCtor == null) {
                     IRFunction rootFunc = new Parser(code).parse();
-                    var javaIntermediateCode = new CompilationState(jClassNameGen);
+                    var javaIntermediateCode = new CompilationState(jClassNameGen, code);
                     rootFunc.generate(javaIntermediateCode);
                     javaIntermediateCode.resolveAllPatches();
                     cachedCtor = javaIntermediateCode.loadAndLinkAllClasses();
@@ -116,7 +116,7 @@ public abstract class LuaVM {
 
     public void dumpJICFor(String luaCode, Path into) {
         IRFunction rootFunc = new Parser(luaCode).parse();
-        var javaIntermediateCode = new CompilationState(jClassNameGen);
+        var javaIntermediateCode = new CompilationState(jClassNameGen, luaCode);
         rootFunc.generate(javaIntermediateCode);
         javaIntermediateCode.resolveAllPatches();
         var lld = into.resolve("dev/asdf00/jluavm/lualoaded");
