@@ -197,6 +197,16 @@ public class LuaHashMap {
         tail = null;
     }
 
+    public LuaHashMap clone() {
+        var nu = new LuaHashMap();
+        KeyNode curNode = head;
+        while (curNode != null) {
+            nu.put(curNode.key, backing.get(curNode.key).x());
+            curNode = curNode.after;
+        }
+        return nu;
+    }
+
     public LuaObject getKeyAfter(LuaObject key) {
         var entry = backing.get(key);
         if (entry != null) {

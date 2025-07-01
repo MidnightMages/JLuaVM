@@ -1,5 +1,7 @@
 package dev.asdf00.jluavm;
 
+import dev.asdf00.jluavm.api.ApiFunctionRegistry;
+import dev.asdf00.jluavm.api.MixedStateFunctionRegistry;
 import dev.asdf00.jluavm.exceptions.LuaLoadingException;
 import dev.asdf00.jluavm.exceptions.loading.InternalLuaLoadingError;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
@@ -18,16 +20,22 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public abstract class LuaVM {
+    private static final String STD_LIB_REG_ID = "jluavm.stdlib";
 
     public static LuaVM create() {
-        return new LuaVM_RT();
+        var vm = new LuaVM_RT();
+        return vm.withRegistry(newStdLibRegistry());
     }
+
+    protected final Map<String, ApiFunctionRegistry> registries = new HashMap<>();
 
     protected LuaObject _G = LuaObject.nil();
     protected LuaFunction rootFunc = null;
@@ -46,18 +54,67 @@ public abstract class LuaVM {
         }
     };
 
+    private static MixedStateFunctionRegistry newStdLibRegistry() {
+        MixedStateFunctionRegistry stdLibReg = new MixedStateFunctionRegistry(STD_LIB_REG_ID);
+        LGlobal.registerStdGlobal(stdLibReg, false);
+        LMath.registerStdMath(stdLibReg);
+        LTable.registerStdTable(stdLibReg);
+        LString.registerStdString(stdLibReg);
+        LCoroutine.registerStdCoroutine(stdLibReg);
+        return stdLibReg;
+    }
+
+    public LuaVM withRegistry(ApiFunctionRegistry registry) {
+        if (rootFunc != null) {
+            throw new IllegalStateException("Cannot add registries like this after code has been loaded");
+        }
+        if (registries.containsKey(registry.registryID())) {
+            throw new IllegalStateException("duplicate registry id " + registry.registryID());
+        }
+        registries.put(registry.registryID(), registry);
+        return this;
+    }
+
     public LuaVM withStdLib() {
         AssertRootFuncNull();
-        _G = LGlobal.getTable(false);
-        _G.set("math", LMath.getTable());
-        _G.set("table", LTable.getTable());
-        _G.set("string", LString.getTable());
-        _G.set("coroutine", LCoroutine.getTable());
+
+        MixedStateFunctionRegistry stdLibReg = (MixedStateFunctionRegistry) registries.get(STD_LIB_REG_ID);
+
+        // prep global table
+        _G = LuaObject.table();
+        _G.set("math", LuaObject.table());
+        _G.set("table", LuaObject.table());
+        _G.set("string", LuaObject.table());
+        _G.set("coroutine", LuaObject.table());
+
+        // add all noninternal functions
+        // all these functions are assumed to be stateless
+        for (String fName : stdLibReg.getAllNames()) {
+            if (fName.charAt(0) == '$') {
+                // internal function, do not add to _G
+                continue;
+            }
+            if (fName.indexOf('.') < 0) {
+                // top level
+                _G.set(fName, LuaObject.of(stdLibReg.getFunction(fName)));
+            } else {
+                var path = fName.split("\\.");
+                assert path.length == 2 : "only ever expected tbl.funcname, got: " + fName;
+                _G.get(path[0]).set(path[1], LuaObject.of(stdLibReg.getFunction(fName)));
+            }
+        }
+
+        // set constants
+        _G.set("_VERSION", LuaObject.of("Lua 5.4"));
+        _G.set("_G", _G);
+        LMath.addMathConstants(_G.get("math"));
+
+        // clone stuff for extension functions
         _G.set("_EXT", LuaObject.table(
                 LuaObject.of("nil"), LuaObject.table(),
                 LuaObject.of("boolean"), LuaObject.table(),
                 LuaObject.of("number"), LuaObject.table(),
-                LuaObject.of("string"), LString.getExtTable(),
+                LuaObject.of("string"), LString.createExtTable(_G.get("string")),
                 LuaObject.of("function"), LuaObject.table(),
                 LuaObject.of("thread"), LuaObject.table(),
                 LuaObject.of("table"), LuaObject.table()

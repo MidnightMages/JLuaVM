@@ -1175,6 +1175,10 @@ public final class LuaObject {
         return tbl;
     }
 
+    public static LuaObject wrapMap(LuaHashMap map) {
+        return new LuaObject(map, -1, -1, Types.TABLE);
+    }
+
     // =================================================================================================================
     // system helpers
     // =================================================================================================================

@@ -1,0 +1,49 @@
+package dev.asdf00.jluavm.api;
+
+import dev.asdf00.jluavm.runtime.types.LuaFunction;
+import dev.asdf00.jluavm.runtime.types.LuaObject;
+import dev.asdf00.jluavm.utils.ByteArrayBuilder;
+
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
+
+public abstract class LuaJavaApiFunction extends LuaFunction {
+    protected final ApiFunctionRegistry registry;
+
+    public LuaJavaApiFunction(ApiFunctionRegistry registry) {
+        super();
+        this.registry = registry;
+    }
+
+    public LuaJavaApiFunction(ApiFunctionRegistry registry, LuaObject[] _ENV, LuaObject[] closures) {
+        super(_ENV, closures);
+        this.registry = registry;
+    }
+
+    @Override
+    public final void serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs, ByteArrayBuilder bb) {
+        var regName = registry.registryID().getBytes(StandardCharsets.UTF_8);
+        var funcName = registry.getSerialName(this).getBytes(StandardCharsets.UTF_8);
+        bb.append(true) // serialized with registry
+                .append(LuaObject.of(_ENV).serialize(serialData, mappedObjs))
+                .append(LuaObject.of(closures).serialize(serialData, mappedObjs))
+                .append(regName.length)
+                .appendAll(regName)
+                .append(funcName.length)
+                .appendAll(funcName);
+        var extra = serialize(serialData, mappedObjs);
+        if (extra != null) {
+            bb.appendAll(extra);
+        }
+    }
+
+    /**
+     * Override this method to serialize additional data belonging to this function instance. This data will be passed
+     * to {@link ApiFunctionRegistry#getFunction(String, LuaObject[], LuaObject[], byte[])} as its last argument when
+     * deserializing this instance.
+     */
+    public byte[] serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs) {
+        return null;
+    }
+}

@@ -1,20 +1,23 @@
 package dev.asdf00.jluavm.runtime.stdlib;
 
+import dev.asdf00.jluavm.api.LuaJavaApiFunction;
+import dev.asdf00.jluavm.api.MixedStateFunctionRegistry;
 import dev.asdf00.jluavm.api.lambdas.LLBiFunction;
 import dev.asdf00.jluavm.api.lambdas.LLFunction;
 import dev.asdf00.jluavm.api.lambdas.LLMultiFunction;
 import dev.asdf00.jluavm.api.lambdas.LLVaFunction;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.runtime.types.AtomicLuaFunction;
-import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
-import dev.asdf00.jluavm.runtime.utils.Singletons;
 
 import java.util.function.Function;
 
 import static dev.asdf00.jluavm.runtime.utils.RTUtils.*;
 
 public class LMath {
+
+    private static final String MATH_PREFIX = "math.";
+
     private static LuaObject getIntNumberIfFits(double x) {
         return (double) ((long) x) == x ? LuaObject.of((long) x) : LuaObject.of(x);
     }
@@ -157,127 +160,133 @@ public class LMath {
         return LuaObject.of(m.asLong() < n.asLong());
     }
 
-    private static void addSingleRvFunc1d1d(LuaObject table, String name, Function<Double, Double> f) {
-        table.set(name, AtomicLuaFunction.forOneResult((vm, x) -> {
-            if (x.isNumber()) {
-                return LuaObject.of(f.apply(x.asDouble()));
-            }
-            vm.error(funcArgTypeError(name, 1, x, "number"));
-            return null;
-        }).obj());
+    // =================================================================================================================
+    // function registration helpers
+    // =================================================================================================================
+
+    private static void addSingleRvFunc1d1d(MixedStateFunctionRegistry registry, String name, Function<Double, Double> f) {
+        registry.register(MATH_PREFIX + name,
+                AtomicLuaFunction.forOneResult(registry, (vm, x) -> {
+                    if (x.isNumber()) {
+                        return LuaObject.of(f.apply(x.asDouble()));
+                    }
+                    vm.error(funcArgTypeError(name, 1, x, "number"));
+                    return null;
+                }));
     }
 
-    private static void addSingleRvFunc(LuaObject table, String name, LLFunction f) {
-        table.set(name, AtomicLuaFunction.forOneResult(f).obj());
+    private static void addSingleRvFunc(MixedStateFunctionRegistry registry, String name, LLFunction f) {
+        registry.register(MATH_PREFIX + name, AtomicLuaFunction.forOneResult(registry, f));
     }
 
-    private static void addSingleRvFunc2(LuaObject table, String name, LLBiFunction f) {
-        table.set(name, AtomicLuaFunction.forOneResult(f).obj());
+    private static void addSingleRvFunc2(MixedStateFunctionRegistry registry, String name, LLBiFunction f) {
+        registry.register(MATH_PREFIX + name, AtomicLuaFunction.forOneResult(registry, f));
     }
 
     @SuppressWarnings("SameParameterValue")
-    private static void addMultiRvVaFunc(LuaObject table, String name, LLMultiFunction f) {
-        table.set(name, AtomicLuaFunction.forManyResults(f).obj());
+    private static void addMultiRvVaFunc(MixedStateFunctionRegistry registry, String name, LLMultiFunction f) {
+        registry.register(MATH_PREFIX + name, AtomicLuaFunction.forManyResults(registry, f));
     }
 
-    private static void addSingleRvVaFunc(LuaObject table, String name, LLVaFunction f) {
-        table.set(name, AtomicLuaFunction.vaForOneResult(f).obj());
+    private static void addSingleRvVaFunc(MixedStateFunctionRegistry registry, String name, LLVaFunction f) {
+        registry.register(MATH_PREFIX + name, AtomicLuaFunction.vaForOneResult(registry, f));
     }
 
-    private static LuaObject getMinMaxFunc(boolean isMax) {
-        return LuaObject.of(new LuaFunction(Singletons.EMPTY_LUA_OBJ_ARRAY, Singletons.EMPTY_LUA_OBJ_ARRAY) {
-            @Override
-            public void invoke(LuaVM_RT vm, LuaObject[] stackFrame, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
-                LuaObject min;
-                int i = resume;
-                var params = stackFrame[0].asArray();
-                if (resume == -1) { // initial call
-                    i = 1;
-                    min = params[0];
-                } else {
-                    assert resume > 0; // should never be 0 and also not negative except -1
-                    min = stackFrame[1];
+    private static void addMinMaxFunc(MixedStateFunctionRegistry registry, boolean isMax) {
+        registry.register(MATH_PREFIX + (isMax ? "max" : "min"),
+                new LuaJavaApiFunction(registry) {
+                    @Override
+                    public void invoke(LuaVM_RT vm, LuaObject[] stackFrame, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
+                        LuaObject min;
+                        int i = resume;
+                        var params = stackFrame[0].asArray();
+                        if (resume == -1) { // initial call
+                            i = 1;
+                            // TODO: add unit test for no args
+                            min = params[0];
+                        } else {
+                            assert resume > 0; // should never be 0 and also not negative except -1
+                            min = stackFrame[1];
 
-                    // if we were resumed, we must have a bool inside returned[0] representing whether arg[resume-1] was better than min
-                    assert returned.length == 1;
-                    assert returned[0].isBoolean();
-                    if (returned[0].getBool())
-                        min = params[resume - 1];
-                }
-                while (i < params.length) {
-                    var arg = params[i];
-                    if (min.isString() && arg.isString() || min.isNumber() && arg.isNumber()) {
-                        if ((isMax ? min.lt(arg) : arg.lt(min)).isTruthy()) {
-                            min = arg;
+                            // if we were resumed, we must have a bool inside returned[0] representing whether arg[resume-1] was better than min
+                            assert returned.length == 1;
+                            assert returned[0].isBoolean();
+                            if (returned[0].getBool())
+                                min = params[resume - 1];
                         }
-                    } else if (min.isTable() || arg.isTable()) {
-                        // TODO: fix this
-                        var mtf = isMax ? (min.isTable() ? min : arg) : (arg.isTable() ? arg : min);
-                        var ltf = mtf.getMetaValueOrNil("__lt");
-                        if (ltf == null) {
-                            vm.error(LuaObject.of("Attempt to compare number with table"));
-                            return;
-                        } else if (!ltf.isFunction()) {
-                            vm.error(LuaObject.of("attempt to call a %s value".formatted(ltf.getTypeAsString())));
-                            return;
+                        while (i < params.length) {
+                            var arg = params[i];
+                            if (min.isString() && arg.isString() || min.isNumber() && arg.isNumber()) {
+                                if ((isMax ? min.lt(arg) : arg.lt(min)).isTruthy()) {
+                                    min = arg;
+                                }
+                            } else if (min.isTable() || arg.isTable()) {
+                                var mtf = isMax ? (min.isTable() ? min : arg) : (arg.isTable() ? arg : min);
+                                var ltf = mtf.getMetaValueOrNil("__lt");
+                                if (ltf == null) {
+                                    vm.error(LuaObject.of("Attempt to compare number with table"));
+                                    return;
+                                } else if (!ltf.isFunction()) {
+                                    vm.error(LuaObject.of("attempt to call a %s value".formatted(ltf.getTypeAsString())));
+                                    return;
+                                }
+                                expressionStack[0] = min;
+                                vm.callExternal(i + 1, ltf.getFunc(), isMax ? new LuaObject[]{min, arg} : new LuaObject[]{arg, min});
+                                return;
+                            }
+                            i++;
                         }
-                        expressionStack[0] = min;
-                        vm.callExternal(i + 1, ltf.getFunc(), isMax ? new LuaObject[]{min, arg} : new LuaObject[]{arg, min});
-                        return;
+                        vm.returnValue(min);
                     }
-                    i++;
-                }
-                vm.returnValue(min);
-            }
 
-            @Override
-            public int getMaxLocalsSize() {
-                return 1 + 1; // storedValue + params arg
-            }
+                    @Override
+                    public int getMaxLocalsSize() {
+                        return 1 + 1; // storedValue + params arg
+                    }
 
-            @Override
-            public int getArgCount() {
-                return 1;
-            }
+                    @Override
+                    public int getArgCount() {
+                        return 1;
+                    }
 
-            @Override
-            public boolean hasParamsArg() {
-                return true;
-            }
-        });
+                    @Override
+                    public boolean hasParamsArg() {
+                        return true;
+                    }
+                });
     }
 
-    // https://www.lua.org/manual/5.4/manual.html#6.7
-    public static LuaObject getTable() {
-        var rv = LuaObject.table();
-        addSingleRvFunc(rv, "abs", LMath::abs);
-        addSingleRvFunc1d1d(rv, "acos", Math::acos);
-        addSingleRvFunc1d1d(rv, "asin", Math::asin);
-        addSingleRvFunc2(rv, "atan", LMath::atan);
-        addSingleRvFunc(rv, "ceil", LMath::ceil);
-        addSingleRvFunc1d1d(rv, "cos", Math::cos);
-        addSingleRvFunc1d1d(rv, "deg", Math::toDegrees);
-        addSingleRvFunc1d1d(rv, "exp", Math::exp);
-        addSingleRvFunc(rv, "floor", LMath::floor);
-        addSingleRvFunc2(rv, "fmod", LMath::fmod);
-        rv.set("huge", LuaObject.of(Double.POSITIVE_INFINITY));
-        addSingleRvFunc2(rv, "log", LMath::log);
-        rv.set("max", getMinMaxFunc(true));
-        rv.set("maxinteger", LuaObject.of(Long.MAX_VALUE));
-        rv.set("min", getMinMaxFunc(false));
-        rv.set("mininteger", LuaObject.of(Long.MIN_VALUE));
-        addMultiRvVaFunc(rv, "modf", LMath::modf);
-        rv.set("pi", LuaObject.of(Math.PI));
-        addSingleRvFunc1d1d(rv, "rad", Math::toRadians);
-        addSingleRvVaFunc(rv, "random", LMath::random);
-        addSingleRvVaFunc(rv, "randomseed", LMath::randomseed);
-        addSingleRvFunc1d1d(rv, "sin", Math::sin);
-        addSingleRvFunc1d1d(rv, "sqrt", Math::sqrt);
-        addSingleRvFunc1d1d(rv, "tan", Math::tan);
-        addSingleRvFunc(rv, "tointeger", (vm, x) -> x.isIntCoercible() ? LuaObject.of(x.asLong()) : LuaObject.NIL);
-        addSingleRvFunc(rv, "type", (vm, x) -> x.isLong() ? LuaObject.of("integer") : (x.isDouble() ? LuaObject.of("float") : LuaObject.NIL));
-        addSingleRvFunc2(rv, "ult", LMath::ult);
 
-        return rv;
+    public static void registerStdMath(MixedStateFunctionRegistry registry) {
+        addSingleRvFunc(registry, "abs", LMath::abs);
+        addSingleRvFunc1d1d(registry, "acos", Math::acos);
+        addSingleRvFunc1d1d(registry, "asin", Math::asin);
+        addSingleRvFunc2(registry, "atan", LMath::atan);
+        addSingleRvFunc(registry, "ceil", LMath::ceil);
+        addSingleRvFunc1d1d(registry, "cos", Math::cos);
+        addSingleRvFunc1d1d(registry, "deg", Math::toDegrees);
+        addSingleRvFunc1d1d(registry, "exp", Math::exp);
+        addSingleRvFunc(registry, "floor", LMath::floor);
+        addSingleRvFunc2(registry, "fmod", LMath::fmod);
+        addSingleRvFunc2(registry, "log", LMath::log);
+        addMinMaxFunc(registry, true);
+        addMinMaxFunc(registry, false);
+        addMultiRvVaFunc(registry, "modf", LMath::modf);
+        addSingleRvFunc1d1d(registry, "rad", Math::toRadians);
+        addSingleRvVaFunc(registry, "random", LMath::random);
+        addSingleRvVaFunc(registry, "randomseed", LMath::randomseed);
+        addSingleRvFunc1d1d(registry, "sin", Math::sin);
+        addSingleRvFunc1d1d(registry, "sqrt", Math::sqrt);
+        addSingleRvFunc1d1d(registry, "tan", Math::tan);
+        addSingleRvFunc(registry, "tointeger", (vm, x) -> x.isIntCoercible() ? LuaObject.of(x.asLong()) : LuaObject.NIL);
+        addSingleRvFunc(registry, "type", (vm, x) -> x.isLong() ? LuaObject.of("integer") : (x.isDouble() ? LuaObject.of("float") : LuaObject.NIL));
+        addSingleRvFunc2(registry, "ult", LMath::ult);
+    }
+
+    public static void addMathConstants(LuaObject tbl) {
+        tbl.set("huge", LuaObject.of(Double.POSITIVE_INFINITY));
+        tbl.set("maxinteger", LuaObject.of(Long.MAX_VALUE));
+        tbl.set("mininteger", LuaObject.of(Long.MIN_VALUE));
+        tbl.set("pi", LuaObject.of(Math.PI));
     }
 }

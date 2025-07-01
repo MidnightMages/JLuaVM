@@ -29,7 +29,8 @@ public abstract class AbstractGeneratedLuaFunction extends LuaFunction {
             var codeField = clazz.getDeclaredField("luaCode");
             int dpt = cudField.getInt(null);
             byte[] code = ((String) codeField.get(null)).getBytes(StandardCharsets.UTF_8);
-            bb.append(LuaObject.of(_ENV).serialize(serialData, mappedObjs))
+            bb.append(false) // not serialized with registry
+                    .append(LuaObject.of(_ENV).serialize(serialData, mappedObjs))
                     .append(LuaObject.of(closures).serialize(serialData, mappedObjs))
                     .append(dpt)
                     .appendAll(code);
