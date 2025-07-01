@@ -1,4 +1,4 @@
-package dev.asdf00.jluavm.parsing.ir;
+package dev.asdf00.jluavm.parsing;
 
 import dev.asdf00.jluavm.exceptions.loading.InternalLuaLoadingError;
 import dev.asdf00.jluavm.internals.DelayedJavaCompiler;

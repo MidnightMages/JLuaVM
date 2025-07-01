@@ -1,11 +1,10 @@
 package dev.asdf00.jluavm.parsing.ir.controlflow;
 
 import dev.asdf00.jluavm.parsing.container.Position;
-import dev.asdf00.jluavm.parsing.ir.CompilationState;
-import dev.asdf00.jluavm.parsing.ir.CompilationState.EStackCallInfo;
+import dev.asdf00.jluavm.parsing.CompilationState;
+import dev.asdf00.jluavm.parsing.CompilationState.EStackCallInfo;
 import dev.asdf00.jluavm.parsing.ir.Node;
 import dev.asdf00.jluavm.parsing.ir.values.ConstantNode;
-import dev.asdf00.jluavm.parsing.ir.values.DeRefNode;
 
 /**
  * This node represents a Lua function call. The default behaviour of this method is to prune the return values to only

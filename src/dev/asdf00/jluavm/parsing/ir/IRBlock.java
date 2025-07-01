@@ -1,5 +1,6 @@
 package dev.asdf00.jluavm.parsing.ir;
 
+import dev.asdf00.jluavm.parsing.CompilationState;
 import dev.asdf00.jluavm.parsing.container.Position;
 
 public class IRBlock extends Node {

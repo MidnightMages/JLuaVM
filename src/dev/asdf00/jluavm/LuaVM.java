@@ -4,7 +4,7 @@ import dev.asdf00.jluavm.exceptions.LuaLoadingException;
 import dev.asdf00.jluavm.exceptions.loading.InternalLuaLoadingError;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.parsing.Parser;
-import dev.asdf00.jluavm.parsing.ir.CompilationState;
+import dev.asdf00.jluavm.parsing.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.IRFunction;
 import dev.asdf00.jluavm.runtime.stdlib.*;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;

@@ -2,7 +2,7 @@ package dev.asdf00.jluavm.parsing.ir.values;
 
 import dev.asdf00.jluavm.exceptions.loading.InternalLuaLoadingError;
 import dev.asdf00.jluavm.parsing.container.Position;
-import dev.asdf00.jluavm.parsing.ir.CompilationState;
+import dev.asdf00.jluavm.parsing.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.Node;
 import dev.asdf00.jluavm.parsing.ir.controlflow.FunctionCallNode;
 
