@@ -1,4 +1,4 @@
-package dev.asdf00.jluavm.api;
+package dev.asdf00.jluavm.api.functions;
 
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 

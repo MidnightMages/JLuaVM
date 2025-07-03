@@ -1,14 +1,11 @@
 package dev.asdf00.jluavm.runtime.stdlib;
 
-import dev.asdf00.jluavm.api.MixedStateFunctionRegistry;
+import dev.asdf00.jluavm.api.functions.MixedStateFunctionRegistry;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
-import dev.asdf00.jluavm.runtime.types.AtomicLuaFunction;
+import dev.asdf00.jluavm.api.functions.AtomicLuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 
-import java.util.HashMap;
 import java.util.Locale;
-import java.util.Map;
-import java.util.regex.Pattern;
 
 import static dev.asdf00.jluavm.runtime.types.LuaObject.Types.*;
 import static dev.asdf00.jluavm.runtime.utils.RTUtils.funcArgAnyTypeError;

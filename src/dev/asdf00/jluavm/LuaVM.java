@@ -1,7 +1,7 @@
 package dev.asdf00.jluavm;
 
-import dev.asdf00.jluavm.api.ApiFunctionRegistry;
-import dev.asdf00.jluavm.api.MixedStateFunctionRegistry;
+import dev.asdf00.jluavm.api.functions.ApiFunctionRegistry;
+import dev.asdf00.jluavm.api.functions.MixedStateFunctionRegistry;
 import dev.asdf00.jluavm.exceptions.LuaLoadingException;
 import dev.asdf00.jluavm.exceptions.loading.InternalLuaLoadingError;
 import dev.asdf00.jluavm.internals.LuaVM_RT;

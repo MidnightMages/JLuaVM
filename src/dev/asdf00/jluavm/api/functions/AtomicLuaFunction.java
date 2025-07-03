@@ -1,15 +1,11 @@
-package dev.asdf00.jluavm.runtime.types;
+package dev.asdf00.jluavm.api.functions;
 
-import dev.asdf00.jluavm.api.ApiFunctionRegistry;
-import dev.asdf00.jluavm.api.LuaJavaApiFunction;
 import dev.asdf00.jluavm.api.lambdas.*;
 import dev.asdf00.jluavm.internals.Coroutine;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
+import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
-import dev.asdf00.jluavm.utils.ByteArrayBuilder;
 
-import java.util.List;
-import java.util.Map;
 import java.util.function.BiFunction;
 
 @SuppressWarnings("unused")

@@ -1,7 +1,7 @@
 package dev.asdf00.jluavm.runtime.stdlib;
 
-import dev.asdf00.jluavm.api.MixedStateFunctionRegistry;
-import dev.asdf00.jluavm.runtime.types.AtomicLuaFunction;
+import dev.asdf00.jluavm.api.functions.MixedStateFunctionRegistry;
+import dev.asdf00.jluavm.api.functions.AtomicLuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 
