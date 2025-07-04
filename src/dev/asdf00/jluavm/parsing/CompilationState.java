@@ -312,7 +312,7 @@ public final class CompilationState {
             }
 
             String result = """
-                    private void innerScope%d(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
+                    public void innerScope%d(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
                     %s
                     switch (resume) {
                     case -1 -> {

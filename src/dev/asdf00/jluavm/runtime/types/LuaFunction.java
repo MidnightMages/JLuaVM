@@ -4,6 +4,7 @@ import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
 import dev.asdf00.jluavm.exceptions.LuaRuntimeError;
 import dev.asdf00.jluavm.internals.Coroutine;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
+import dev.asdf00.jluavm.runtime.utils.LFunc;
 import dev.asdf00.jluavm.runtime.utils.RTUtils;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 import dev.asdf00.jluavm.utils.ByteArrayBuilder;
@@ -20,6 +21,7 @@ public abstract class LuaFunction {
      */
     public final LuaObject _ENV;
     public final LuaObject[] closures;
+    public LuaObject selfLuaObj; // should only be accessed by LuaObject#of(LuaFunction) and the StateDeserializer
 
     public LuaFunction() {
         this(LuaObject.box(LuaObject.nil()), Singletons.EMPTY_LUA_OBJ_ARRAY);
@@ -104,7 +106,8 @@ public abstract class LuaFunction {
             if (mtbl == null || !mtbl.isTable() || !mtbl.hasKey(Singletons.__index)) {
                 try {
                     Coroutine cco = vm.getCurrentCoroutine();
-                    boolean prevYieldable = cco.isYieldable;;
+                    boolean prevYieldable = cco.isYieldable;
+                    ;
                     cco.isYieldable = false;
                     var r = obj.get(idx);
                     cco.isYieldable = prevYieldable;
@@ -145,7 +148,8 @@ public abstract class LuaFunction {
             if (mtbl == null || !mtbl.isTable() || !mtbl.hasKey(Singletons.__index)) {
                 try {
                     Coroutine cco = vm.getCurrentCoroutine();
-                    boolean prevYieldable = cco.isYieldable;;
+                    boolean prevYieldable = cco.isYieldable;
+                    ;
                     cco.isYieldable = false;
                     var r = obj.get(idx);
                     cco.isYieldable = prevYieldable;
@@ -189,7 +193,8 @@ public abstract class LuaFunction {
             if (mtbl == null || !mtbl.hasKey(Singletons.__newindex)) {
                 try {
                     Coroutine cco = vm.getCurrentCoroutine();
-                    boolean prevYieldable = cco.isYieldable;;
+                    boolean prevYieldable = cco.isYieldable;
+                    ;
                     cco.isYieldable = false;
                     obj.set(idx, val);
                     cco.isYieldable = prevYieldable;
@@ -546,4 +551,13 @@ public abstract class LuaFunction {
                 throw new InternalLuaRuntimeError("should not reach end of fall-through switch");
         }
     }
+
+    public static final Map<String, LFunc> staticLFuncs = Map.of(
+            "::getWithMeta", LuaFunction::getWithMeta,
+            "::setWithMeta", LuaFunction::setWithMeta,
+            "::callWithMeta", LuaFunction::callWithMeta,
+            "::binaryOpWithMeta", LuaFunction::binaryOpWithMeta,
+            "::unaryOpWithMeta", LuaFunction::unaryOpWithMeta,
+            "::lookupExtension", LuaFunction::lookupExtension
+    );
 }

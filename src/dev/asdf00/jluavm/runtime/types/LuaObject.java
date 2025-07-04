@@ -1107,7 +1107,16 @@ public final class LuaObject {
     }
 
     public static LuaObject of(LuaFunction val) {
-        return new LuaObject(val, 0, 0, Types.FUNCTION);
+        if (val == null) {
+            return new LuaObject(null, 0, 0, Types.FUNCTION);
+        }
+        if (val.selfLuaObj == null) {
+            var nu = new LuaObject(val, 0, 0, Types.FUNCTION);
+            val.selfLuaObj = nu;
+            return nu;
+        } else {
+            return val.selfLuaObj;
+        }
     }
 
     public static LuaObject of(ILuaUserData val) {

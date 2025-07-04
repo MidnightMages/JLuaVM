@@ -1,12 +1,12 @@
 package dev.asdf00.jluavm.internals;
 
 import dev.asdf00.jluavm.LuaVM;
-import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.LFunc;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 import dev.asdf00.jluavm.utils.ByteArrayBuilder;
+import dev.asdf00.jluavm.utils.Triple;
 
 import java.util.*;
 import java.util.function.Supplier;
@@ -41,16 +41,31 @@ public class LuaVM_RT extends LuaVM {
     public byte[] serialize() {
         ArrayList<byte[]> serialData = new ArrayList<>();
         HashMap<LuaObject, Integer> mappedObjs = new HashMap<>();
-        int rootIdx = rootCoroutine.selfLuaObject.serialize(serialData, mappedObjs);
-        var bb = new ByteArrayBuilder(serialData.stream().mapToInt(a -> a.length + 4).sum() + 4 * 3);
+        int curCoIdx = currentCoroutine.selfLuaObject.serialize(serialData, mappedObjs);
+        var bb = new ByteArrayBuilder(serialData.stream().mapToInt(a -> a.length + 4).sum() + 4 * 4);
         bb.append(STATE_SERIALIZATION_VERSION)
-                .append(rootIdx)
+                .append(mappedObjs.get(rootCoroutine.selfLuaObject))
+                .append(curCoIdx)
+                .append(isErroring)
                 .append(serialData.size());
         for (int i = 0; i < serialData.size(); i++) {
             var a = serialData.get(i);
             bb.append(a.length).appendAll(a);
         }
         return bb.toArray();
+    }
+
+    protected static LuaVM_RT fromState(Triple<Coroutine, Coroutine, Boolean> state) {
+        var vm = new LuaVM_RT();
+        vm.rootCoroutine = state.x();
+        vm.currentCoroutine = state.y();
+        vm.isErroring = state.z();
+
+        vm.luaCallStack = vm.currentCoroutine.luaCallStack;
+        vm.curFuncFrame = vm.luaCallStack.peek();
+
+        // TODO set super fields
+        return vm;
     }
 
     // =================================================================================================================
