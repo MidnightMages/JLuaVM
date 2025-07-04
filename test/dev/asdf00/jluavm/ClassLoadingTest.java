@@ -18,9 +18,9 @@ public class ClassLoadingTest {
             import dev.asdf00.jluavm.runtime.types.*;
             import dev.asdf00.jluavm.runtime.utils.*;
             import java.lang.reflect.Constructor;
-            public final class %s extends LuaFunction {
-                public static Constructor<? extends LuaFunction>[] innerFunctions;
-                public %s(LuaObject[] _ENV, LuaObject[] closures) {
+            public final class %s extends AbstractGeneratedLuaFunction {
+                public static Constructor<? extends AbstractGeneratedLuaFunction>[] innerFunctions;
+                public %s(LuaObject _ENV, LuaObject[] closures) {
                    super(_ENV, closures);
                 }
                 @Override

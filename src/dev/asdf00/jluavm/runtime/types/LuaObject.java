@@ -1224,6 +1224,9 @@ public final class LuaObject {
                 getFunc().serialize(serialData, mappedObjs, bb);
                 serialData.set(ownIdx, bb.toArray());
             }
+            case Types.USERDATA -> {
+                throw new UnsupportedOperationException("serializing userdata is not implemented");
+            }
             case Types.THREAD -> {
                 // reserve space in serialData
                 serialData.add(null);
@@ -1237,7 +1240,7 @@ public final class LuaObject {
                 var bb = new ByteArrayBuilder();
                 bb.append(Types.TABLE);
                 bb.append(metaTable == null
-                        ? NIL.serialize(serialData, mappedObjs)
+                        ? -1 // invalid obj index to indicate null
                         : metaTable.serialize(serialData, mappedObjs));
                 var map = asMap();
                 for (var k : map.keys()) {
@@ -1283,9 +1286,8 @@ public final class LuaObject {
             case Types.DOUBLE ->
                     type * 31 + ((int) (Double.doubleToRawLongBits(dVal) >> 32)) * 31 + ((int) Double.doubleToRawLongBits(dVal));
             case Types.LONG -> type * 31 + ((int) (lVal >> 32)) * 31 + ((int) lVal);
-            case Types.STRING, Types.FUNCTION, Types.USERDATA, Types.THREAD, Types.TABLE, Types.ARRAY ->
-                    type * 31 + refVal.hashCode();
-            case Types.BOX -> type * 31 + System.identityHashCode(this);
+            case Types.STRING -> type * 31 + refVal.hashCode();
+            case Types.FUNCTION, Types.USERDATA, Types.THREAD, Types.TABLE, Types.ARRAY , Types.BOX -> type * 31 + System.identityHashCode(this);
             default -> throw new IllegalStateException("Unexpected case value: " + type);
         };
     }
@@ -1299,8 +1301,7 @@ public final class LuaObject {
                 case Types.DOUBLE -> other.isDouble() && (dVal == other.dVal);
                 case Types.LONG -> other.isLong() && (lVal == other.lVal);
                 case Types.STRING -> other.isString() && (refVal.equals(other.refVal));
-                case Types.FUNCTION, Types.THREAD -> refVal == other.refVal; // equality not based on the wrapper object
-                case Types.USERDATA, Types.TABLE, Types.ARRAY, Types.BOX -> this == other;
+                case Types.FUNCTION, Types.USERDATA, Types.THREAD, Types.TABLE, Types.ARRAY, Types.BOX -> this == other;
                 default -> throw new IllegalStateException("Unexpected case value: " + type);
             };
         } else {

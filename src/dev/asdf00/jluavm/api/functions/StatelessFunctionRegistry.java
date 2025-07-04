@@ -25,7 +25,7 @@ public class StatelessFunctionRegistry extends ApiFunctionRegistry {
     }
 
     @Override
-    public LuaJavaApiFunction getFunction(String serialName, LuaObject[] _ENV, LuaObject[] closures, byte[] additional) {
+    public LuaJavaApiFunction getFunction(String serialName, LuaObject _ENV, LuaObject[] closures, byte[] additional) {
         if (funcMap.containsKey(serialName)) {
             return funcMap.get(serialName);
         } else {

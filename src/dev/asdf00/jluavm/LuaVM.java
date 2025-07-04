@@ -11,6 +11,7 @@ import dev.asdf00.jluavm.parsing.ir.IRFunction;
 import dev.asdf00.jluavm.runtime.stdlib.*;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
+import dev.asdf00.jluavm.runtime.utils.AbstractGeneratedLuaFunction;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 
 import java.io.IOException;
@@ -141,14 +142,10 @@ public abstract class LuaVM {
         return load(code, _G);
     }
 
-    private static final ConcurrentHashMap<String, Constructor<? extends LuaFunction>> compilationCache = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, Constructor<? extends AbstractGeneratedLuaFunction>[]> compilationCache = new ConcurrentHashMap<>();
     private static final Object compilationCache_lockObj = new Object();
 
-    public LuaFunction load(String code, LuaObject _ENV) throws LuaLoadingException, InternalLuaLoadingError {
-        if (_ENV == null) {
-            throw new InternalLuaLoadingError("got invalid _ENV");
-        }
-
+    public Constructor<? extends AbstractGeneratedLuaFunction>[] compile(String code) {
         var cachedCtor = compilationCache.getOrDefault(code, null);
         if (cachedCtor == null) {
             synchronized (compilationCache_lockObj) {
@@ -163,9 +160,16 @@ public abstract class LuaVM {
                 }
             }
         }
+        return cachedCtor;
+    }
 
+    public LuaFunction load(String code, LuaObject _ENV) throws LuaLoadingException, InternalLuaLoadingError {
+        if (_ENV == null) {
+            throw new InternalLuaLoadingError("got invalid _ENV");
+        }
+        var unit = compile(code);
         try {
-            return cachedCtor.newInstance(new LuaObject[]{_ENV}, Singletons.EMPTY_LUA_OBJ_ARRAY);
+            return unit[unit.length - 1].newInstance(LuaObject.box(_ENV), Singletons.EMPTY_LUA_OBJ_ARRAY);
         } catch (ReflectiveOperationException e) {
             throw new InternalLuaLoadingError(e);
         }

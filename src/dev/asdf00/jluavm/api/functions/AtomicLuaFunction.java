@@ -15,7 +15,7 @@ public final class AtomicLuaFunction extends LuaJavaApiFunction {
     private final boolean hasVararg;
 
     private AtomicLuaFunction(ApiFunctionRegistry registry, BiFunction<LuaVM_RT, LuaObject[], LuaObject[]> backing, int argCount, boolean hasVararg) {
-        super(registry, Singletons.EMPTY_LUA_OBJ_ARRAY, Singletons.EMPTY_LUA_OBJ_ARRAY);
+        super(registry);
         this.backing = backing;
         this.argCount = argCount;
         this.hasVararg = hasVararg;

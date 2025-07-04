@@ -17,6 +17,8 @@ public class LuaVM_RT extends LuaVM {
     public static final int ERROR_LOOP_GRACE_CNT = 256;
     public static final int MAX_LUA_STACK_SIZE = 1024 * 1024 * 1024;
 
+    public static final int STATE_SERIALIZATION_VERSION = 0;
+
     public LuaVM_RT() {
         luaCallStack = new Stack<>();
         curFuncFrame = null;
@@ -40,8 +42,10 @@ public class LuaVM_RT extends LuaVM {
         ArrayList<byte[]> serialData = new ArrayList<>();
         HashMap<LuaObject, Integer> mappedObjs = new HashMap<>();
         int rootIdx = rootCoroutine.selfLuaObject.serialize(serialData, mappedObjs);
-        var bb = new ByteArrayBuilder(serialData.stream().mapToInt(a -> a.length + 4).sum() + 4);
-        bb.append(rootIdx);
+        var bb = new ByteArrayBuilder(serialData.stream().mapToInt(a -> a.length + 4).sum() + 4 * 3);
+        bb.append(STATE_SERIALIZATION_VERSION)
+                .append(rootIdx)
+                .append(serialData.size());
         for (int i = 0; i < serialData.size(); i++) {
             var a = serialData.get(i);
             bb.append(a.length).appendAll(a);
@@ -102,8 +106,11 @@ public class LuaVM_RT extends LuaVM {
         return curFuncFrame.getNextClosable();
     }
 
+    /**
+     * @return the table of the environment of the caller
+     */
     public LuaObject getCallerEnv() {
-        return luaCallStack.size() > 1 ? luaCallStack.get(luaCallStack.size() - 2).lFunc._ENV[0] : null;
+        return luaCallStack.size() > 1 ? luaCallStack.get(luaCallStack.size() - 2).lFunc._ENV.unbox() : null;
     }
 
     public void setProtected(LuaFunction msgHandler) {

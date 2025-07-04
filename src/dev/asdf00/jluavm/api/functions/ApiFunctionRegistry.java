@@ -9,16 +9,16 @@ public abstract class ApiFunctionRegistry {
     public abstract String getSerialName(LuaJavaApiFunction function);
 
     public LuaJavaApiFunction getFunction(String serialName) {
-        return getFunction(serialName, Singletons.EMPTY_LUA_OBJ_ARRAY);
+        return getFunction(serialName, LuaObject.box(LuaObject.nil()));
     }
 
-    public LuaJavaApiFunction getFunction(String serialName, LuaObject[] _ENV) {
+    public LuaJavaApiFunction getFunction(String serialName, LuaObject _ENV) {
         return getFunction(serialName, _ENV, Singletons.EMPTY_LUA_OBJ_ARRAY);
     }
 
-    public LuaJavaApiFunction getFunction(String serialName, LuaObject[] _ENV, LuaObject[] closures) {
+    public LuaJavaApiFunction getFunction(String serialName, LuaObject _ENV, LuaObject[] closures) {
         return getFunction(serialName, _ENV, closures, null);
     }
 
-    public abstract LuaJavaApiFunction getFunction(String serialName, LuaObject[] _ENV, LuaObject[] closures, byte[] additional);
+    public abstract LuaJavaApiFunction getFunction(String serialName, LuaObject _ENV, LuaObject[] closures, byte[] additional);
 }

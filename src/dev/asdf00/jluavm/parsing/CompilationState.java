@@ -137,23 +137,23 @@ public final class CompilationState {
     }
 
     @SuppressWarnings("unchecked")
-    public Constructor<? extends LuaFunction> loadAndLinkAllClasses() throws InternalLuaLoadingError {
+    public Constructor<? extends AbstractGeneratedLuaFunction>[] loadAndLinkAllClasses() throws InternalLuaLoadingError {
         // compile and load generated classes
-        var jClasses = (Class<? extends LuaFunction>[]) new Class<?>[functionJavaCode.size()];
+        var jClasses = (Class<? extends AbstractGeneratedLuaFunction>[]) new Class<?>[functionJavaCode.size()];
         for (int i = 0; i < jClasses.length; i++) {
             var clsDef = functionJavaCode.get(i);
             var clazz = DelayedJavaCompiler.compileAndLoad(AbstractGeneratedLuaFunction.class.getClassLoader(), COMPILED_CLASSES_MODULE_PREFIX + clsDef.x(), clsDef.y());
-            if (!LuaFunction.class.isAssignableFrom(clazz)) {
+            if (!AbstractGeneratedLuaFunction.class.isAssignableFrom(clazz)) {
                 throw new InternalLuaLoadingError(clazz.getName() + " is not of type LuaFunction!");
             }
-            jClasses[i] = (Class<? extends LuaFunction>) clazz;
+            jClasses[i] = (Class<? extends AbstractGeneratedLuaFunction>) clazz;
         }
         // resolve linking related stuff via reflection
-        var constructors = (Constructor<? extends LuaFunction>[]) new Constructor<?>[jClasses.length];
+        var constructors = (Constructor<? extends AbstractGeneratedLuaFunction>[]) new Constructor<?>[jClasses.length];
         var depts = new Field[jClasses.length];
         for (int i = 0; i < constructors.length; i++) {
             try {
-                constructors[i] = jClasses[i].getDeclaredConstructor(LuaObject[].class, LuaObject[].class);
+                constructors[i] = jClasses[i].getDeclaredConstructor(LuaObject.class, LuaObject[].class);
                 depts[i] = jClasses[i].getDeclaredField("innerFunctions");
             } catch (ReflectiveOperationException e) {
                 throw new InternalLuaLoadingError(e);
@@ -163,7 +163,7 @@ public final class CompilationState {
         for (int i = 0; i < constructors.length; i++) {
             try {
                 var innerDepts = innerFunctionDependencies.get(i);
-                var ds = (Constructor<? extends LuaFunction>[]) new Constructor<?>[innerDepts.size()];
+                var ds = (Constructor<? extends AbstractGeneratedLuaFunction>[]) new Constructor<?>[innerDepts.size()];
                 for (int j = 0; j < innerDepts.size(); j++) {
                     ds[j] = constructors[innerDepts.get(j)];
                 }
@@ -173,7 +173,7 @@ public final class CompilationState {
             }
         }
         // return constructor for root function
-        return constructors[constructors.length - 1];
+        return constructors;
     }
 
     // =================================================================================================================
@@ -391,13 +391,13 @@ public final class CompilationState {
                     import java.util.Arrays;
                     
                     public final class %s extends AbstractGeneratedLuaFunction {
-                    public static Constructor<? extends LuaFunction>[] innerFunctions;
+                    public static Constructor<? extends AbstractGeneratedLuaFunction>[] innerFunctions;
                     public static int compilationUnitDept = %d;
                     public static String luaCode = \"\"\"
                     %s
                     \"\"\";
                     
-                    public %s(LuaObject[] _ENV, LuaObject[] closures) {
+                    public %s(LuaObject _ENV, LuaObject[] closures) {
                         super(_ENV, closures);
                     }
                     

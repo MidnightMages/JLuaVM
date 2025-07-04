@@ -97,7 +97,7 @@ public class AssignmentNode extends Node {
                 // local assignment
                 sb.append(genLocalSet(cState, info, vSpots.get(i)));
             } else if (tTars[i] instanceof EnvAccessNode) {
-                sb.append("_ENV[0] = ").append(vSpots.get(i)).append(';');
+                sb.append("_ENV.setBox(").append(vSpots.get(i)).append(");");
             } else {
                 var spots = (Tuple<String, String>) tTars[i];
                 sb.append(genIndexedSet(cState, spots.x(), spots.y(), vSpots.get(i)));

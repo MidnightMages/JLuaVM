@@ -14,13 +14,12 @@ public abstract class AbstractGeneratedLuaFunction extends LuaFunction {
         super();
     }
 
-    public AbstractGeneratedLuaFunction(LuaObject[] _ENV, LuaObject[] closures) {
+    public AbstractGeneratedLuaFunction(LuaObject _ENV, LuaObject[] closures) {
         super(_ENV, closures);
     }
 
     @Override
     public void serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs, ByteArrayBuilder bb) {
-        int ownIdx = serialData.size();
         // reserve space
         serialData.add(null);
         Class<? extends AbstractGeneratedLuaFunction> clazz = getClass();
@@ -30,7 +29,7 @@ public abstract class AbstractGeneratedLuaFunction extends LuaFunction {
             int dpt = cudField.getInt(null);
             byte[] code = ((String) codeField.get(null)).getBytes(StandardCharsets.UTF_8);
             bb.append(false) // not serialized with registry
-                    .append(LuaObject.of(_ENV).serialize(serialData, mappedObjs))
+                    .append(_ENV.serialize(serialData, mappedObjs))
                     .append(LuaObject.of(closures).serialize(serialData, mappedObjs))
                     .append(dpt)
                     .appendAll(code);

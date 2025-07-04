@@ -33,13 +33,13 @@ public class LCoroutine {
     }
 
     private static class InnerWrapFunction extends LuaJavaApiFunction {
-        public InnerWrapFunction(ApiFunctionRegistry registry, LuaObject[] _ENV) {
+        public InnerWrapFunction(ApiFunctionRegistry registry, LuaObject _ENV) {
             super(registry, _ENV, Singletons.EMPTY_LUA_OBJ_ARRAY);
         }
 
         @Override
         public void invoke(LuaVM_RT vm, LuaObject[] stackFrame, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
-            Coroutine co = _ENV[0].asCoroutine();
+            Coroutine co = _ENV.asCoroutine();
             if (resume == -1) {
                 vm.registerLocals(1);
                 if (co.state != Coroutine.State.SUSPENDED && co.state != Coroutine.State.CREATED) {
@@ -206,7 +206,7 @@ public class LCoroutine {
                         return null;
                     }
                     final var co = Coroutine.create(func.getFunc());
-                    return LuaObject.of(registry.getFunction("$inner.coroutine.wrap", new LuaObject[]{LuaObject.of(co)}));
+                    return LuaObject.of(registry.getFunction("$inner.coroutine.wrap",  LuaObject.of(co)));
                 }));
 
         registry.register(COROUTINE_PREFIX + "yield",

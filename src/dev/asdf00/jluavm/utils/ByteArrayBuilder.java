@@ -1,6 +1,5 @@
 package dev.asdf00.jluavm.utils;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -56,26 +55,6 @@ public class ByteArrayBuilder {
 
     public ByteArrayBuilder append(boolean value) {
         return append((byte) (value ? 1 : 0));
-    }
-
-    public ByteArrayBuilder setLowEndian(int idx, int value) {
-        set(idx, (byte) value);
-        set(idx + 1, (byte) (value >> 8));
-        set(idx + 2, (byte) (value >> 16));
-        set(idx + 3, (byte) (value >> 24));
-        return this;
-    }
-
-    public ByteArrayBuilder setLowEndian(int idx, long value) {
-        set(idx, (byte) value);
-        set(idx + 1, (byte) (value >> 8));
-        set(idx + 2, (byte) (value >> 16));
-        set(idx + 3, (byte) (value >> 24));
-        set(idx + 4, (byte) (value >> 32));
-        set(idx + 5, (byte) (value >> 40));
-        set(idx + 6, (byte) (value >> 48));
-        set(idx + 7, (byte) (value >> 56));
-        return this;
     }
 
     public ByteArrayBuilder append(int value) {

@@ -31,7 +31,7 @@ import java.lang.reflect.Constructor;
 public class Sandoboxo extends LuaFunction {
     public static Constructor<? extends LuaFunction>[] innerFunctions; // populated on class load
 
-    public Sandoboxo(LuaObject[] _ENV, LuaObject[] closures) {
+    public Sandoboxo(LuaObject _ENV, LuaObject[] closures) {
         super(_ENV, closures);
     }
 
@@ -93,7 +93,7 @@ public class Sandoboxo extends LuaFunction {
         switch (resume) {
             case -1:
                 // load constant
-                t0 = _ENV[0];
+                t0 = _ENV.unbox();
                 // load constant
                 t1 = LuaObject.of("x");
                 // getExpression index
@@ -108,7 +108,7 @@ public class Sandoboxo extends LuaFunction {
                 t0 = null;
 
                 // load constant
-                t0 = _ENV[0];
+                t0 = _ENV.unbox();
                 // load constant
                 t1 = LuaObject.of("x");
                 // load local
@@ -145,7 +145,7 @@ public class Sandoboxo extends LuaFunction {
 
                 // reserve t0 for assignment 0
                 // load _ENV
-                t1 = _ENV[0];
+                t1 = _ENV.unbox();
                 // load "y"
                 t2 = LuaObject.of("y");
                 // reserve t3 for assignment 1
@@ -217,7 +217,7 @@ public class Sandoboxo extends LuaFunction {
                     switch (resume) {
                         case -1, 0, 1, 2, 3, 4, 5:
                             // load constant
-                            t1 = _ENV[0];
+                            t1 = _ENV.unbox();
                             // load constant
                             t2 = LuaObject.of("x");
                             // getExpression index
@@ -300,7 +300,7 @@ public class Sandoboxo extends LuaFunction {
     public static class InnerFunction extends LuaFunction {
         public static Constructor<? extends LuaFunction>[] innerFunctions; // populated on class load
 
-        public InnerFunction(LuaObject[] _ENV, LuaObject... closures) {
+        public InnerFunction(LuaObject _ENV, LuaObject... closures) {
             super(_ENV, closures);
         }
 

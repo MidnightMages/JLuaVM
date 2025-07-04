@@ -15,21 +15,24 @@ import java.util.Map;
 
 @SuppressWarnings("unused")
 public abstract class LuaFunction {
-    public final LuaObject[] _ENV;
+    /**
+     * _ENV should only ever
+     */
+    public final LuaObject _ENV;
     public final LuaObject[] closures;
 
     public LuaFunction() {
-        this(Singletons.EMPTY_LUA_OBJ_ARRAY, Singletons.EMPTY_LUA_OBJ_ARRAY);
+        this(LuaObject.box(LuaObject.nil()), Singletons.EMPTY_LUA_OBJ_ARRAY);
     }
 
-    public LuaFunction(LuaObject[] _ENV, LuaObject[] closures) {
+    public LuaFunction(LuaObject _ENV, LuaObject[] closures) {
         this._ENV = _ENV;
         this.closures = closures;
     }
 
     public abstract void invoke(LuaVM_RT vm, LuaObject[] stackFrame, int resume, LuaObject[] expressionStack, LuaObject[] returned);
 
-    protected static <T extends LuaFunction> T newInnerFunction(Constructor<T> ctor, LuaObject[] _ENV, LuaObject... closures) {
+    protected static <T extends LuaFunction> T newInnerFunction(Constructor<T> ctor, LuaObject _ENV, LuaObject... closures) {
         try {
             return ctor.newInstance(_ENV, closures);
         } catch (ReflectiveOperationException e) {

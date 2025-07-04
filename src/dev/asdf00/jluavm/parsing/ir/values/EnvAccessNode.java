@@ -12,6 +12,6 @@ public class EnvAccessNode extends Node {
     @Override
     public String generate(CompilationState cState) {
         var spot = cState.pushEStack();
-        return spot + " = _ENV[0];";
+        return spot + " = _ENV.unbox();";
     }
 }
