@@ -496,8 +496,4 @@ public class LGlobal {
         registry.register("type",
                 AtomicLuaFunction.forOneResult(registry, (vm, x) -> LuaObject.of(x.getTypeAsString())));
     }
-
-    private static void extractFuncToTbl(LuaObject rv, MixedStateFunctionRegistry registry, String name) {
-        rv.set(name, LuaObject.of(registry.getFunction(name)));
-    }
 }

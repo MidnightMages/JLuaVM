@@ -12,18 +12,6 @@ public class LTable {
 
     private static final String TABLE_PREFIX = "table.";
 
-    public static LuaObject getTable(MixedStateFunctionRegistry registry) {
-        var rv = LuaObject.table();
-        extractFuncToTbl(rv, registry, "concat");
-        extractFuncToTbl(rv, registry, "insert");
-        // extractFuncToTbl(rv, registry, "move");
-        extractFuncToTbl(rv, registry, "pack");
-        // extractFuncToTbl(rv, registry, "remove");
-        // extractFuncToTbl(rv, registry, "sort");
-        extractFuncToTbl(rv, registry, "unpack");
-        return rv;
-    }
-
     // https://www.lua.org/manual/5.4/manual.html#6.6
     public static void registerStdTable(MixedStateFunctionRegistry registry) {
         registry.register(TABLE_PREFIX + "concat",
@@ -199,9 +187,5 @@ public class LTable {
                     }
                     return t;
                 }));
-    }
-
-    private static void extractFuncToTbl(LuaObject rv, MixedStateFunctionRegistry registry, String name) {
-        rv.set(name, LuaObject.of(registry.getFunction(TABLE_PREFIX + name)));
     }
 }

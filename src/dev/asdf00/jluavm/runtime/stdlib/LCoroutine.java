@@ -19,19 +19,6 @@ public class LCoroutine {
 
     private static final String COROUTINE_PREFIX = "coroutine.";
 
-    public static LuaObject getTable(MixedStateFunctionRegistry registry) {
-        var tbl = LuaObject.table();
-        extractFuncToTbl(tbl, registry, "close");
-        extractFuncToTbl(tbl, registry, "create");
-        extractFuncToTbl(tbl, registry, "isyieldable");
-        extractFuncToTbl(tbl, registry, "resume");
-        extractFuncToTbl(tbl, registry, "running");
-        extractFuncToTbl(tbl, registry, "status");
-        extractFuncToTbl(tbl, registry, "wrap");
-        extractFuncToTbl(tbl, registry, "yield");
-        return tbl;
-    }
-
     private static class InnerWrapFunction extends LuaJavaApiFunction {
         public InnerWrapFunction(ApiFunctionRegistry registry, LuaObject _ENV) {
             super(registry, _ENV, Singletons.EMPTY_LUA_OBJ_ARRAY);
