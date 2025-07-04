@@ -6,8 +6,7 @@ import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 
 import static dev.asdf00.jluavm.runtime.types.LuaObject.Types.*;
-import static dev.asdf00.jluavm.runtime.utils.RTUtils.funcArgAnyTypeError;
-import static dev.asdf00.jluavm.runtime.utils.RTUtils.funcArgTypeError;
+import static dev.asdf00.jluavm.runtime.utils.RTUtils.*;
 
 public class LTable {
 
@@ -135,7 +134,39 @@ public class LTable {
                     return t;
                 }));
 
-        // TODO add table.remove
+        // LUAC DEVIATION. Behaves slightly differently to LuaC, as the table-length operator behaves in a more
+        // consistent manner. Still behaves according to spec however.
+        registry.register(TABLE_PREFIX + "remove", AtomicLuaFunction.vaForOneResult(registry, (vm, args) -> {
+            var tbl = args.length < 1 ? null : args[0];
+            if (tbl == null || !tbl.isTable()) {
+                vm.error(funcArgTypeError("table.remove", 0, tbl, "table"));
+                return null;
+            }
+            assert tbl != null;
+
+            var tLen = tbl.len().lVal;
+            var pos = args.length < 2 ? tLen : (args[1].hasLongRepr() ? args[1].asLong() : -1);
+
+            if (pos == 0 && tLen == 0 || pos == tLen + 1) // origin: spec https://www.lua.org/manual/5.4/manual.html#pdf-table.remove
+                return LuaObject.NIL;
+
+            if (pos < 0) {
+                vm.error(funcArgAnyTypeError("table.remove", 1, args.length < 2 ? null : args[1], "non-negative number", "nil", "nothing"));
+                return null;
+            }
+
+            if (pos > tLen) {
+                vm.error(funcBadArgError("table.remove", 1, "position out of bounds"));
+                return null;
+            }
+
+            var lHashMap = tbl.asMap();
+            var prevVal = LuaObject.NIL;
+            for (long i = tLen; i >= pos; i--) {
+                prevVal = lHashMap.put(LuaObject.of(i), prevVal);
+            }
+            return prevVal;
+        }));
 
         // TODO add table.sort
 
@@ -148,16 +179,16 @@ public class LTable {
                     }
                     assert tbl != null;
 
-                    var i = args.length < 2 ? 1 : (args[2].hasLongRepr() ? args[2].asLong() : -1);
+                    var i = args.length < 2 ? 1 : (args[1].hasLongRepr() ? args[1].asLong() : -1);
                     if (i < 0) {
-                        vm.error(funcArgAnyTypeError("table.unpack", 1, args.length > 1 ? args[1] : null, "number", "nil", "nothing"));
+                        vm.error(funcArgAnyTypeError("table.unpack", 1, args.length < 2 ? null : args[1], "non-negative number", "nil", "nothing"));
                         return null;
                     }
 
                     // TODO call the __len metamethod instead if it exists
-                    var j = args.length < 3 ? tbl.len().asLong() : (args[3].hasLongRepr() ? args[3].asLong() : -1);
+                    var j = args.length < 3 ? tbl.len().asLong() : (args[2].hasLongRepr() ? args[2].asLong() : -1);
                     if (j < 0) {
-                        vm.error(funcArgAnyTypeError("table.unpack", 2, args.length > 2 ? args[2] : null, "number", "nil", "nothing"));
+                        vm.error(funcArgAnyTypeError("table.unpack", 2, args.length < 3 ? null : args[1], "non-negative number", "nil", "nothing"));
                         return null;
                     }
 

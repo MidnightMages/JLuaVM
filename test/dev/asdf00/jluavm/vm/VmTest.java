@@ -2119,4 +2119,59 @@ public class VmTest {
                 return table.concat(psplits, "/", 1, #psplits-1)
                 """, LuaObject.of("a/b"));
     }
+
+    @Test
+    void tableRemove() {
+        loadAssertSuccessAndRv("""
+                local t = {5,6,7,8,9,10}
+                rv = ""
+                function logTable()
+                    for k,v in pairs(t) do
+                        rv = rv .. k .. ":" .. v .. ";"
+                    end
+                    rv = rv .. ";"
+                end
+                logTable()
+                table.remove(t,3)
+                logTable()
+                return rv
+                """, LuaObject.of("1:5;2:6;3:7;4:8;5:9;6:10;;1:5;2:6;3:8;4:9;5:10;;"));
+    }
+
+    @Test
+    void tableRemove2() {
+        // this test does not aim to test pairs return order
+        loadAssertSuccessAndRv("""
+                local t = {1,[5]=7,nil,3}
+                rv = ""
+                function logTable()
+                    for k,v in pairs(t) do
+                        rv = rv .. k .. ":" .. v .. ";"
+                    end
+                    rv = rv .. ";"
+                end
+                logTable()
+                table.remove(t,3)
+                logTable()
+                return rv
+                """, LuaObject.of("5:7;1:1;3:3;;1:1;4:7;;"));
+    }
+    @Test
+    void tableRemoveArgCoercion() {
+        // this test does not aim to test pairs return order
+        loadAssertSuccessAndRv("""
+                local t = {1,2,3}
+                rv = ""
+                function logTable()
+                    for k,v in pairs(t) do
+                        rv = rv .. k .. ":" .. v .. ";"
+                    end
+                    rv = rv .. ";"
+                end
+                logTable()
+                table.remove(t,"2")
+                logTable()
+                return rv
+                """, LuaObject.of("1:1;2:2;3:3;;1:1;2:3;;"));
+    }
 }
