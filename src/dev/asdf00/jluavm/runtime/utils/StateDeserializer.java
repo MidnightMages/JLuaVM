@@ -21,7 +21,7 @@ public class StateDeserializer {
      * @return a pair of coroutines, the first one being the root coroutine, the second one being the current coroutine
      * of the given state. Additionally, the isErroring flag of the vm state is returned.
      */
-    public static Triple<Coroutine, Coroutine, Boolean> deserialize(LuaVM vm, Map<String, ApiFunctionRegistry> registries, byte[] rawState) {
+    public static Triple<Coroutine, Coroutine, Boolean> deserialize(Map<String, ApiFunctionRegistry> registries, byte[] rawState) {
         var reader = new ByteArrayReader(rawState);
         if (reader.readInt() != LuaVM_RT.STATE_SERIALIZATION_VERSION) {
             throw new IllegalArgumentException("mismatch in serialization version");
@@ -126,7 +126,7 @@ public class StateDeserializer {
                         int unitIdx = rdr.readInt();
                         String code = new String(rdr.readArray(rdr.remaining()), StandardCharsets.UTF_8);
                         try {
-                            var func = vm.compile(code)[unitIdx].newInstance(env, closures);
+                            var func = LuaVM.compile(code)[unitIdx].newInstance(env, closures);
                             func.selfLuaObj = lobj;
                             lobj.refVal = func;
                         } catch (LuaLoadingException | ReflectiveOperationException | ArrayIndexOutOfBoundsException e) {

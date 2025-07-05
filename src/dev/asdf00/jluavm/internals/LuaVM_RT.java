@@ -1,6 +1,7 @@
 package dev.asdf00.jluavm.internals;
 
 import dev.asdf00.jluavm.LuaVM;
+import dev.asdf00.jluavm.api.functions.ApiFunctionRegistry;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.LFunc;
@@ -22,6 +23,24 @@ public class LuaVM_RT extends LuaVM {
     public LuaVM_RT() {
         luaCallStack = new Stack<>();
         curFuncFrame = null;
+    }
+
+    public LuaVM_RT(Map<String, ApiFunctionRegistry> registries, LuaFunction rootFunc) {
+        super(registries);
+        this.rootFunc = rootFunc;
+
+        luaCallStack = new Stack<>();
+        curFuncFrame = null;
+    }
+
+    public LuaVM_RT(Map<String, ApiFunctionRegistry> registries, Triple<Coroutine, Coroutine, Boolean> state) {
+        this(registries, state.x().rootFunc);
+        rootCoroutine = state.x();
+        currentCoroutine = state.y();
+        isErroring = state.z();
+
+        luaCallStack = currentCoroutine.luaCallStack;
+        curFuncFrame = luaCallStack.peek();
     }
 
     @Override
@@ -53,19 +72,6 @@ public class LuaVM_RT extends LuaVM {
             bb.append(a.length).appendAll(a);
         }
         return bb.toArray();
-    }
-
-    protected static LuaVM_RT fromState(Triple<Coroutine, Coroutine, Boolean> state) {
-        var vm = new LuaVM_RT();
-        vm.rootCoroutine = state.x();
-        vm.currentCoroutine = state.y();
-        vm.isErroring = state.z();
-
-        vm.luaCallStack = vm.currentCoroutine.luaCallStack;
-        vm.curFuncFrame = vm.luaCallStack.peek();
-
-        // TODO set super fields
-        return vm;
     }
 
     // =================================================================================================================

@@ -57,7 +57,7 @@ public class ClassLoadingTest {
         assertThrows(DelayedJavaCompilationException.class, () -> DelayedJavaCompiler.compileAndLoad(LuaFunction.class.getClassLoader(), "dev.asdf00.jluavm.lualoaded.Fail0", "00asdf"));
     }
 
-    // @Test
+    /*-
     public void dumpStuff() {
         LuaVM.create().dumpJICFor("""
                         return 1 + 2
@@ -73,4 +73,5 @@ public class ClassLoadingTest {
         // vm.withDumpedRoot(Files.readString(Path.of("test/dev/asdf00/jluavm/lualoaded/depts.txt")), GeneratedLuaFunc_0.class);
         var cres = vm.run();
     }
+     */
 }
