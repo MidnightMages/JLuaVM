@@ -114,11 +114,10 @@ public class LuaHashMap {
         }
     }
 
-    public void put(LuaObject key, LuaObject value) {
+    public LuaObject put(LuaObject key, LuaObject value) {
         assert !key.isNil() && !(key.isDouble() && Double.isNaN(key.asDouble()));
         if (value.isNil()) {
-            remove(key);
-            return;
+            return remove(key);
         }
         boolean alreadyExists = backing.containsKey(key);
         KeyNode assocKey;
@@ -139,7 +138,11 @@ public class LuaHashMap {
         } else {
             assocKey = backing.get(key).y();
         }
-        backing.put(key, new Tuple<>(value, assocKey));
+        var tpl = backing.put(key, new Tuple<>(value, assocKey));
+        if(tpl == null)
+            return LuaObject.NIL;
+
+        return tpl.x();
     }
 
     @SuppressWarnings("UnusedReturnValue")
