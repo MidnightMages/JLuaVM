@@ -2127,6 +2127,7 @@ public class VmTest {
                 return rv
                 """, LuaObject.of("5:7;1:1;3:3;;1:1;4:7;;"));
     }
+
     @Test
     void tableRemoveArgCoercion() {
         // this test does not aim to test pairs return order
@@ -2144,5 +2145,14 @@ public class VmTest {
                 logTable()
                 return rv
                 """, LuaObject.of("1:1;2:2;3:3;;1:1;2:3;;"));
+    }
+
+    @Test
+    void tableInsertRemoveCheck(){
+        loadAssertSuccessAndRv("""
+                local t = {["a"]=4}
+                t["a"] = nil
+                return t["a"]
+                """, LuaObject.NIL);
     }
 }
