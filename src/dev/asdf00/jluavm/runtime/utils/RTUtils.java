@@ -1,8 +1,10 @@
 package dev.asdf00.jluavm.runtime.utils;
 
+import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 
 import java.util.Arrays;
+import java.util.function.Function;
 
 public class RTUtils {
     public static LuaObject tryCoerceFloatToInt(LuaObject value) {
@@ -40,5 +42,30 @@ public class RTUtils {
 
     public static LuaObject funcBadArgError(String funcName, int argIdx, String reason) {
         return LuaObject.of("In '%s': Bad argument #%s (%s)".formatted(funcName, argIdx + 1, reason));
+    }
+
+    public static LuaObject checkPositionalArgError(LuaVM_RT vm, LuaObject[] args, String funcName, int argIdx, Function<LuaObject, Boolean> isArgValid,
+                                                    LuaObject defaultValueOrThrow, String[] expectedTypes) {
+        var arg = args.length < argIdx + 1 ? defaultValueOrThrow : args[argIdx];
+        if (arg == null || !isArgValid.apply(arg)) {
+            vm.error(funcArgAnyTypeError(funcName, argIdx, arg, expectedTypes));
+            return null;
+        }
+        return arg;
+    }
+
+    public static LuaObject checkPositionalArgError(LuaVM_RT vm, LuaObject[] args, String funcName, int argIdx, Function<LuaObject, Boolean> isArgValid,
+                                                    LuaObject defaultValueOrThrow, String expectedType) {
+        return checkPositionalArgError(vm, args, funcName, argIdx, isArgValid, defaultValueOrThrow, new String[]{expectedType});
+    }
+
+    public static LuaObject checkPositionalArgError(LuaVM_RT vm, LuaObject[] args, String funcName, int argIdx, Function<LuaObject, Boolean> isArgValid,
+                                                    String[] expectedTypes) {
+        return checkPositionalArgError(vm, args, funcName, argIdx, isArgValid, null, expectedTypes);
+    }
+
+    public static LuaObject checkPositionalArgError(LuaVM_RT vm, LuaObject[] args, String funcName, int argIdx, Function<LuaObject, Boolean> isArgValid,
+                                                    String expectedType) {
+        return checkPositionalArgError(vm, args, funcName, argIdx, isArgValid, null, new String[]{expectedType});
     }
 }

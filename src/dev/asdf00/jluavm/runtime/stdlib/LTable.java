@@ -1,9 +1,12 @@
 package dev.asdf00.jluavm.runtime.stdlib;
 
-import dev.asdf00.jluavm.api.functions.MixedStateFunctionRegistry;
 import dev.asdf00.jluavm.api.functions.AtomicLuaFunction;
+import dev.asdf00.jluavm.api.functions.MixedStateFunctionRegistry;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
+import dev.asdf00.jluavm.runtime.utils.RTUtils;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
+
+import java.util.ArrayList;
 
 import static dev.asdf00.jluavm.runtime.types.LuaObject.Types.*;
 import static dev.asdf00.jluavm.runtime.utils.RTUtils.*;
@@ -110,7 +113,36 @@ public class LTable {
                     }
                 }));
 
-        // TODO add table.move
+        registry.register(TABLE_PREFIX + "move",
+                AtomicLuaFunction.vaForOneResult(registry, (vm, args) -> {
+                    LuaObject a1 = RTUtils.checkPositionalArgError(vm, args, "table.move", 0, LuaObject::isTable, null, "table");
+                    if (a1 == null) return null;
+                    LuaObject f = RTUtils.checkPositionalArgError(vm, args, "table.move", 1, LuaObject::isNumberCoercible, null, "number");
+                    if (f == null) return null;
+                    LuaObject e = RTUtils.checkPositionalArgError(vm, args, "table.move", 2, LuaObject::isNumberCoercible, null, "number");
+                    if (e == null) return null;
+                    LuaObject t = RTUtils.checkPositionalArgError(vm, args, "table.move", 3, LuaObject::isNumberCoercible, null, "number");
+                    if (t == null) return null;
+                    LuaObject a2 = RTUtils.checkPositionalArgError(vm, args, "table.move", 4, LuaObject::isTable, a1, new String[]{"table", "nil"});
+                    if (a2 == null) return null;
+
+                    var srcHashmap = a1.asMap();
+                    var slice = new ArrayList<LuaObject>();
+                    if (f.asLong() > Integer.MAX_VALUE) {
+                        vm.error(LuaObject.of("Slice too large, must be < 2^31"));
+                        return null;
+                    }
+
+                    for (int i = (int)f.asLong(); i <= e.asLong(); i++) {
+                        slice.add(srcHashmap.getOrDefault(LuaObject.of(i), LuaObject.NIL));
+                    }
+                    var dstHashmap = a2.asMap();
+                    var dstIndex = t.asLong();
+                    for (int i = 0; i < slice.size(); i++) {
+                        dstHashmap.put(LuaObject.of(i + dstIndex), slice.get(i));
+                    }
+                    return a2; // modification of the a2 argument is intended
+                }));
 
         registry.register(TABLE_PREFIX + "pack",
                 AtomicLuaFunction.vaForOneResult(registry, (vm, args) -> {

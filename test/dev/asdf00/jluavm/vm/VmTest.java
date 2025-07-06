@@ -2071,6 +2071,7 @@ public class VmTest extends BaseVmTest {
                 return rv
                 """, LuaObject.of("5:7;1:1;3:3;;1:1;4:7;;"));
     }
+
     @Test
     void tableRemoveArgCoercion() {
         // this test does not aim to test pairs return order
@@ -2088,5 +2089,64 @@ public class VmTest extends BaseVmTest {
                 logTable()
                 return rv
                 """, LuaObject.of("1:1;2:2;3:3;;1:1;2:3;;"));
+    }
+
+    @Test
+    void tableInsertRemoveCheck(){
+        loadAssertSuccessAndRv("""
+                local t = {["a"]=4}
+                t["a"] = nil
+                return t["a"]
+                """, LuaObject.NIL);
+    }
+
+    @Test
+    void tableMove() {
+        loadAssertSuccessAndRv("""
+                local t = {23,56,23,876,3,5,35,434,56}
+                t3 = table.move(t, 1, 3, 5)
+                rv = ""
+                for i=-3,#t+1 do
+                   rv = rv .. tostring(t3[i])..";"
+                end
+                return rv
+                """, LuaObject.of("nil;nil;nil;nil;23;56;23;876;23;56;23;434;56;nil;"));
+    }
+    @Test
+    void tableMove2() {
+        loadAssertSuccessAndRv("""
+                local t = {23,56,23,876,3,0,0,0,0}
+                t3 = table.move(t, 1, "3", 7)
+                rv = ""
+                for i=-3,#t+1 do
+                   rv = rv .. tostring(t3[i])..";"
+                end
+                return rv
+                """, LuaObject.of("nil;nil;nil;nil;23;56;23;876;3;0;23;56;23;nil;"));
+    }
+    @Test
+    void tableMove3() {
+        loadAssertSuccessAndRv("""
+                local t = {23,56,-23,876,3,7,15,5,-10}
+                t3 = table.move(t, 1, "4", -2)
+                rv = ""
+                for i=-3,#t+1 do
+                   rv = rv .. tostring(t3[i])..";"
+                end
+                return rv
+                """, LuaObject.of("nil;23;56;-23;876;56;-23;876;3;7;15;5;-10;nil;"));
+    }
+    @Test
+    void tableMove4() {
+        loadAssertSuccessAndRv("""
+                local t = {23,56,23,876,3,5,35,434,56}
+                local t2 = {"a","b","c","d"}
+                t3 = table.move(t, 1, 3, 5,t2)
+                rv = ""
+                for i=-3,#t+1 do
+                   rv = rv .. tostring(t3[i])..";"
+                end
+                return rv
+                """, LuaObject.of("nil;nil;nil;nil;a;b;c;d;23;56;23;nil;nil;nil;"));
     }
 }
