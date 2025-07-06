@@ -1,8 +1,8 @@
 package dev.asdf00.jluavm.parsing.ir.operations;
 
 import dev.asdf00.jluavm.parsing.container.Position;
-import dev.asdf00.jluavm.parsing.ir.CompilationState;
-import dev.asdf00.jluavm.parsing.ir.CompilationState.EStackCallInfo;
+import dev.asdf00.jluavm.parsing.CompilationState;
+import dev.asdf00.jluavm.parsing.CompilationState.EStackCallInfo;
 import dev.asdf00.jluavm.parsing.ir.Node;
 
 public class UnaryOpNode extends Node {
@@ -28,7 +28,7 @@ public class UnaryOpNode extends Node {
                     %s = %s.%s();
                 } else {
                     %s
-                    vm.callInternal(%d, LuaFunction::unaryOpWithMeta, Singletons.__%s, %s);
+                    vm.callInternal(%d, LuaFunction::unaryOpWithMeta, "::unaryOpWithMeta", Singletons.__%s, %s);
                     return;
                 }
                 case %d:""".formatted(vSpot, typeRestriction, rSpot, vSpot, op, info.saveEStack(), info.resumeLabel(), op, vSpot, info.resumeLabel());

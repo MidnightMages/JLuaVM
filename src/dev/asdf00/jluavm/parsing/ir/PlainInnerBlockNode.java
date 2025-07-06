@@ -1,5 +1,6 @@
 package dev.asdf00.jluavm.parsing.ir;
 
+import dev.asdf00.jluavm.parsing.CompilationState;
 import dev.asdf00.jluavm.parsing.container.Position;
 
 public class PlainInnerBlockNode extends Node {
@@ -16,8 +17,8 @@ public class PlainInnerBlockNode extends Node {
         var info = cState.generateEStackCallInfo(0);
         String bName = innerBlock.generate(cState);
         return """
-                vm.callInternal(%d, this::%s);
+                vm.callInternal(%d, this::%s, "%s");
                 return;
-                case %d:""".formatted(info.resumeLabel(), bName, info.resumeLabel());
+                case %d:""".formatted(info.resumeLabel(), bName, bName, info.resumeLabel());
     }
 }

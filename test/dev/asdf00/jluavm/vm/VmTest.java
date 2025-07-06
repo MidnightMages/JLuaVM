@@ -1,86 +1,25 @@
 package dev.asdf00.jluavm.vm;
 
 import dev.asdf00.jluavm.LuaVM;
-import dev.asdf00.jluavm.exceptions.LuaLoadingException;
 import dev.asdf00.jluavm.exceptions.loading.LuaParserException;
 import dev.asdf00.jluavm.exceptions.loading.LuaSemanticException;
-import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
-
-import java.util.Arrays;
-import java.util.stream.Collectors;
 
 import static dev.asdf00.jluavm.Util.expandOptions;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SuppressWarnings("unused")
-public class VmTest {
+public class VmTest extends BaseVmTest {
     @Test
     void simpleSnippet() {
         for (int b = -10; b < 10; b++) {
             for (var src : expandOptions("return 4+%s-(§1+0 * %s|%s * 0+1|1+0*%s|%s*0+1|1 + 0*%s|%s*0 + 1§)".formatted(b, b, b, b, b, b, b))) {
-                var vm = LuaVM.create().withStdLib().withRootFunc(src);
+                var vm = LuaVM.builder().rootFunc(src).build();
                 var res = vm.run();
                 loadAssertSuccessAndRv(src, LuaObject.of(4 - 1 + b));
             }
-        }
-    }
-
-    private static void loadAssertSuccessAndRv(String code, LuaObject expectedRet) {
-        loadAssertSuccessAndRv(code, new LuaObject[]{expectedRet});
-    }
-
-    private static LuaObject[] loadAssertSuccessGetRv(String code) {
-        var vm = LuaVM.create().withStdLib().withRootFunc(code);
-        var res = vm.run();
-        assertEquals(LuaVM.VmRunState.SUCCESS, res.state(), () -> Arrays.stream(res.returnVars()).map(LuaObject::toString).collect(Collectors.joining()));
-        return res.returnVars();
-    }
-
-    private static void loadAssertSuccessAndRv(String code, LuaObject[] expectedRets) {
-        for (var expanded : expandOptions(code)) {
-            var vm = LuaVM.create().withStdLib().withRootFunc(expanded);
-            var res = vm.run();
-            assertEquals(LuaVM.VmResult.of(LuaVM.VmRunState.SUCCESS, expectedRets), res);
-        }
-    }
-
-    private static void loadAssertException(String s, Class<? extends LuaLoadingException> exc) {
-        for (var expanded : expandOptions(s)) {
-            var vm = LuaVM.create().withStdLib();
-            assertThrows(exc, () -> vm.withRootFunc(expanded).run());
-        }
-    }
-
-    @SuppressWarnings("SameParameterValue")
-    private static void loadAssertRuntimeError(String s) {
-        for (var expanded : expandOptions(s)) {
-            var vm = LuaVM.create().withStdLib();
-            assertDoesNotThrow(() -> vm.withRootFunc(expanded));
-            var res = assertDoesNotThrow(vm::run);
-            Assertions.assertEquals(LuaVM.VmRunState.EXECUTION_ERROR, res.state());
-        }
-    }
-
-    private static void loadAssertRuntimeError(String s, String expectedErrorMessage) {
-        for (var expanded : expandOptions(s)) {
-            var vm = LuaVM.create().withStdLib();
-            assertDoesNotThrow(() -> vm.withRootFunc(expanded));
-            var res = assertDoesNotThrow(vm::run);
-            var expectedVmResult = new LuaVM.VmResult(LuaVM.VmRunState.EXECUTION_ERROR, new LuaObject[]{LuaObject.of(expectedErrorMessage)});
-            Assertions.assertEquals(expectedVmResult, res);
-        }
-    }
-
-    private static void loadAssertSuccess(String s) {
-        for (var expanded : expandOptions(s)) {
-            var vm = LuaVM.create().withStdLib();
-            assertDoesNotThrow(() -> vm.withRootFunc(expanded));
-            var res = assertDoesNotThrow(vm::run);
-            Assertions.assertEquals(LuaVM.VmRunState.SUCCESS, res.state(), () -> Arrays.stream(res.returnVars()).map(LuaObject::toString).collect(Collectors.joining()));
         }
     }
 
@@ -366,7 +305,7 @@ public class VmTest {
 
                 System.out.println("a: %s, b:%s".formatted(a, b));
                 var expected = Math.floor((float) a / (float) b);
-                var vm = LuaVM.create().withStdLib().withRootFunc("return %s//%s".formatted((float) a, (float) b));
+                var vm = LuaVM.builder().rootFunc("return %s//%s".formatted((float) a, (float) b)).build();
                 var res = vm.run();
                 assertEquals(LuaVM.VmRunState.SUCCESS, res.state());
                 var rvs = res.returnVars();
@@ -456,7 +395,7 @@ public class VmTest {
 
     @Test
     public void simpleAddition() {
-        var vm = LuaVM.create().withEmptyEnv().withRootFunc("return 1 + 2");
+        var vm = LuaVM.builder().emptyEnv().rootFunc("return 1 + 2").build();
         var result = vm.run();
         assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS, new LuaObject[]{LuaObject.of(3)}), result);
     }
@@ -464,7 +403,7 @@ public class VmTest {
 
     @Test
     public void simpleInnerFunctionWithClosure() {
-        var vm = LuaVM.create().withEmptyEnv().withRootFunc("""
+        var vm = LuaVM.builder().emptyEnv().rootFunc("""
                 local a = 1
                 x = 2
                 local function f()
@@ -472,22 +411,20 @@ public class VmTest {
                 end
                 f()
                 return a
-                """);
+                """).build();
         var result = vm.run();
         assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS, new LuaObject[]{LuaObject.of(3)}), result);
     }
 
     @Test
     public void simpleIPairsLoop() {
-        var vm = LuaVM.create();
-        vm.withStdLib();
-        vm.withRootFunc("""
+        var vm = LuaVM.builder().rootFunc("""
                 local rv = "res:"
                 for i, v in ipairs({1, 2, 3, nil, 5, 6}) do
                     rv = rv .. " " .. i .. "," .. v
                 end
                 return rv
-                """);
+                """).build();
         var result = vm.run();
         assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS, new LuaObject[]{LuaObject.of("res: 1,1 2,2 3,3")}), result);
     }
@@ -495,15 +432,13 @@ public class VmTest {
     @Test
     public void simplePairsLoop() {
         // pairs iteration order is not compliant to LuaC, as this is an implementation detail according to spec
-        var vm = LuaVM.create();
-        vm.withStdLib();
-        vm.withRootFunc("""
+        var vm = LuaVM.builder().rootFunc("""
                 local rv = "result:"
                 for k, v in pairs({a = 1, 2, [1.5] = 3, "nil", bsdf = 5, 6}) do
                     rv = rv .. "\\n" .. k .. " = " .. v
                 end
                 return rv
-                """);
+                """).build();
         var result = vm.run();
         assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS, new LuaObject[]{LuaObject.of("""
                 result:
@@ -517,20 +452,16 @@ public class VmTest {
 
     @Test
     public void simpleLen() {
-        var vm = LuaVM.create();
-        vm.withEmptyEnv();
-        vm.withRootFunc("""
+        var vm = LuaVM.builder().emptyEnv().rootFunc("""
                 return #{1, '', nil, nil, "a", nil}
-                """);
+                """).build();
         var result = vm.run();
         assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS, new LuaObject[]{LuaObject.of(5)}), result);
     }
 
     @Test
     public void metaLen() {
-        var vm = LuaVM.create();
-        vm.withStdLib();
-        vm.withRootFunc("""
+        var vm = LuaVM.builder().rootFunc("""
                 x = nil
                 local t = setmetatable({1, '', nil, nil, "a", nil}, {__len = function(tbl)
                         x = tbl
@@ -538,16 +469,14 @@ public class VmTest {
                     end})
                 local len = #t
                 return x == t and len
-                """);
+                """).build();
         var result = vm.run();
         assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS, new LuaObject[]{LuaObject.of(420)}), result);
     }
 
     @Test
     public void metaMetaLookup() {
-        var vm = LuaVM.create();
-        vm.withStdLib();
-        vm.withRootFunc("""
+        var vm = LuaVM.builder().rootFunc("""
                 local rv = "result:\\n"
                 local t = setmetatable({}, {__index = {meta = "empty"}})
                 rv = rv .. t.meta .. "\\n"
@@ -556,7 +485,7 @@ public class VmTest {
                 local t3 = setmetatable({}, {__index = t})
                 rv = rv .. t3.meta .. "\\n"
                 return rv
-                """);
+                """).build();
         var result = vm.run();
         assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS, new LuaObject[]{LuaObject.of("""
                 result:
@@ -568,9 +497,7 @@ public class VmTest {
 
     @Test
     public void closeWithMetaMagic() {
-        var vm = LuaVM.create();
-        vm.withStdLib();
-        vm.withRootFunc("""
+        var vm = LuaVM.builder().rootFunc("""
                 rv = "result:\\n"
                 do
                     local cls<close> = setmetatable({}, {
@@ -589,7 +516,7 @@ public class VmTest {
                     })
                 until true
                 return rv
-                """);
+                """).build();
         var result = vm.run();
         assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS, new LuaObject[]{LuaObject.of("""
                 result:
@@ -600,8 +527,7 @@ public class VmTest {
 
     @Test
     public void brokenGoto() {
-        var vm = LuaVM.create();
-        assertThrows(LuaSemanticException.class, () -> vm.withRootFunc("""
+        assertThrows(LuaSemanticException.class, () -> LuaVM.builder().emptyEnv().rootFunc("""
                 do
                     goto e
                     local a = 1
@@ -613,34 +539,31 @@ public class VmTest {
 
     @Test
     public void gotoExitInlinedScope() {
-        var vm = LuaVM.create();
-        vm.withRootFunc("""
+        var vm = LuaVM.builder().emptyEnv().rootFunc("""
                 do
                     goto a
                 end
                 ::a::
-                """);
+                """).build();
         assertDoesNotThrow(vm::run);
     }
 
     @Test
     public void breakInlinedScope() {
-        var vm = LuaVM.create();
-        vm.withRootFunc("""
+        var vm = LuaVM.builder().emptyEnv().rootFunc("""
                 repeat
                     do
                         break
                     end
                 until true
                 ::a::
-                """);
+                """).build();
         assertDoesNotThrow(vm::run);
     }
 
     @Test
     public void brokenGoto2() {
-        var vm = LuaVM.create();
-        assertDoesNotThrow(() -> vm.withRootFunc("""
+        assertDoesNotThrow(() -> LuaVM.builder().emptyEnv().rootFunc("""
                 goto d
                 do
                     goto d
@@ -651,10 +574,10 @@ public class VmTest {
 
     @Test
     public void stringExtensionFunc() {
-        var vm = LuaVM.create();
-        vm.withEmptyEnv();
-        vm.get_G().set("_EXT", LuaObject.table(LuaObject.of("string"), LuaObject.table()));
-        assertDoesNotThrow(() -> vm.withRootFunc("""
+        var bdr = LuaVM.builder()
+                .emptyEnv()
+                .modifyEnv(t -> t.set("_EXT", LuaObject.table(LuaObject.of("string"), LuaObject.table())));
+        var vm = assertDoesNotThrow(() -> bdr.rootFunc("""
                 function _EXT.string.landOf(it, arg1)
                     return "In the land of "..it.." where the "..arg1.." lie."
                 end
@@ -662,7 +585,7 @@ public class VmTest {
                 local shr = ("the Shire"):landOf "lush grass lands"
                 local gndr = "Gondor":landOf "Kingsmen"
                 return mdr.."\\n"..shr.."\\n"..gndr.."\\n"
-                """));
+                """)).build();
         var result = vm.run();
         assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS, new LuaObject[]{LuaObject.of("""
                 In the land of Mordor where the shadows lie.
@@ -673,9 +596,7 @@ public class VmTest {
 
     @Test
     public void literalExtensionCalls() {
-        var vm = LuaVM.create();
-        vm.withStdLib();
-        assertDoesNotThrow(() -> vm.withRootFunc("""
+        var vm = assertDoesNotThrow(() -> LuaVM.builder().rootFunc("""
                 rv = ""
                 function print(a)
                     rv = rv .. tostring(a) .. "\\n"
@@ -700,7 +621,7 @@ public class VmTest {
                 print(four)
                 print(3:toRoman():toNum())
                 return rv
-                """));
+                """)).build();
         var result = vm.run();
         assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS, new LuaObject[]{LuaObject.of("""
                 V guys
@@ -712,18 +633,16 @@ public class VmTest {
 
     @Test
     public void simpleNilCall() {
-        var vm = LuaVM.create();
-        assertDoesNotThrow(() -> vm.withRootFunc("""
+        var vm = assertDoesNotThrow(() -> LuaVM.builder().emptyEnv().rootFunc("""
                 (nil)()
-                """));
+                """)).build();
         var res = vm.run();
         assertEquals(LuaVM.VmRunState.EXECUTION_ERROR, res.state());
     }
 
     @Test
     public void simpleXPCall() {
-        var vm = LuaVM.create().withStdLib();
-        assertDoesNotThrow(() -> vm.withRootFunc("""
+        var vm = assertDoesNotThrow(() -> LuaVM.builder().rootFunc("""
                 pres = ""
                 local function print(a)
                     pres = pres .. tostring(a) .. "\\n"
@@ -738,7 +657,7 @@ public class VmTest {
                     end,
                     "i am an argument")
                 return pres, ra, rb
-                """));
+                """)).build();
         var res = vm.run();
         assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS,
                 new LuaObject[]{
@@ -750,34 +669,31 @@ public class VmTest {
 
     @Test
     public void simplePCall() {
-        var vm = LuaVM.create().withStdLib();
-        assertDoesNotThrow(() -> vm.withRootFunc("""
+        var vm = assertDoesNotThrow(() -> LuaVM.builder().rootFunc("""
                 local function test(t)
                     return "received " .. tostring(t)
                 end 
                 return pcall(test)
-                """));
+                """)).build();
         var res = vm.run();
         assertEquals(LuaVM.VmResult.of(LuaVM.VmRunState.SUCCESS, LuaObject.of(true), LuaObject.of("received nil")), res);
     }
 
     @Test
     public void errorPCall() {
-        var vm = LuaVM.create().withStdLib();
-        assertDoesNotThrow(() -> vm.withRootFunc("""
+        var vm = assertDoesNotThrow(() -> LuaVM.builder().rootFunc("""
                 local function test(t)
                     error("catch me")
                 end 
                 return pcall(test)
-                """));
+                """)).build();
         var res = vm.run();
         assertEquals(LuaVM.VmResult.of(LuaVM.VmRunState.SUCCESS, LuaObject.of(false), LuaObject.of("catch me")), res);
     }
 
     @Test
     public void simpleCoroutineTest() {
-        var vm = LuaVM.create().withStdLib();
-        assertDoesNotThrow(() -> vm.withRootFunc("""
+        var vm = assertDoesNotThrow(() -> LuaVM.builder().rootFunc("""
                 pres = ""
                 local function print(a)
                     pres = pres .. tostring(a) .. "\\n"
@@ -792,7 +708,7 @@ public class VmTest {
                 local state1, one = coroutine.resume(co, "first")
                 local state2, two = coroutine.resume(co, "second")
                 return pres, state1, one, state2, two
-                """));
+                """)).build();
         var res = vm.run();
         assertEquals(
                 LuaVM.VmResult.of(LuaVM.VmRunState.SUCCESS,
@@ -809,8 +725,7 @@ public class VmTest {
 
     @Test
     public void wrappedCoroutineTest() {
-        var vm = LuaVM.create().withStdLib();
-        assertDoesNotThrow(() -> vm.withRootFunc("""
+        var vm = assertDoesNotThrow(() -> LuaVM.builder().rootFunc("""
                 pres = ""
                 local function print(a)
                     pres = pres .. tostring(a) .. "\\n"
@@ -825,7 +740,7 @@ public class VmTest {
                 local one = wCo("first")
                 local state, msg = pcall(wCo, "second")
                 return pres, one, state, msg
-                """));
+                """)).build();
         var res = vm.run();
         assertEquals(
                 LuaVM.VmResult.of(LuaVM.VmRunState.SUCCESS,
@@ -841,9 +756,9 @@ public class VmTest {
 
     @Test
     public void runWithArgs() {
-        var vm = LuaVM.create().withStdLib().withRootFunc("""
+        var vm = LuaVM.builder().rootFunc("""
                 return table.pack(...)[1]
-                """);
+                """).build();
         var res = vm.runWithArgs(LuaObject.of(2));
         assertEquals(
                 LuaVM.VmResult.of(
@@ -854,12 +769,12 @@ public class VmTest {
 
     @Test
     public void loadAndCallWithArgs() {
-        var vm = LuaVM.create().withStdLib().withRootFunc("""
+        var vm = LuaVM.builder().rootFunc("""
                 local function f(...)
                     return table.pack(...)[1]
                 end
                 return f(42)
-                """);
+                """).build();
         var res = vm.run();
         assertEquals(
                 LuaVM.VmResult.of(
@@ -921,7 +836,7 @@ public class VmTest {
                 return result
                 """;
 
-        var vm = LuaVM.create().withStdLib().withRootFunc(code);
+        var vm = LuaVM.builder().rootFunc(code).build();
         var res = vm.run();
         assertEquals(LuaVM.VmRunState.SUCCESS, res.state());
         var rvs = res.returnVars();
@@ -2118,5 +2033,120 @@ public class VmTest {
                 local psplits = {"a","b","c"}
                 return table.concat(psplits, "/", 1, #psplits-1)
                 """, LuaObject.of("a/b"));
+    }
+
+    @Test
+    void tableRemove() {
+        loadAssertSuccessAndRv("""
+                local t = {5,6,7,8,9,10}
+                rv = ""
+                function logTable()
+                    for k,v in pairs(t) do
+                        rv = rv .. k .. ":" .. v .. ";"
+                    end
+                    rv = rv .. ";"
+                end
+                logTable()
+                table.remove(t,3)
+                logTable()
+                return rv
+                """, LuaObject.of("1:5;2:6;3:7;4:8;5:9;6:10;;1:5;2:6;3:8;4:9;5:10;;"));
+    }
+
+    @Test
+    void tableRemove2() {
+        // this test does not aim to test pairs return order
+        loadAssertSuccessAndRv("""
+                local t = {1,[5]=7,nil,3}
+                rv = ""
+                function logTable()
+                    for k,v in pairs(t) do
+                        rv = rv .. k .. ":" .. v .. ";"
+                    end
+                    rv = rv .. ";"
+                end
+                logTable()
+                table.remove(t,3)
+                logTable()
+                return rv
+                """, LuaObject.of("5:7;1:1;3:3;;1:1;4:7;;"));
+    }
+
+    @Test
+    void tableRemoveArgCoercion() {
+        // this test does not aim to test pairs return order
+        loadAssertSuccessAndRv("""
+                local t = {1,2,3}
+                rv = ""
+                function logTable()
+                    for k,v in pairs(t) do
+                        rv = rv .. k .. ":" .. v .. ";"
+                    end
+                    rv = rv .. ";"
+                end
+                logTable()
+                table.remove(t,"2")
+                logTable()
+                return rv
+                """, LuaObject.of("1:1;2:2;3:3;;1:1;2:3;;"));
+    }
+
+    @Test
+    void tableInsertRemoveCheck(){
+        loadAssertSuccessAndRv("""
+                local t = {["a"]=4}
+                t["a"] = nil
+                return t["a"]
+                """, LuaObject.NIL);
+    }
+
+    @Test
+    void tableMove() {
+        loadAssertSuccessAndRv("""
+                local t = {23,56,23,876,3,5,35,434,56}
+                t3 = table.move(t, 1, 3, 5)
+                rv = ""
+                for i=-3,#t+1 do
+                   rv = rv .. tostring(t3[i])..";"
+                end
+                return rv
+                """, LuaObject.of("nil;nil;nil;nil;23;56;23;876;23;56;23;434;56;nil;"));
+    }
+    @Test
+    void tableMove2() {
+        loadAssertSuccessAndRv("""
+                local t = {23,56,23,876,3,0,0,0,0}
+                t3 = table.move(t, 1, "3", 7)
+                rv = ""
+                for i=-3,#t+1 do
+                   rv = rv .. tostring(t3[i])..";"
+                end
+                return rv
+                """, LuaObject.of("nil;nil;nil;nil;23;56;23;876;3;0;23;56;23;nil;"));
+    }
+    @Test
+    void tableMove3() {
+        loadAssertSuccessAndRv("""
+                local t = {23,56,-23,876,3,7,15,5,-10}
+                t3 = table.move(t, 1, "4", -2)
+                rv = ""
+                for i=-3,#t+1 do
+                   rv = rv .. tostring(t3[i])..";"
+                end
+                return rv
+                """, LuaObject.of("nil;23;56;-23;876;56;-23;876;3;7;15;5;-10;nil;"));
+    }
+    @Test
+    void tableMove4() {
+        loadAssertSuccessAndRv("""
+                local t = {23,56,23,876,3,5,35,434,56}
+                local t2 = {"a","b","c","d"}
+                t3 = table.move(t, 1, 3, 5,t2)
+                rv = ""
+                for i=-3,#t+1 do
+                   rv = rv .. tostring(t3[i])..";"
+                end
+                return rv
+                """, LuaObject.of("nil;nil;nil;nil;a;b;c;d;23;56;23;nil;nil;nil;"));
     }
 }

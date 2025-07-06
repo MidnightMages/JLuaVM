@@ -1,11 +1,10 @@
 package dev.asdf00.jluavm.parsing.ir.controlflow;
 
 import dev.asdf00.jluavm.parsing.container.Position;
-import dev.asdf00.jluavm.parsing.ir.CompilationState;
-import dev.asdf00.jluavm.parsing.ir.CompilationState.EStackCallInfo;
+import dev.asdf00.jluavm.parsing.CompilationState;
+import dev.asdf00.jluavm.parsing.CompilationState.EStackCallInfo;
 import dev.asdf00.jluavm.parsing.ir.Node;
 import dev.asdf00.jluavm.parsing.ir.values.ConstantNode;
-import dev.asdf00.jluavm.parsing.ir.values.DeRefNode;
 
 /**
  * This node represents a Lua function call. The default behaviour of this method is to prune the return values to only
@@ -67,7 +66,7 @@ public class FunctionCallNode extends Node {
         String result = """
                 %s
                 if (%s.isFunction()) vm.callExternal(%d, %s.getFunc()%s);
-                else vm.callInternal(%d, LuaFunction::callWithMeta, %s%s);
+                else vm.callInternal(%d, LuaFunction::callWithMeta, "::callWithMeta", %s%s);
                 return;
                 case %d:""".formatted(callInfo.saveEStack(),
                 funcSpot,
@@ -105,7 +104,7 @@ public class FunctionCallNode extends Node {
                         %s
                         %s
                         %s
-                        vm.callInternal(%d, LuaFunction::lookupExtension, %s, LuaObject.of(%s.getTypeAsString()), %s);
+                        vm.callInternal(%d, LuaFunction::lookupExtension, "::lookupExtension", %s, LuaObject.of(%s.getTypeAsString()), %s);
                         return;
                     }
                     case %d:

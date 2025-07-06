@@ -2,9 +2,7 @@ package dev.asdf00.jluavm.runtime.types;
 
 import dev.asdf00.jluavm.utils.Tuple;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.TreeSet;
+import java.util.*;
 
 public class LuaHashMap {
     private final TreeSet<Long> upperSequenceBounds = new TreeSet<>();
@@ -116,11 +114,10 @@ public class LuaHashMap {
         }
     }
 
-    public void put(LuaObject key, LuaObject value) {
+    public LuaObject put(LuaObject key, LuaObject value) {
         assert !key.isNil() && !(key.isDouble() && Double.isNaN(key.asDouble()));
         if (value.isNil()) {
-            remove(key);
-            return;
+            return remove(key);
         }
         boolean alreadyExists = backing.containsKey(key);
         KeyNode assocKey;
@@ -141,14 +138,18 @@ public class LuaHashMap {
         } else {
             assocKey = backing.get(key).y();
         }
-        backing.put(key, new Tuple<>(value, assocKey));
+        var tpl = backing.put(key, new Tuple<>(value, assocKey));
+        if(tpl == null)
+            return LuaObject.NIL;
+
+        return tpl.x();
     }
 
     @SuppressWarnings("UnusedReturnValue")
     public LuaObject remove(LuaObject key) {
         if (backing.containsKey(key)) {
-            var entry = backing.get(key);
-            if (backing.size() > 1) {
+            var entry = backing.remove(key);
+            if (backing.size() >= 1) {
                 // still retains at least 1 entry after removal
                 var eNode = entry.y();
                 var b = eNode.before;
@@ -199,6 +200,16 @@ public class LuaHashMap {
         tail = null;
     }
 
+    public LuaHashMap clone() {
+        var nu = new LuaHashMap();
+        KeyNode curNode = head;
+        while (curNode != null) {
+            nu.put(curNode.key, backing.get(curNode.key).x());
+            curNode = curNode.after;
+        }
+        return nu;
+    }
+
     public LuaObject getKeyAfter(LuaObject key) {
         var entry = backing.get(key);
         if (entry != null) {
@@ -211,6 +222,16 @@ public class LuaHashMap {
 
     public LuaObject getFirstKey() {
         return head == null ? LuaObject.nil() : head.key;
+    }
+
+    public ArrayList<LuaObject> keys() {
+        var ks = new ArrayList<LuaObject>();
+        var cur = head;
+        while (cur != null) {
+            ks.add(cur.key);
+            cur = cur.after;
+        }
+        return ks;
     }
 
     private static final class KeyNode {

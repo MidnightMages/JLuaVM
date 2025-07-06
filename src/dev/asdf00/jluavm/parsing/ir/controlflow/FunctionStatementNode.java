@@ -1,7 +1,7 @@
 package dev.asdf00.jluavm.parsing.ir.controlflow;
 
 import dev.asdf00.jluavm.parsing.container.Position;
-import dev.asdf00.jluavm.parsing.ir.CompilationState;
+import dev.asdf00.jluavm.parsing.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.Node;
 
 public class FunctionStatementNode extends Node {

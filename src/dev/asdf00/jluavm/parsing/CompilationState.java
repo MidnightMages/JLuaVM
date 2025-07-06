@@ -1,10 +1,11 @@
-package dev.asdf00.jluavm.parsing.ir;
+package dev.asdf00.jluavm.parsing;
 
 import dev.asdf00.jluavm.exceptions.loading.InternalLuaLoadingError;
 import dev.asdf00.jluavm.internals.DelayedJavaCompiler;
 import dev.asdf00.jluavm.parsing.container.LabelInfo;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
+import dev.asdf00.jluavm.runtime.utils.AbstractGeneratedLuaFunction;
 import dev.asdf00.jluavm.utils.Tuple;
 
 import java.lang.reflect.Constructor;
@@ -19,9 +20,11 @@ import java.util.function.Supplier;
 public final class CompilationState {
     public static final boolean DEBUG_MODE = true;
 
-    private final String COMPILED_CLASSES_MODULE_PREFIX = "dev.asdf00.jluavm.lualoaded.";
+    private static final String COMPILED_CLASSES_MODULE_PREFIX = "dev.asdf00.jluavm.lualoaded.";
 
     private final Supplier<String> jClassNameGenerator;
+
+    private final String luaCode;
 
     public final ArrayList<Tuple<String, String>> functionJavaCode = new ArrayList<>();
     public final ArrayList<ArrayList<Integer>> innerFunctionDependencies = new ArrayList<>();
@@ -32,8 +35,9 @@ public final class CompilationState {
     private final Stack<FunctionScope> funcStack = new Stack<>();
     private FunctionScope curFunc = null;
 
-    public CompilationState(Supplier<String> jClassNameGenerator) {
+    public CompilationState(Supplier<String> jClassNameGenerator, String luaCode) {
         this.jClassNameGenerator = jClassNameGenerator;
+        this.luaCode = luaCode;
     }
 
     // =================================================================================================================
@@ -103,8 +107,8 @@ public final class CompilationState {
 
     public void closeFunction(String content) {
         String name = jClassNameGenerator.get();
-        String result = curFunc.generateJIC(name, content);
         int dept = functionJavaCode.size();
+        String result = curFunc.generateJIC(name, content, luaCode, dept);
         functionJavaCode.add(new Tuple<>(name, result));
         innerFunctionDependencies.add(curFunc.innerFuncs);
         curFunc = funcStack.pop();
@@ -133,23 +137,23 @@ public final class CompilationState {
     }
 
     @SuppressWarnings("unchecked")
-    public Constructor<? extends LuaFunction> loadAndLinkAllClasses() throws InternalLuaLoadingError {
+    public Constructor<? extends AbstractGeneratedLuaFunction>[] loadAndLinkAllClasses() throws InternalLuaLoadingError {
         // compile and load generated classes
-        var jClasses = (Class<? extends LuaFunction>[]) new Class<?>[functionJavaCode.size()];
+        var jClasses = (Class<? extends AbstractGeneratedLuaFunction>[]) new Class<?>[functionJavaCode.size()];
         for (int i = 0; i < jClasses.length; i++) {
             var clsDef = functionJavaCode.get(i);
-            var clazz = DelayedJavaCompiler.compileAndLoad(LuaFunction.class.getClassLoader(), COMPILED_CLASSES_MODULE_PREFIX + clsDef.x(), clsDef.y());
-            if (!LuaFunction.class.isAssignableFrom(clazz)) {
+            var clazz = DelayedJavaCompiler.compileAndLoad(AbstractGeneratedLuaFunction.class.getClassLoader(), COMPILED_CLASSES_MODULE_PREFIX + clsDef.x(), clsDef.y());
+            if (!AbstractGeneratedLuaFunction.class.isAssignableFrom(clazz)) {
                 throw new InternalLuaLoadingError(clazz.getName() + " is not of type LuaFunction!");
             }
-            jClasses[i] = (Class<? extends LuaFunction>) clazz;
+            jClasses[i] = (Class<? extends AbstractGeneratedLuaFunction>) clazz;
         }
         // resolve linking related stuff via reflection
-        var constructors = (Constructor<? extends LuaFunction>[]) new Constructor<?>[jClasses.length];
+        var constructors = (Constructor<? extends AbstractGeneratedLuaFunction>[]) new Constructor<?>[jClasses.length];
         var depts = new Field[jClasses.length];
         for (int i = 0; i < constructors.length; i++) {
             try {
-                constructors[i] = jClasses[i].getDeclaredConstructor(LuaObject[].class, LuaObject[].class);
+                constructors[i] = jClasses[i].getDeclaredConstructor(LuaObject.class, LuaObject[].class);
                 depts[i] = jClasses[i].getDeclaredField("innerFunctions");
             } catch (ReflectiveOperationException e) {
                 throw new InternalLuaLoadingError(e);
@@ -159,7 +163,7 @@ public final class CompilationState {
         for (int i = 0; i < constructors.length; i++) {
             try {
                 var innerDepts = innerFunctionDependencies.get(i);
-                var ds = (Constructor<? extends LuaFunction>[]) new Constructor<?>[innerDepts.size()];
+                var ds = (Constructor<? extends AbstractGeneratedLuaFunction>[]) new Constructor<?>[innerDepts.size()];
                 for (int j = 0; j < innerDepts.size(); j++) {
                     ds[j] = constructors[innerDepts.get(j)];
                 }
@@ -169,7 +173,7 @@ public final class CompilationState {
             }
         }
         // return constructor for root function
-        return constructors[constructors.length - 1];
+        return constructors;
     }
 
     // =================================================================================================================
@@ -308,7 +312,7 @@ public final class CompilationState {
             }
 
             String result = """
-                    private void innerScope%d(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
+                    public void innerScope%d(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
                     %s
                     switch (resume) {
                     case -1 -> {
@@ -362,7 +366,7 @@ public final class CompilationState {
             return "innerScope" + innerScopes.push(new InternalScope(localsCnt, scopeCount++)).scopeId;
         }
 
-        public String generateJIC(String jClassName, String content) {
+        public String generateJIC(String jClassName, String content, String luaCompilationUnit, int dept) {
             if (shouldHit >= 0) {
                 throw new InternalLuaLoadingError("unexpected value '%d' for 'shouldHit'".formatted(shouldHit));
             }
@@ -386,10 +390,14 @@ public final class CompilationState {
                     import java.lang.reflect.Constructor;
                     import java.util.Arrays;
                     
-                    public final class %s extends LuaFunction {
-                    public static Constructor<? extends LuaFunction>[] innerFunctions;
+                    public final class %s extends AbstractGeneratedLuaFunction {
+                    public static Constructor<? extends AbstractGeneratedLuaFunction>[] innerFunctions;
+                    public static int compilationUnitDept = %d;
+                    public static String luaCode = \"\"\"
+                    %s
+                    \"\"\";
                     
-                    public %s(LuaObject[] _ENV, LuaObject[] closures) {
+                    public %s(LuaObject _ENV, LuaObject[] closures) {
                         super(_ENV, closures);
                     }
                     
@@ -429,7 +437,10 @@ public final class CompilationState {
                     
                     // inner scopes
                     %s
-                    }""".formatted(jClassName, jClassName,
+                    }""".formatted(jClassName,
+                    dept,
+                    luaCompilationUnit,
+                    jClassName,
                     maxLocalSize, argCnt, hasParamsArg ? "true" : "false",
                     eStackDefinitions(), maxEStackSavePos >= 0 ? "vm.registerExpressionStack(%d)".formatted(maxEStackSavePos + 1) : "null", localsCount,
                     buildRestoreHeaders(),

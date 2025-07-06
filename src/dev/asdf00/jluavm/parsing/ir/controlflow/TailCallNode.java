@@ -1,7 +1,7 @@
 package dev.asdf00.jluavm.parsing.ir.controlflow;
 
 import dev.asdf00.jluavm.parsing.container.Position;
-import dev.asdf00.jluavm.parsing.ir.CompilationState;
+import dev.asdf00.jluavm.parsing.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.Node;
 
 public class TailCallNode extends Node {
@@ -46,7 +46,7 @@ public class TailCallNode extends Node {
         String stringOfArgs = argSpots.length > 0 ? ", " + String.join(", ", argSpots) : "";
         String result = """
                 if (%s.isFunction()) vm.tailCall(%s.getFunc()%s);
-                else vm.callInternal(%d, LuaFunction::callWithMeta, %s%s);
+                else vm.callInternal(%d, LuaFunction::callWithMeta, "::callWithMeta", %s%s);
                 return;
                 case %d:
                 vm.returnValue(%s);

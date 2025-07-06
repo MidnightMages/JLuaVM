@@ -1,29 +1,41 @@
-package dev.asdf00.jluavm.runtime.types;
+package dev.asdf00.jluavm.api.functions;
 
 import dev.asdf00.jluavm.api.lambdas.*;
 import dev.asdf00.jluavm.internals.Coroutine;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
+import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 
 import java.util.function.BiFunction;
 
 @SuppressWarnings("unused")
-public final class AtomicLuaFunction extends LuaFunction {
+public final class AtomicLuaFunction extends LuaJavaApiFunction {
     private final BiFunction<LuaVM_RT, LuaObject[], LuaObject[]> backing;
     private final int argCount;
     private final boolean hasVararg;
 
-    private AtomicLuaFunction(BiFunction<LuaVM_RT, LuaObject[], LuaObject[]> backing, int argCount, boolean hasVararg) {
-        super(Singletons.EMPTY_LUA_OBJ_ARRAY, Singletons.EMPTY_LUA_OBJ_ARRAY);
+    private AtomicLuaFunction(ApiFunctionRegistry registry, BiFunction<LuaVM_RT, LuaObject[], LuaObject[]> backing, int argCount, boolean hasVararg) {
+        super(registry);
         this.backing = backing;
         this.argCount = argCount;
         this.hasVararg = hasVararg;
     }
 
 
-    // helpers for lua functions of type F(a); F(a,b); F(a,b,...)
-    public static AtomicLuaFunction forZeroResults(LLConsumer c) {
-        return new AtomicLuaFunction((vm, args) -> {
+    // helpers for lua functions of type F(); F(a); F(a,b); F(a,b,...)
+    public static AtomicLuaFunction forZeroResults(ApiFunctionRegistry registry, LLRunnable c) {
+        return new AtomicLuaFunction(registry, (vm, args) -> {
+            Coroutine cco = vm.getCurrentCoroutine();
+            boolean prevYieldability = cco.isYieldable;
+            cco.isYieldable = false;
+            c.run(vm);
+            var r = vm.isErroring() ? null : Singletons.EMPTY_LUA_OBJ_ARRAY;
+            cco.isYieldable = prevYieldability;
+            return r;
+        }, 1, false);
+    }
+    public static AtomicLuaFunction forZeroResults(ApiFunctionRegistry registry, LLConsumer c) {
+        return new AtomicLuaFunction(registry, (vm, args) -> {
             Coroutine cco = vm.getCurrentCoroutine();
             boolean prevYieldability = cco.isYieldable;
             cco.isYieldable = false;
@@ -34,8 +46,8 @@ public final class AtomicLuaFunction extends LuaFunction {
         }, 1, false);
     }
 
-    public static AtomicLuaFunction forZeroResults(LLBiConsumer c) {
-        return new AtomicLuaFunction((vm, args) -> {
+    public static AtomicLuaFunction forZeroResults(ApiFunctionRegistry registry, LLBiConsumer c) {
+        return new AtomicLuaFunction(registry, (vm, args) -> {
             Coroutine cco = vm.getCurrentCoroutine();
             boolean prevYieldability = cco.isYieldable;
             cco.isYieldable = false;
@@ -46,8 +58,8 @@ public final class AtomicLuaFunction extends LuaFunction {
         }, 2, false);
     }
 
-    public static AtomicLuaFunction vaForZeroResults(LLVaVoidFunction c) {
-        return new AtomicLuaFunction((vm, args) -> {
+    public static AtomicLuaFunction vaForZeroResults(ApiFunctionRegistry registry, LLVaVoidFunction c) {
+        return new AtomicLuaFunction(registry, (vm, args) -> {
             Coroutine cco = vm.getCurrentCoroutine();
             boolean prevYieldability = cco.isYieldable;
             cco.isYieldable = false;
@@ -60,8 +72,8 @@ public final class AtomicLuaFunction extends LuaFunction {
     // ... more if necessary
 
     // helpers for lua functions of type F(a)->r; F(a,b)->r; F(a,b,...)->r
-    public static AtomicLuaFunction forOneResult(LLSupplier c) {
-        return new AtomicLuaFunction((vm, args) -> {
+    public static AtomicLuaFunction forOneResult(ApiFunctionRegistry registry, LLSupplier c) {
+        return new AtomicLuaFunction(registry, (vm, args) -> {
             Coroutine cco = vm.getCurrentCoroutine();
             boolean prevYieldability = cco.isYieldable;
             cco.isYieldable = false;
@@ -72,8 +84,8 @@ public final class AtomicLuaFunction extends LuaFunction {
         }, 0, false);
     }
 
-    public static AtomicLuaFunction forOneResult(LLFunction c) {
-        return new AtomicLuaFunction((vm, args) -> {
+    public static AtomicLuaFunction forOneResult(ApiFunctionRegistry registry, LLFunction c) {
+        return new AtomicLuaFunction(registry, (vm, args) -> {
             Coroutine cco = vm.getCurrentCoroutine();
             boolean prevYieldability = cco.isYieldable;
             cco.isYieldable = false;
@@ -84,8 +96,8 @@ public final class AtomicLuaFunction extends LuaFunction {
         }, 1, false);
     }
 
-    public static AtomicLuaFunction forOneResult(LLBiFunction c) {
-        return new AtomicLuaFunction((vm, args) -> {
+    public static AtomicLuaFunction forOneResult(ApiFunctionRegistry registry, LLBiFunction c) {
+        return new AtomicLuaFunction(registry, (vm, args) -> {
             Coroutine cco = vm.getCurrentCoroutine();
             boolean prevYieldability = cco.isYieldable;
             cco.isYieldable = false;
@@ -96,8 +108,8 @@ public final class AtomicLuaFunction extends LuaFunction {
         }, 2, false);
     }
 
-    public static AtomicLuaFunction forOneResult(LLTriFunction c) {
-        return new AtomicLuaFunction((vm, args) -> {
+    public static AtomicLuaFunction forOneResult(ApiFunctionRegistry registry, LLTriFunction c) {
+        return new AtomicLuaFunction(registry, (vm, args) -> {
             Coroutine cco = vm.getCurrentCoroutine();
             boolean prevYieldability = cco.isYieldable;
             cco.isYieldable = false;
@@ -108,8 +120,8 @@ public final class AtomicLuaFunction extends LuaFunction {
         }, 3, false);
     }
 
-    public static AtomicLuaFunction vaForOneResult(LLVaFunction c) {
-        return new AtomicLuaFunction((vm, args) -> {
+    public static AtomicLuaFunction vaForOneResult(ApiFunctionRegistry registry, LLVaFunction c) {
+        return new AtomicLuaFunction(registry, (vm, args) -> {
             Coroutine cco = vm.getCurrentCoroutine();
             boolean prevYieldability = cco.isYieldable;
             cco.isYieldable = false;
@@ -122,8 +134,8 @@ public final class AtomicLuaFunction extends LuaFunction {
     // ... more if necessary
 
     // helpers for lua functions of type F(a)->r[]; F(a,b)->r[]; F(a,b,...)->r[]
-    public static AtomicLuaFunction forManyResults(LLMultiSupplier c) {
-        return new AtomicLuaFunction((vm, args) -> {
+    public static AtomicLuaFunction forManyResults(ApiFunctionRegistry registry, LLMultiSupplier c) {
+        return new AtomicLuaFunction(registry, (vm, args) -> {
             Coroutine cco = vm.getCurrentCoroutine();
             boolean prevYieldability = cco.isYieldable;
             cco.isYieldable = false;
@@ -133,8 +145,8 @@ public final class AtomicLuaFunction extends LuaFunction {
         }, 0, false);
     }
 
-    public static AtomicLuaFunction forManyResults(LLMultiFunction c) {
-        return new AtomicLuaFunction((vm, args) -> {
+    public static AtomicLuaFunction forManyResults(ApiFunctionRegistry registry, LLMultiFunction c) {
+        return new AtomicLuaFunction(registry, (vm, args) -> {
             Coroutine cco = vm.getCurrentCoroutine();
             boolean prevYieldability = cco.isYieldable;
             cco.isYieldable = false;
@@ -144,8 +156,8 @@ public final class AtomicLuaFunction extends LuaFunction {
         }, 1, false);
     }
 
-    public static AtomicLuaFunction forManyResults(LLBiMultiFunction c) {
-        return new AtomicLuaFunction((vm, args) -> {
+    public static AtomicLuaFunction forManyResults(ApiFunctionRegistry registry, LLBiMultiFunction c) {
+        return new AtomicLuaFunction(registry, (vm, args) -> {
             Coroutine cco = vm.getCurrentCoroutine();
             boolean prevYieldability = cco.isYieldable;
             cco.isYieldable = false;
@@ -155,8 +167,8 @@ public final class AtomicLuaFunction extends LuaFunction {
         }, 2, false);
     }
 
-    public static AtomicLuaFunction vaForManyResults(LLVaMultiFunction c) {
-        return new AtomicLuaFunction((vm, args) -> {
+    public static AtomicLuaFunction vaForManyResults(ApiFunctionRegistry registry, LLVaMultiFunction c) {
+        return new AtomicLuaFunction(registry, (vm, args) -> {
             Coroutine cco = vm.getCurrentCoroutine();
             boolean prevYieldability = cco.isYieldable;
             cco.isYieldable = false;
@@ -166,6 +178,13 @@ public final class AtomicLuaFunction extends LuaFunction {
         }, 1, true);
     }
     // ... more if necessary
+
+    public static AtomicLuaFunction unimplementedFunction(ApiFunctionRegistry registry, String name) {
+        return AtomicLuaFunction.forManyResults(registry, vm -> {
+            vm.error(LuaObject.of("UNIMPLEMENTED FUNCTION '%s'".formatted(name)));
+            return null;
+        });
+    }
 
     @Override
     public void invoke(LuaVM_RT vm, LuaObject[] stackFrame, int resume, LuaObject[] expressionStack, LuaObject[] returned) {

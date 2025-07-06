@@ -1,5 +1,6 @@
 package dev.asdf00.jluavm.parsing.ir;
 
+import dev.asdf00.jluavm.parsing.CompilationState;
 import dev.asdf00.jluavm.parsing.container.Position;
 
 public class IRBlock extends Node {
@@ -84,7 +85,7 @@ public class IRBlock extends Node {
                         var mval = %s.getMetaValueOrNil(Singletons.__close);
                         %s
                         if (mval.isFunction()) vm.callExternal(%d, mval.getFunc(), %s);
-                        else vm.callInternal(%d, LuaFunction::callWithMeta, mval, %s);
+                        else vm.callInternal(%d, LuaFunction::callWithMeta, "::callWithMeta", mval, %s);
                         return;
                     }
                     case %d:""".formatted(

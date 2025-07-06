@@ -1,16 +1,17 @@
 package dev.asdf00.jluavm.internals;
 
 import dev.asdf00.jluavm.LuaVM;
-import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
+import dev.asdf00.jluavm.api.functions.ApiFunctionRegistry;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.LFunc;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
+import dev.asdf00.jluavm.utils.ByteArrayBuilder;
+import dev.asdf00.jluavm.utils.Quadruple;
+import dev.asdf00.jluavm.utils.Triple;
 
-import java.util.Arrays;
-import java.util.Objects;
-import java.util.Random;
-import java.util.Stack;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
 @SuppressWarnings("unused")
@@ -19,13 +20,45 @@ public class LuaVM_RT extends LuaVM {
     public static final int ERROR_LOOP_GRACE_CNT = 256;
     public static final int MAX_LUA_STACK_SIZE = 1024 * 1024 * 1024;
 
+    public static final int STATE_SERIALIZATION_VERSION = 0;
+
     public LuaVM_RT() {
         luaCallStack = new Stack<>();
         curFuncFrame = null;
     }
 
+    public LuaVM_RT(Map<String, ApiFunctionRegistry> registries, LuaFunction rootFunc) {
+        super(registries);
+        this.rootFunc = rootFunc;
+
+        luaCallStack = new Stack<>();
+        curFuncFrame = null;
+    }
+
+    /**
+     * Create LuaVM from serialized state
+     * @param registries
+     * @param state
+     */
+    public LuaVM_RT(Map<String, ApiFunctionRegistry> registries, Quadruple<Coroutine, Coroutine, Boolean, Boolean> state) {
+        this(registries, state.w().rootFunc);
+        rootCoroutine = state.w();
+        currentCoroutine = state.x();
+        isErroring = state.y();
+        requestedStop = state.z();
+
+        luaCallStack = currentCoroutine.luaCallStack;
+        curFuncFrame = luaCallStack.peek();
+    }
+
     @Override
     public VmResult runWithArgs(LuaObject... rootArgs) {
+        if (!isRunning.compareAndSet(false, true)) {
+            throw new IllegalStateException("can not run already running VM");
+        }
+        if (rootCoroutine != null || requestedStop) {
+            throw new IllegalStateException("can not do fresh start on non-clear state");
+        }
         if (rootFunc == null) {
             return new VmResult(VmRunState.EXECUTION_ERROR, new LuaObject[]{LuaObject.of("Invalid root function")});
         }
@@ -34,7 +67,53 @@ public class LuaVM_RT extends LuaVM {
         rootCoroutine.luaCallStack.peek().getTopFrame().locals[0] = LuaObject.of(rootArgs);
         setCoroutine(rootCoroutine);
         execLoop();
-        return new VmResult(rootCoroutine.rootFail ? VmRunState.EXECUTION_ERROR : VmRunState.SUCCESS, rootCoroutine.rootReturned);
+        isRunning.set(false);
+        if (requestedStop) {
+            return new VmResult(VmRunState.PAUSED, Singletons.EMPTY_LUA_OBJ_ARRAY);
+        } else {
+            var co = rootCoroutine;
+            rootCoroutine = null;
+            return new VmResult(co.rootFail ? VmRunState.EXECUTION_ERROR : VmRunState.SUCCESS, co.rootReturned);
+        }
+    }
+
+    @Override
+    public VmResult runContinue() {
+        if (!isRunning.compareAndSet(false, true)) {
+            throw new IllegalStateException("can not run already running VM");
+        }
+        if (rootCoroutine == null || !requestedStop) {
+            throw new IllegalStateException("can not continue on clear state");
+        }
+        requestedStop = false;
+        execLoop();
+        isRunning.set(false);
+        if (requestedStop) {
+            return new VmResult(VmRunState.PAUSED, Singletons.EMPTY_LUA_OBJ_ARRAY);
+        } else {
+            var co = rootCoroutine;
+            rootCoroutine = null;
+            return new VmResult(co.rootFail ? VmRunState.EXECUTION_ERROR : VmRunState.SUCCESS, co.rootReturned);
+        }
+    }
+
+    @Override
+    public byte[] serialize() {
+        ArrayList<byte[]> serialData = new ArrayList<>();
+        HashMap<LuaObject, Integer> mappedObjs = new HashMap<>();
+        int curCoIdx = currentCoroutine.selfLuaObject.serialize(serialData, mappedObjs);
+        var bb = new ByteArrayBuilder(serialData.stream().mapToInt(a -> a.length + 4).sum() + 4 * 4);
+        bb.append(STATE_SERIALIZATION_VERSION)
+                .append(mappedObjs.get(rootCoroutine.selfLuaObject))
+                .append(curCoIdx)
+                .append(isErroring)
+                .append(requestedStop)
+                .append(serialData.size());
+        for (int i = 0; i < serialData.size(); i++) {
+            var a = serialData.get(i);
+            bb.append(a.length).appendAll(a);
+        }
+        return bb.toArray();
     }
 
     // =================================================================================================================
@@ -42,6 +121,8 @@ public class LuaVM_RT extends LuaVM {
     // =================================================================================================================
 
     // magic state
+    private final AtomicBoolean isRunning = new AtomicBoolean(false);
+
     public Random lMathRandom = new Random();
 
     private boolean isErroring;
@@ -55,12 +136,17 @@ public class LuaVM_RT extends LuaVM {
     private void execLoop() {
         for (; ; ) {
             isErroring = false;
-            if (curFuncFrame != null) {
-                curFuncFrame.getTopFrame().execute(this);
-            } else {
+            if (curFuncFrame == null || requestedStop) {
+                // luavm exit
                 break;
             }
+            curFuncFrame.getTopFrame().execute(this);
+            safepoint();
         }
+    }
+
+    private void safepoint() {
+        // do nothing for now
     }
 
     // =================================================================================================================
@@ -90,8 +176,11 @@ public class LuaVM_RT extends LuaVM {
         return curFuncFrame.getNextClosable();
     }
 
+    /**
+     * @return the table of the environment of the caller
+     */
     public LuaObject getCallerEnv() {
-        return luaCallStack.size() > 1 ? luaCallStack.get(luaCallStack.size() - 2).lFunc._ENV[0] : null;
+        return luaCallStack.size() > 1 ? luaCallStack.get(luaCallStack.size() - 2).lFunc._ENV.unbox() : null;
     }
 
     public void setProtected(LuaFunction msgHandler) {
@@ -343,14 +432,14 @@ public class LuaVM_RT extends LuaVM {
         }
     }
 
-    public void callInternal(int resume, LFunc localTarget) {
-        callInternal(resume, localTarget, Singletons.EMPTY_LUA_OBJ_ARRAY);
+    public void callInternal(int resume, LFunc localTarget, String targetName) {
+        callInternal(resume, localTarget, targetName, Singletons.EMPTY_LUA_OBJ_ARRAY);
     }
 
-    public void callInternal(int resume, LFunc localTarget, LuaObject... args) {
+    public void callInternal(int resume, LFunc localTarget, String targetName, LuaObject... args) {
         // we trust that the caller knows what they are doing and that the args are already in the correct format
         curFuncFrame.getTopFrame().resume = resume;
-        curFuncFrame.enterScope(localTarget, args);
+        curFuncFrame.enterScope(localTarget, targetName, args);
     }
 
     public void internalReturn() {

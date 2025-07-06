@@ -1,7 +1,7 @@
 package dev.asdf00.jluavm.parsing.ir.controlflow;
 
 import dev.asdf00.jluavm.parsing.container.Position;
-import dev.asdf00.jluavm.parsing.ir.CompilationState;
+import dev.asdf00.jluavm.parsing.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.IRBlock;
 import dev.asdf00.jluavm.parsing.ir.Node;
 import dev.asdf00.jluavm.utils.Triple;
@@ -50,16 +50,16 @@ public class IfNode extends Node {
             sb.append("""
                     %s
                     if (RTUtils.isTruthy(%s)) {
-                        vm.callInternal(%d, this::%s);
+                        vm.callInternal(%d, this::%s, "%s");
                         return;
                     }
-                    """.formatted(cc.x(), cc.y(), callInfo.resumeLabel(), cc.z()));
+                    """.formatted(cc.x(), cc.y(), callInfo.resumeLabel(), cc.z(), cc.z()));
         }
         if (elseBlockName != null) {
             sb.append("""
-                    vm.callInternal(%d, this::%s);
+                    vm.callInternal(%d, this::%s, "%s");
                     return;
-                    """.formatted(callInfo.resumeLabel(), elseBlockName));
+                    """.formatted(callInfo.resumeLabel(), elseBlockName, elseBlockName));
         }
         sb.append("case ").append(callInfo.resumeLabel()).append(':');
         return sb.toString();

@@ -1,22 +1,28 @@
 package dev.asdf00.jluavm.runtime.stdlib;
 
+import dev.asdf00.jluavm.api.functions.MixedStateFunctionRegistry;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
-import dev.asdf00.jluavm.runtime.types.AtomicLuaFunction;
+import dev.asdf00.jluavm.api.functions.AtomicLuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 
-import java.util.HashMap;
 import java.util.Locale;
-import java.util.Map;
-import java.util.regex.Pattern;
 
 import static dev.asdf00.jluavm.runtime.types.LuaObject.Types.*;
 import static dev.asdf00.jluavm.runtime.utils.RTUtils.funcArgAnyTypeError;
 import static dev.asdf00.jluavm.runtime.utils.RTUtils.funcArgTypeError;
 
 public class LString {
-    public static LuaObject getTable() {
-        var rv = LuaObject.table();
 
+    private static final String STRING_PREFIX = "string.";
+
+    public static LuaObject createExtTable(LuaObject stringTable) {
+        var tblClone = LuaObject.wrapMap(stringTable.asMap().clone());
+        // remove string.char (int -> string) as an extension function of strings
+        tblClone.set("char", LuaObject.NIL);
+        return tblClone;
+    }
+
+    public static void registerStdString(MixedStateFunctionRegistry registry) {
         /* TODO, add the following ones: https://www.lua.org/manual/5.4/manual.html#6.4
         string.dump(function [, strip])
         string.find(s, pattern [, init [, plain]])
@@ -28,67 +34,73 @@ public class LString {
         string.packsize(fmt)
         string.unpack(fmt, s [, pos])
          */
-        rv.set("byte", AtomicLuaFunction.vaForOneResult((vm, va) -> {
-            if (va.length < 1 || !va[0].isType(ARITHMETIC)) {
-                vm.error(funcArgTypeError("string.byte", 0, va.length > 0 ? va[0] : null, "string"));
-                return null;
-            }
 
-            if (va.length > 1 && !va[1].hasLongRepr()) {
-                vm.error(funcArgTypeError("string.byte", 1, va[1], "integer"));
-                return null;
-            }
-
-            if (va.length > 2 && !va[2].isNil() && !va[2].hasLongRepr()) {
-                vm.error(funcArgAnyTypeError("string.byte", 2, va[2], "integer", "nil", "nothing"));
-                return null;
-            }
-            return sub(vm, va);
-        }).obj());
-        rv.set("char", AtomicLuaFunction.vaForOneResult((vm, va) -> {
-            var r2 = new StringBuilder(va.length);
-            for (int i = 0; i < va.length; i++) {
-                if (va[i].isNumberCoercible()) {
-                    if (va[i].hasLongRepr()) {
-                        r2.append(va[i].asLong());
-                    } else {
-                        vm.error(funcArgTypeError("string.char", i, va[i], "integer"));
+        registry.register(STRING_PREFIX + "byte",
+                AtomicLuaFunction.vaForOneResult(registry, (vm, va) -> {
+                    if (va.length < 1 || !va[0].isType(ARITHMETIC)) {
+                        vm.error(funcArgTypeError("string.byte", 0, va.length > 0 ? va[0] : null, "string"));
                         return null;
                     }
-                } else {
-                    vm.error(funcArgTypeError("string.char", i, va[i], "integer"));
-                    return null;
-                }
-            }
-            return LuaObject.of(r2.toString());
-        }).obj());
-        rv.set("gmatch", AtomicLuaFunction.vaForOneResult((vm, va) -> {
-            var s = va.length > 0 ? va[0] : null;
-            var pattern = va.length > 1 ? va[1] : null;
-            var init = va.length > 2 ? va[2] : LuaObject.of(1); // startIndex
-            if (s == null || !s.isType(NUMBER | STRING)) {
-                vm.error(funcArgAnyTypeError("string.gmatch", 0, s, "string", "number"));
-                return null;
-            }
-            if (pattern == null || !pattern.isType(NUMBER | STRING)) {
-                vm.error(funcArgAnyTypeError("string.gmatch", 1, pattern, "string", "number"));
-                return null;
-            }
-            if (!init.hasLongRepr()) {
-                vm.error(funcArgTypeError("string.gmatch", 1, pattern, "integer"));
-                return null;
-            }
 
-            var inputStr = s.getString();
-            var matchStartPos = init.asLong();
-            if (matchStartPos < 0) // negatives go from the back, -1 being the last letter
-                matchStartPos += inputStr.length() + 1;
-            else if (matchStartPos == 0) { // startpos 0 is interpreted as startpos 1, aka the default value
-                matchStartPos++;
-            }
-            matchStartPos--; // convert to java index
-            if (matchStartPos < 0) // if it is too small, make it start at 0
-                matchStartPos = 0;
+                    if (va.length > 1 && !va[1].hasLongRepr()) {
+                        vm.error(funcArgTypeError("string.byte", 1, va[1], "integer"));
+                        return null;
+                    }
+
+                    if (va.length > 2 && !va[2].isNil() && !va[2].hasLongRepr()) {
+                        vm.error(funcArgAnyTypeError("string.byte", 2, va[2], "integer", "nil", "nothing"));
+                        return null;
+                    }
+                    return sub(vm, va);
+                }));
+
+        registry.register(STRING_PREFIX + "char",
+                AtomicLuaFunction.vaForOneResult(registry, (vm, va) -> {
+                    var r2 = new StringBuilder(va.length);
+                    for (int i = 0; i < va.length; i++) {
+                        if (va[i].isNumberCoercible()) {
+                            if (va[i].hasLongRepr()) {
+                                r2.append(va[i].asLong());
+                            } else {
+                                vm.error(funcArgTypeError("string.char", i, va[i], "integer"));
+                                return null;
+                            }
+                        } else {
+                            vm.error(funcArgTypeError("string.char", i, va[i], "integer"));
+                            return null;
+                        }
+                    }
+                    return LuaObject.of(r2.toString());
+                }));
+
+        registry.register(STRING_PREFIX + "gmatch",
+                AtomicLuaFunction.vaForOneResult(registry, (vm, va) -> {
+                    var s = va.length > 0 ? va[0] : null;
+                    var pattern = va.length > 1 ? va[1] : null;
+                    var init = va.length > 2 ? va[2] : LuaObject.of(1); // startIndex
+                    if (s == null || !s.isType(NUMBER | STRING)) {
+                        vm.error(funcArgAnyTypeError("string.gmatch", 0, s, "string", "number"));
+                        return null;
+                    }
+                    if (pattern == null || !pattern.isType(NUMBER | STRING)) {
+                        vm.error(funcArgAnyTypeError("string.gmatch", 1, pattern, "string", "number"));
+                        return null;
+                    }
+                    if (!init.hasLongRepr()) {
+                        vm.error(funcArgTypeError("string.gmatch", 1, pattern, "integer"));
+                        return null;
+                    }
+
+                    var inputStr = s.getString();
+                    var matchStartPos = init.asLong();
+                    if (matchStartPos < 0) // negatives go from the back, -1 being the last letter
+                        matchStartPos += inputStr.length() + 1;
+                    else if (matchStartPos == 0) { // startpos 0 is interpreted as startpos 1, aka the default value
+                        matchStartPos++;
+                    }
+                    matchStartPos--; // convert to java index
+                    if (matchStartPos < 0) // if it is too small, make it start at 0
+                        matchStartPos = 0;
 
 //            // all elements are technically preceded by %
 //            HashMap<Character, String> gmatchTranslationMap = (HashMap<Character, String>) Map.of(
@@ -152,70 +164,75 @@ public class LString {
 //            }
 //
 //            Pattern.compile("");
-            throw new UnsupportedOperationException("not implemented");
-        }).obj());
-        rv.set("len", AtomicLuaFunction.forOneResult((vm, s) -> {
-            if (!s.isType(ARITHMETIC)) {
-                vm.error(funcArgTypeError("string.len", 0, s, "string"));
-                return null;
-            }
-            return LuaObject.of(s.asString().length());
-        }).obj());
-        rv.set("lower", AtomicLuaFunction.forOneResult((vm, s) -> {
-            if (!s.isType(ARITHMETIC)) {
-                vm.error(funcArgTypeError("string.lower", 0, s, "string"));
-                return null;
-            }
-            return LuaObject.of(s.asString().toLowerCase(Locale.US));
-        }).obj());
-        rv.set("rep", AtomicLuaFunction.vaForOneResult((vm, va) -> {
-            if (va.length < 1 || !va[0].isType(ARITHMETIC)) {
-                vm.error(funcArgTypeError("string.rep", 0, va.length > 0 ? va[0] : null, "string"));
-                return null;
-            }
+                    throw new UnsupportedOperationException("not implemented");
+                }));
 
-            if (va.length < 2 || !va[1].hasLongRepr()) {
-                vm.error(funcArgTypeError("string.rep", 1, va[1], "integer"));
-                return null;
-            }
+        registry.register(STRING_PREFIX + "len",
+                AtomicLuaFunction.forOneResult(registry, (vm, s) -> {
+                    if (!s.isType(ARITHMETIC)) {
+                        vm.error(funcArgTypeError("string.len", 0, s, "string"));
+                        return null;
+                    }
+                    return LuaObject.of(s.asString().length());
+                }));
 
-            //noinspection All
-            assert va.length >= 2;
+        registry.register(STRING_PREFIX + "lower",
+                AtomicLuaFunction.forOneResult(registry, (vm, s) -> {
+                    if (!s.isType(ARITHMETIC)) {
+                        vm.error(funcArgTypeError("string.lower", 0, s, "string"));
+                        return null;
+                    }
+                    return LuaObject.of(s.asString().toLowerCase(Locale.US));
+                }));
 
-            var sep = va.length > 2 ? va[2].asString() : "";
-            if (va.length > 2 && !va[2].isType(ARITHMETIC | BOOLEAN | NIL)) {
-                vm.error(funcArgAnyTypeError("string.rep", 2, va[2],
-                        "string", "boolean", "integer", "nil", "nothing"));
-                return null;
-            }
-            var cnt = (int) (va[1].asLong());
-            if (cnt <= 0)
-                return LuaObject.of("");
-            var s = va[0].asString();
-            return LuaObject.of(s + (sep + s).repeat(cnt - 1));
-        }).obj());
-        rv.set("reverse", AtomicLuaFunction.forOneResult((vm, s) -> {
-            if (!s.isType(ARITHMETIC)) {
-                vm.error(funcArgTypeError("string.reverse", 0, s, "string"));
-                return null;
-            }
-            return LuaObject.of(new StringBuilder(s.asString()).reverse().toString());
-        }).obj());
-        rv.set("sub", AtomicLuaFunction.vaForOneResult(LString::sub).obj());
-        rv.set("upper", AtomicLuaFunction.forOneResult((vm, s) -> {
-            if (!s.isType(ARITHMETIC)) {
-                vm.error(funcArgTypeError("string.upper", 0, s, "string"));
-                return null;
-            }
-            return LuaObject.of(s.asString().toUpperCase(Locale.US));
-        }).obj());
-        return rv;
-    }
+        registry.register(STRING_PREFIX + "rep",
+                AtomicLuaFunction.vaForOneResult(registry, (vm, va) -> {
+                    if (va.length < 1 || !va[0].isType(ARITHMETIC)) {
+                        vm.error(funcArgTypeError("string.rep", 0, va.length > 0 ? va[0] : null, "string"));
+                        return null;
+                    }
 
-    public static LuaObject getExtTable() {
-        var rv = getTable();
-        rv.set("char", LuaObject.NIL);
-        return rv;
+                    if (va.length < 2 || !va[1].hasLongRepr()) {
+                        vm.error(funcArgTypeError("string.rep", 1, va[1], "integer"));
+                        return null;
+                    }
+
+                    //noinspection All
+                    assert va.length >= 2;
+
+                    var sep = va.length > 2 ? va[2].asString() : "";
+                    if (va.length > 2 && !va[2].isType(ARITHMETIC | BOOLEAN | NIL)) {
+                        vm.error(funcArgAnyTypeError("string.rep", 2, va[2],
+                                "string", "boolean", "integer", "nil", "nothing"));
+                        return null;
+                    }
+                    var cnt = (int) (va[1].asLong());
+                    if (cnt <= 0)
+                        return LuaObject.of("");
+                    var s = va[0].asString();
+                    return LuaObject.of(s + (sep + s).repeat(cnt - 1));
+                }));
+
+        registry.register(STRING_PREFIX + "reverse",
+                AtomicLuaFunction.forOneResult(registry, (vm, s) -> {
+                    if (!s.isType(ARITHMETIC)) {
+                        vm.error(funcArgTypeError("string.reverse", 0, s, "string"));
+                        return null;
+                    }
+                    return LuaObject.of(new StringBuilder(s.asString()).reverse().toString());
+                }));
+
+        registry.register(STRING_PREFIX + "sub",
+                AtomicLuaFunction.vaForOneResult(registry, LString::sub));
+
+        registry.register(STRING_PREFIX + "upper",
+                AtomicLuaFunction.forOneResult(registry, (vm, s) -> {
+                    if (!s.isType(ARITHMETIC)) {
+                        vm.error(funcArgTypeError("string.upper", 0, s, "string"));
+                        return null;
+                    }
+                    return LuaObject.of(s.asString().toUpperCase(Locale.US));
+                }));
     }
 
     // =================================================================================================================

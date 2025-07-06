@@ -4,29 +4,37 @@ import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
 import dev.asdf00.jluavm.exceptions.LuaRuntimeError;
 import dev.asdf00.jluavm.internals.Coroutine;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
+import dev.asdf00.jluavm.runtime.utils.LFunc;
 import dev.asdf00.jluavm.runtime.utils.RTUtils;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
+import dev.asdf00.jluavm.utils.ByteArrayBuilder;
 
 import java.lang.reflect.Constructor;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 @SuppressWarnings("unused")
 public abstract class LuaFunction {
-    public final LuaObject[] _ENV;
+    /**
+     * _ENV should only ever
+     */
+    public final LuaObject _ENV;
     public final LuaObject[] closures;
+    public LuaObject selfLuaObj; // should only be accessed by LuaObject#of(LuaFunction) and the StateDeserializer
 
     public LuaFunction() {
-        this(Singletons.EMPTY_LUA_OBJ_ARRAY, Singletons.EMPTY_LUA_OBJ_ARRAY);
+        this(null, Singletons.EMPTY_LUA_OBJ_ARRAY);
     }
 
-    public LuaFunction(LuaObject[] _ENV, LuaObject[] closures) {
+    public LuaFunction(LuaObject _ENV, LuaObject[] closures) {
         this._ENV = _ENV;
         this.closures = closures;
     }
 
     public abstract void invoke(LuaVM_RT vm, LuaObject[] stackFrame, int resume, LuaObject[] expressionStack, LuaObject[] returned);
 
-    protected static <T extends LuaFunction> T newInnerFunction(Constructor<T> ctor, LuaObject[] _ENV, LuaObject... closures) {
+    protected static <T extends LuaFunction> T newInnerFunction(Constructor<T> ctor, LuaObject _ENV, LuaObject... closures) {
         try {
             return ctor.newInstance(_ENV, closures);
         } catch (ReflectiveOperationException e) {
@@ -53,6 +61,13 @@ public abstract class LuaFunction {
      */
     public abstract boolean hasParamsArg();
 
+    /**
+     * This method serializes the function into the provided byte array builder.
+     */
+    public void serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs, ByteArrayBuilder bb) {
+        throw new UnsupportedOperationException("Unimplemented parent");
+    }
+
     protected void debugPoint(Object... params) {
         /**
          * To set a break point to a line in lua, enable DEBUG_MODE in CompilationState and set a conditional break
@@ -65,7 +80,7 @@ public abstract class LuaFunction {
     }
 
     // =================================================================================================================
-    // helper ops for generated code
+    // helper ops
     // =================================================================================================================
 
     /**
@@ -82,7 +97,7 @@ public abstract class LuaFunction {
                 if (mtbl == null || !mtbl.isTable() || !mtbl.hasKey(Singletons.__index)) {
                     return LuaObject.nil();
                 } else {
-                    vm.callInternal(resumeLabel, LuaFunction::getWithMeta, obj, key, mtbl);
+                    vm.callInternal(resumeLabel, LuaFunction::getWithMeta, "::getWithMeta", obj, key, mtbl);
                     return null;
                 }
             }
@@ -91,7 +106,8 @@ public abstract class LuaFunction {
             if (mtbl == null || !mtbl.isTable() || !mtbl.hasKey(Singletons.__index)) {
                 try {
                     Coroutine cco = vm.getCurrentCoroutine();
-                    boolean prevYieldable = cco.isYieldable;;
+                    boolean prevYieldable = cco.isYieldable;
+                    ;
                     cco.isYieldable = false;
                     var r = obj.get(idx);
                     cco.isYieldable = prevYieldable;
@@ -101,7 +117,7 @@ public abstract class LuaFunction {
                     return null;
                 }
             } else {
-                vm.callInternal(resumeLabel, LuaFunction::getWithMeta, obj, idx, mtbl);
+                vm.callInternal(resumeLabel, LuaFunction::getWithMeta, "::getWithMeta", obj, idx, mtbl);
                 return null;
             }
         } else {
@@ -123,7 +139,7 @@ public abstract class LuaFunction {
                 if (mtbl == null || !mtbl.isTable() || !mtbl.hasKey(Singletons.__index)) {
                     return LuaObject.nil();
                 } else {
-                    vm.callInternal(resumeLabel, LuaFunction::getWithMeta, obj, key, mtbl);
+                    vm.callInternal(resumeLabel, LuaFunction::getWithMeta, "::getWithMeta", obj, key, mtbl);
                     return null;
                 }
             }
@@ -132,7 +148,8 @@ public abstract class LuaFunction {
             if (mtbl == null || !mtbl.isTable() || !mtbl.hasKey(Singletons.__index)) {
                 try {
                     Coroutine cco = vm.getCurrentCoroutine();
-                    boolean prevYieldable = cco.isYieldable;;
+                    boolean prevYieldable = cco.isYieldable;
+                    ;
                     cco.isYieldable = false;
                     var r = obj.get(idx);
                     cco.isYieldable = prevYieldable;
@@ -142,7 +159,7 @@ public abstract class LuaFunction {
                     return null;
                 }
             } else {
-                vm.callInternal(resumeLabel, LuaFunction::getWithMeta, obj, idx, mtbl);
+                vm.callInternal(resumeLabel, LuaFunction::getWithMeta, "::getWithMeta", obj, idx, mtbl);
                 return null;
             }
         } else {
@@ -167,7 +184,7 @@ public abstract class LuaFunction {
                     obj.set(key, val);
                     return false;
                 } else {
-                    vm.callInternal(resumeLabel, LuaFunction::setWithMeta, obj, key, val, mtbl);
+                    vm.callInternal(resumeLabel, LuaFunction::setWithMeta, "::setWithMeta", obj, key, val, mtbl);
                     return true;
                 }
             }
@@ -176,7 +193,8 @@ public abstract class LuaFunction {
             if (mtbl == null || !mtbl.hasKey(Singletons.__newindex)) {
                 try {
                     Coroutine cco = vm.getCurrentCoroutine();
-                    boolean prevYieldable = cco.isYieldable;;
+                    boolean prevYieldable = cco.isYieldable;
+                    ;
                     cco.isYieldable = false;
                     obj.set(idx, val);
                     cco.isYieldable = prevYieldable;
@@ -186,7 +204,7 @@ public abstract class LuaFunction {
                     return true;
                 }
             } else {
-                vm.callInternal(resumeLabel, LuaFunction::setWithMeta, obj, idx, val, mtbl);
+                vm.callInternal(resumeLabel, LuaFunction::setWithMeta, "::setWithMeta", obj, idx, val, mtbl);
                 return true;
             }
         } else {
@@ -203,7 +221,7 @@ public abstract class LuaFunction {
             if (x == y) {
                 return LuaObject.TRUE;
             } else if (!x.getMetaValueOrNil(Singletons.__eq).isNil() || !y.getMetaValueOrNil(Singletons.__eq).isNil()) {
-                vm.callInternal(resumeLabel, LuaFunction::binaryOpWithMeta, Singletons.__eq, x, y);
+                vm.callInternal(resumeLabel, LuaFunction::binaryOpWithMeta, "::binaryOpWithMeta", Singletons.__eq, x, y);
                 return null;
             } else {
                 return LuaObject.FALSE;
@@ -220,7 +238,7 @@ public abstract class LuaFunction {
         }
         var mv = obj.getMetaValueOrNil(Singletons.__len);
         if (!mv.isNil()) {
-            vm.callInternal(resumeLabel, LuaFunction::unaryOpWithMeta, Singletons.__len, obj);
+            vm.callInternal(resumeLabel, LuaFunction::unaryOpWithMeta, "::unaryOpWithMeta", Singletons.__len, obj);
             return null;
         }
         if (obj.isTable()) {
@@ -249,7 +267,7 @@ public abstract class LuaFunction {
     }
 
     // =================================================================================================================
-    // slow path methods for meta table involved stuff
+    // slow path methods for meta table stuff
     // =================================================================================================================
 
     /**
@@ -373,7 +391,7 @@ public abstract class LuaFunction {
                     var nuArgs = new LuaObject[args.length + 1];
                     nuArgs[0] = t1;
                     System.arraycopy(args, 0, nuArgs, 1, nuArgs.length);
-                    vm.callInternal(0, LuaFunction::callWithMeta, nuArgs);
+                    vm.callInternal(0, LuaFunction::callWithMeta, "::callWithMeta", nuArgs);
                 }
                 return;
             case 0:
@@ -419,7 +437,7 @@ public abstract class LuaFunction {
                 if (t3.isFunction()) {
                     vm.callExternal(0, t3.getFunc(), t1, t2);
                 } else {
-                    vm.callInternal(0, LuaFunction::callWithMeta, t3, t1, t2);
+                    vm.callInternal(0, LuaFunction::callWithMeta, "::callWithMeta", t3, t1, t2);
                 }
                 return;
             case 0:
@@ -461,7 +479,7 @@ public abstract class LuaFunction {
                 if (t0.isFunction()) {
                     vm.callExternal(0, t0.getFunc(), t1);
                 } else {
-                    vm.callInternal(0, LuaFunction::callWithMeta, t0, t1);
+                    vm.callInternal(0, LuaFunction::callWithMeta, "::callWithMeta", t0, t1);
                 }
                 return;
             case 0:
@@ -533,4 +551,13 @@ public abstract class LuaFunction {
                 throw new InternalLuaRuntimeError("should not reach end of fall-through switch");
         }
     }
+
+    public static final Map<String, LFunc> staticLFuncs = Map.of(
+            "::getWithMeta", LuaFunction::getWithMeta,
+            "::setWithMeta", LuaFunction::setWithMeta,
+            "::callWithMeta", LuaFunction::callWithMeta,
+            "::binaryOpWithMeta", LuaFunction::binaryOpWithMeta,
+            "::unaryOpWithMeta", LuaFunction::unaryOpWithMeta,
+            "::lookupExtension", LuaFunction::lookupExtension
+    );
 }

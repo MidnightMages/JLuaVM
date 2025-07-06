@@ -1,14 +1,14 @@
 package dev.asdf00.jluavm;
 
+import dev.asdf00.jluavm.api.functions.ApiFunctionRegistry;
 import dev.asdf00.jluavm.exceptions.LuaLoadingException;
 import dev.asdf00.jluavm.exceptions.loading.InternalLuaLoadingError;
-import dev.asdf00.jluavm.internals.LuaVM_RT;
+import dev.asdf00.jluavm.parsing.CompilationState;
 import dev.asdf00.jluavm.parsing.Parser;
-import dev.asdf00.jluavm.parsing.ir.CompilationState;
 import dev.asdf00.jluavm.parsing.ir.IRFunction;
-import dev.asdf00.jluavm.runtime.stdlib.*;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
+import dev.asdf00.jluavm.runtime.utils.AbstractGeneratedLuaFunction;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 
 import java.io.IOException;
@@ -18,6 +18,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
@@ -25,98 +27,88 @@ import java.util.stream.Collectors;
 
 public abstract class LuaVM {
 
-    public static LuaVM create() {
-        return new LuaVM_RT();
-    }
+    public static final String STD_LIB_REG_ID = "jluavm.stdlib";
+    private static final Supplier<String> J_CLASS_NAME_GEN;
+    private static final ConcurrentHashMap<String, Constructor<? extends AbstractGeneratedLuaFunction>[]> COMPILATION_CACHE = new ConcurrentHashMap<>();
+    private static final Object COMPILATION_CACHE_LOCK_OBJ = new Object();
 
+    // =================================================================================================================
+    // po-ta-tos, mash 'em, boil 'em, stick 'em in a stew
+    // =================================================================================================================
+
+    protected final Map<String, ApiFunctionRegistry> registries;
     protected LuaObject _G = LuaObject.nil();
     protected LuaFunction rootFunc = null;
 
-    private void AssertRootFuncNull() {
-        if (rootFunc != null)
-            throw new IllegalStateException("Cannot set _G like this after code has been loaded");
+    protected volatile boolean requestedStop = false;
+
+    public static VmBuilder builder() {
+        return new VmBuilder();
     }
 
-    private static final Supplier<String> jClassNameGen = new Supplier<>() {
-        private final AtomicInteger cnt = new AtomicInteger(0);
-
-        @Override
-        public String get() {
-            return "GeneratedLuaFunc_%d".formatted(cnt.getAndAdd(1));
-        }
-    };
-
-    public LuaVM withStdLib() {
-        AssertRootFuncNull();
-        _G = LGlobal.getTable(false);
-        _G.set("math", LMath.getTable());
-        _G.set("table", LTable.getTable());
-        _G.set("string", LString.getTable());
-        _G.set("coroutine", LCoroutine.getTable());
-        _G.set("_EXT", LuaObject.table(
-                LuaObject.of("nil"), LuaObject.table(),
-                LuaObject.of("boolean"), LuaObject.table(),
-                LuaObject.of("number"), LuaObject.table(),
-                LuaObject.of("string"), LString.getExtTable(),
-                LuaObject.of("function"), LuaObject.table(),
-                LuaObject.of("thread"), LuaObject.table(),
-                LuaObject.of("table"), LuaObject.table()
-        ));
-        return this;
+    protected LuaVM() {
+        registries = new HashMap<>();
     }
 
-    public LuaVM withEmptyEnv() {
-        AssertRootFuncNull();
-        _G = LuaObject.table();
-        return this;
+    protected LuaVM(Map<String, ApiFunctionRegistry> registries) {
+        this.registries = registries;
     }
 
-    public LuaObject get_G() {
-        return _G;
+    public final VmResult run() {
+        return runWithArgs(Singletons.EMPTY_LUA_OBJ_ARRAY);
     }
 
-    public LuaVM withRootFunc(String code) throws LuaLoadingException, InternalLuaLoadingError {
-        rootFunc = load(code, _G);
-        return this;
+    public abstract VmResult runWithArgs(LuaObject... rootArgs);
+
+    public abstract VmResult runContinue();
+
+    public abstract byte[] serialize();
+
+    public void requestStop() {
+        requestedStop = true;
     }
 
-    public LuaFunction load(String code) throws LuaLoadingException, InternalLuaLoadingError {
-        return load(code, _G);
-    }
+    // =================================================================================================================
+    // static helper methods
+    // =================================================================================================================
 
-    private static final ConcurrentHashMap<String, Constructor<? extends LuaFunction>> compilationCache = new ConcurrentHashMap<>();
-    private static final Object compilationCache_lockObj = new Object();
-
-    public LuaFunction load(String code, LuaObject _ENV) throws LuaLoadingException, InternalLuaLoadingError {
-        if (_ENV == null) {
-            throw new InternalLuaLoadingError("got invalid _ENV");
-        }
-
-        var cachedCtor = compilationCache.getOrDefault(code, null);
+    public static Constructor<? extends AbstractGeneratedLuaFunction>[] compile(String code) throws LuaLoadingException {
+        var cachedCtor = COMPILATION_CACHE.getOrDefault(code, null);
         if (cachedCtor == null) {
-            synchronized (compilationCache_lockObj) {
-                cachedCtor = compilationCache.getOrDefault(code, null);
+            synchronized (COMPILATION_CACHE_LOCK_OBJ) {
+                cachedCtor = COMPILATION_CACHE.getOrDefault(code, null);
                 if (cachedCtor == null) {
                     IRFunction rootFunc = new Parser(code).parse();
-                    var javaIntermediateCode = new CompilationState(jClassNameGen);
+                    var javaIntermediateCode = new CompilationState(J_CLASS_NAME_GEN, code);
                     rootFunc.generate(javaIntermediateCode);
                     javaIntermediateCode.resolveAllPatches();
                     cachedCtor = javaIntermediateCode.loadAndLinkAllClasses();
-                    compilationCache.put(code, cachedCtor); // TODO could optimize this cache by stripping comments maybe?
+                    COMPILATION_CACHE.put(code, cachedCtor); // TODO could optimize this cache by stripping comments maybe?
                 }
             }
         }
+        return cachedCtor;
+    }
 
+    public static LuaFunction load(String code, LuaObject _ENV) throws LuaLoadingException, InternalLuaLoadingError {
+        if (_ENV == null) {
+            throw new InternalLuaLoadingError("got invalid _ENV");
+        }
+        var unit = compile(code);
         try {
-            return cachedCtor.newInstance(new LuaObject[]{_ENV}, Singletons.EMPTY_LUA_OBJ_ARRAY);
+            return unit[unit.length - 1].newInstance(LuaObject.box(_ENV), Singletons.EMPTY_LUA_OBJ_ARRAY);
         } catch (ReflectiveOperationException e) {
             throw new InternalLuaLoadingError(e);
         }
     }
 
+    // =================================================================================================================
+    // debug access to java intermediate code
+    // =================================================================================================================
+
     public void dumpJICFor(String luaCode, Path into) {
         IRFunction rootFunc = new Parser(luaCode).parse();
-        var javaIntermediateCode = new CompilationState(jClassNameGen);
+        var javaIntermediateCode = new CompilationState(J_CLASS_NAME_GEN, luaCode);
         rootFunc.generate(javaIntermediateCode);
         javaIntermediateCode.resolveAllPatches();
         var lld = into.resolve("dev/asdf00/jluavm/lualoaded");
@@ -214,11 +206,15 @@ public abstract class LuaVM {
         }
     }
 
-    public final VmResult run() {
-        return runWithArgs(Singletons.EMPTY_LUA_OBJ_ARRAY);
-    }
+    // =================================================================================================================
+    // helper types
+    // =================================================================================================================
 
-    public abstract VmResult runWithArgs(LuaObject... rootArgs);
+    public enum VmRunState {
+        SUCCESS,
+        EXECUTION_ERROR,
+        PAUSED,
+    }
 
     public record VmResult(VmRunState state, LuaObject[] returnVars) {
         public static VmResult of(VmRunState state, LuaObject... returnVars) {
@@ -242,8 +238,18 @@ public abstract class LuaVM {
         }
     }
 
-    public enum VmRunState {
-        SUCCESS,
-        EXECUTION_ERROR,
+    // =================================================================================================================
+    // static initializer for LuaVM
+    // =================================================================================================================
+
+    static {
+        J_CLASS_NAME_GEN = new Supplier<>() {
+            private final AtomicInteger cnt = new AtomicInteger(0);
+
+            @Override
+            public String get() {
+                return "GeneratedLuaFunc_%d".formatted(cnt.getAndAdd(1));
+            }
+        };
     }
 }

@@ -31,7 +31,7 @@ import java.lang.reflect.Constructor;
 public class Sandoboxo extends LuaFunction {
     public static Constructor<? extends LuaFunction>[] innerFunctions; // populated on class load
 
-    public Sandoboxo(LuaObject[] _ENV, LuaObject[] closures) {
+    public Sandoboxo(LuaObject _ENV, LuaObject[] closures) {
         super(_ENV, closures);
     }
 
@@ -93,7 +93,7 @@ public class Sandoboxo extends LuaFunction {
         switch (resume) {
             case -1:
                 // load constant
-                t0 = _ENV[0];
+                t0 = _ENV.unbox();
                 // load constant
                 t1 = LuaObject.of("x");
                 // getExpression index
@@ -108,7 +108,7 @@ public class Sandoboxo extends LuaFunction {
                 t0 = null;
 
                 // load constant
-                t0 = _ENV[0];
+                t0 = _ENV.unbox();
                 // load constant
                 t1 = LuaObject.of("x");
                 // load local
@@ -122,7 +122,7 @@ public class Sandoboxo extends LuaFunction {
                     // save expression stack
                     expressionStack[0] = t0;
                     expressionStack[1] = t1;
-                    vm.callInternal(1, LuaFunction::binaryOpWithMeta, Singletons.__add, t2, t3);
+                    vm.callInternal(1, LuaFunction::binaryOpWithMeta, "::binaryOpWithMeta", Singletons.__add, t2, t3);
                     return;
                 }
             case 1:
@@ -145,7 +145,7 @@ public class Sandoboxo extends LuaFunction {
 
                 // reserve t0 for assignment 0
                 // load _ENV
-                t1 = _ENV[0];
+                t1 = _ENV.unbox();
                 // load "y"
                 t2 = LuaObject.of("y");
                 // reserve t3 for assignment 1
@@ -165,7 +165,7 @@ public class Sandoboxo extends LuaFunction {
                     vm.callExternal(3, t5.getFunc(), t6);
                     return;
                 } else {
-                    vm.callInternal(3, LuaFunction::callWithMeta, t5, t6);
+                    vm.callInternal(3, LuaFunction::callWithMeta, "::callWithMeta", t5, t6);
                     return;
                 }
             case 3:
@@ -199,10 +199,10 @@ public class Sandoboxo extends LuaFunction {
                 t0 = stackFrame[1];
                 // if clause
                 if (RTUtils.isTruthy(t0)) {
-                    vm.callInternal(5, this::innerScope0);
+                    vm.callInternal(5, this::innerScope0, "innerScope0");
                     return;
                 } else {
-                    vm.callInternal(5, this::innerScope1);
+                    vm.callInternal(5, this::innerScope1, "innerScope1");
                     return;
                 }
             case 5:
@@ -217,7 +217,7 @@ public class Sandoboxo extends LuaFunction {
                     switch (resume) {
                         case -1, 0, 1, 2, 3, 4, 5:
                             // load constant
-                            t1 = _ENV[0];
+                            t1 = _ENV.unbox();
                             // load constant
                             t2 = LuaObject.of("x");
                             // getExpression index
@@ -262,7 +262,7 @@ public class Sandoboxo extends LuaFunction {
                 if (t0.isArithmetic() && t1.isArithmetic()) {
                     t0 = t0.add(t1);
                 } else {
-                    vm.callInternal(0, LuaFunction::binaryOpWithMeta, Singletons.__add, t0, t1);
+                    vm.callInternal(0, LuaFunction::binaryOpWithMeta, "::binaryOpWithMeta", Singletons.__add, t0, t1);
                     return;
                 }
                 t1 = null;
@@ -300,7 +300,7 @@ public class Sandoboxo extends LuaFunction {
     public static class InnerFunction extends LuaFunction {
         public static Constructor<? extends LuaFunction>[] innerFunctions; // populated on class load
 
-        public InnerFunction(LuaObject[] _ENV, LuaObject... closures) {
+        public InnerFunction(LuaObject _ENV, LuaObject... closures) {
             super(_ENV, closures);
         }
 
