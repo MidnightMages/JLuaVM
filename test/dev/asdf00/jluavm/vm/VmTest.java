@@ -1,22 +1,17 @@
 package dev.asdf00.jluavm.vm;
 
 import dev.asdf00.jluavm.LuaVM;
-import dev.asdf00.jluavm.exceptions.LuaLoadingException;
 import dev.asdf00.jluavm.exceptions.loading.LuaParserException;
 import dev.asdf00.jluavm.exceptions.loading.LuaSemanticException;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
-
-import java.util.Arrays;
-import java.util.stream.Collectors;
 
 import static dev.asdf00.jluavm.Util.expandOptions;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SuppressWarnings("unused")
-public class VmTest {
+public class VmTest extends BaseVmTest {
     @Test
     void simpleSnippet() {
         for (int b = -10; b < 10; b++) {
@@ -25,57 +20,6 @@ public class VmTest {
                 var res = vm.run();
                 loadAssertSuccessAndRv(src, LuaObject.of(4 - 1 + b));
             }
-        }
-    }
-
-    private static void loadAssertSuccessAndRv(String code, LuaObject expectedRet) {
-        loadAssertSuccessAndRv(code, new LuaObject[]{expectedRet});
-    }
-
-    private static LuaObject[] loadAssertSuccessGetRv(String code) {
-        var vm = LuaVM.builder().rootFunc(code).build();
-        var res = vm.run();
-        assertEquals(LuaVM.VmRunState.SUCCESS, res.state(), () -> Arrays.stream(res.returnVars()).map(LuaObject::toString).collect(Collectors.joining()));
-        return res.returnVars();
-    }
-
-    private static void loadAssertSuccessAndRv(String code, LuaObject[] expectedRets) {
-        for (var expanded : expandOptions(code)) {
-            var vm = LuaVM.builder().rootFunc(expanded).build();
-            var res = vm.run();
-            assertEquals(LuaVM.VmResult.of(LuaVM.VmRunState.SUCCESS, expectedRets), res);
-        }
-    }
-
-    private static void loadAssertException(String s, Class<? extends LuaLoadingException> exc) {
-        for (var expanded : expandOptions(s)) {
-            assertThrows(exc, () -> LuaVM.builder().rootFunc(expanded).build());
-        }
-    }
-
-    @SuppressWarnings("SameParameterValue")
-    private static void loadAssertRuntimeError(String s) {
-        for (var expanded : expandOptions(s)) {
-            LuaVM vm = assertDoesNotThrow(() -> LuaVM.builder().rootFunc(expanded).build());
-            var res = assertDoesNotThrow(vm::run);
-            Assertions.assertEquals(LuaVM.VmRunState.EXECUTION_ERROR, res.state());
-        }
-    }
-
-    private static void loadAssertRuntimeError(String s, String expectedErrorMessage) {
-        for (var expanded : expandOptions(s)) {
-            LuaVM vm = assertDoesNotThrow(() -> LuaVM.builder().rootFunc(expanded).build());
-            var res = assertDoesNotThrow(vm::run);
-            var expectedVmResult = new LuaVM.VmResult(LuaVM.VmRunState.EXECUTION_ERROR, new LuaObject[]{LuaObject.of(expectedErrorMessage)});
-            Assertions.assertEquals(expectedVmResult, res);
-        }
-    }
-
-    private static void loadAssertSuccess(String s) {
-        for (var expanded : expandOptions(s)) {
-            LuaVM vm = assertDoesNotThrow(() -> LuaVM.builder().rootFunc(expanded).build());
-            var res = assertDoesNotThrow(vm::run);
-            Assertions.assertEquals(LuaVM.VmRunState.SUCCESS, res.state(), () -> Arrays.stream(res.returnVars()).map(LuaObject::toString).collect(Collectors.joining()));
         }
     }
 

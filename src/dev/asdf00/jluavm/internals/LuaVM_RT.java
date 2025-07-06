@@ -7,9 +7,11 @@ import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.LFunc;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 import dev.asdf00.jluavm.utils.ByteArrayBuilder;
+import dev.asdf00.jluavm.utils.Quadruple;
 import dev.asdf00.jluavm.utils.Triple;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
 @SuppressWarnings("unused")
@@ -33,11 +35,17 @@ public class LuaVM_RT extends LuaVM {
         curFuncFrame = null;
     }
 
-    public LuaVM_RT(Map<String, ApiFunctionRegistry> registries, Triple<Coroutine, Coroutine, Boolean> state) {
-        this(registries, state.x().rootFunc);
-        rootCoroutine = state.x();
-        currentCoroutine = state.y();
-        isErroring = state.z();
+    /**
+     * Create LuaVM from serialized state
+     * @param registries
+     * @param state
+     */
+    public LuaVM_RT(Map<String, ApiFunctionRegistry> registries, Quadruple<Coroutine, Coroutine, Boolean, Boolean> state) {
+        this(registries, state.w().rootFunc);
+        rootCoroutine = state.w();
+        currentCoroutine = state.x();
+        isErroring = state.y();
+        requestedStop = state.z();
 
         luaCallStack = currentCoroutine.luaCallStack;
         curFuncFrame = luaCallStack.peek();
@@ -45,6 +53,12 @@ public class LuaVM_RT extends LuaVM {
 
     @Override
     public VmResult runWithArgs(LuaObject... rootArgs) {
+        if (!isRunning.compareAndSet(false, true)) {
+            throw new IllegalStateException("can not run already running VM");
+        }
+        if (rootCoroutine != null || requestedStop) {
+            throw new IllegalStateException("can not do fresh start on non-clear state");
+        }
         if (rootFunc == null) {
             return new VmResult(VmRunState.EXECUTION_ERROR, new LuaObject[]{LuaObject.of("Invalid root function")});
         }
@@ -53,7 +67,34 @@ public class LuaVM_RT extends LuaVM {
         rootCoroutine.luaCallStack.peek().getTopFrame().locals[0] = LuaObject.of(rootArgs);
         setCoroutine(rootCoroutine);
         execLoop();
-        return new VmResult(rootCoroutine.rootFail ? VmRunState.EXECUTION_ERROR : VmRunState.SUCCESS, rootCoroutine.rootReturned);
+        isRunning.set(false);
+        if (requestedStop) {
+            return new VmResult(VmRunState.PAUSED, Singletons.EMPTY_LUA_OBJ_ARRAY);
+        } else {
+            var co = rootCoroutine;
+            rootCoroutine = null;
+            return new VmResult(co.rootFail ? VmRunState.EXECUTION_ERROR : VmRunState.SUCCESS, co.rootReturned);
+        }
+    }
+
+    @Override
+    public VmResult runContinue() {
+        if (!isRunning.compareAndSet(false, true)) {
+            throw new IllegalStateException("can not run already running VM");
+        }
+        if (rootCoroutine == null || !requestedStop) {
+            throw new IllegalStateException("can not continue on clear state");
+        }
+        requestedStop = false;
+        execLoop();
+        isRunning.set(false);
+        if (requestedStop) {
+            return new VmResult(VmRunState.PAUSED, Singletons.EMPTY_LUA_OBJ_ARRAY);
+        } else {
+            var co = rootCoroutine;
+            rootCoroutine = null;
+            return new VmResult(co.rootFail ? VmRunState.EXECUTION_ERROR : VmRunState.SUCCESS, co.rootReturned);
+        }
     }
 
     @Override
@@ -66,6 +107,7 @@ public class LuaVM_RT extends LuaVM {
                 .append(mappedObjs.get(rootCoroutine.selfLuaObject))
                 .append(curCoIdx)
                 .append(isErroring)
+                .append(requestedStop)
                 .append(serialData.size());
         for (int i = 0; i < serialData.size(); i++) {
             var a = serialData.get(i);
@@ -79,6 +121,8 @@ public class LuaVM_RT extends LuaVM {
     // =================================================================================================================
 
     // magic state
+    private final AtomicBoolean isRunning = new AtomicBoolean(false);
+
     public Random lMathRandom = new Random();
 
     private boolean isErroring;
@@ -92,12 +136,17 @@ public class LuaVM_RT extends LuaVM {
     private void execLoop() {
         for (; ; ) {
             isErroring = false;
-            if (curFuncFrame != null) {
-                curFuncFrame.getTopFrame().execute(this);
-            } else {
+            if (curFuncFrame == null || requestedStop) {
+                // luavm exit
                 break;
             }
+            curFuncFrame.getTopFrame().execute(this);
+            safepoint();
         }
+    }
+
+    private void safepoint() {
+        // do nothing for now
     }
 
     // =================================================================================================================

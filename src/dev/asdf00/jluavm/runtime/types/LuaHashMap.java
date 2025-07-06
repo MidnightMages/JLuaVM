@@ -148,8 +148,8 @@ public class LuaHashMap {
     @SuppressWarnings("UnusedReturnValue")
     public LuaObject remove(LuaObject key) {
         if (backing.containsKey(key)) {
-            var entry = backing.get(key);
-            if (backing.size() > 1) {
+            var entry = backing.remove(key);
+            if (backing.size() >= 1) {
                 // still retains at least 1 entry after removal
                 var eNode = entry.y();
                 var b = eNode.before;

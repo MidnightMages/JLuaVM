@@ -33,13 +33,13 @@ public class ByteArrayReader {
 
     public int readInt() {
         rangeAssert(4);
-        return data[cursor++] | (data[cursor++] << 8) | (data[cursor++] << 16) | (data[cursor++] << 24);
+        return (0xff & data[cursor++]) | ((0xff & data[cursor++]) << 8) | ((0xff & data[cursor++]) << 16) | ((0xff & data[cursor++]) << 24);
     }
 
     public long readLong() {
         rangeAssert(8);
-        return data[cursor++] | (data[cursor++] << 8) | (data[cursor++] << 16) | (data[cursor++] << 24) |
-                ((long) data[cursor++] << 32) | ((long) data[cursor++] << 40) | ((long) data[cursor++] << 48) | ((long) data[cursor++] << 56);
+        return (0xffL & data[cursor++]) | ((0xffL & data[cursor++]) << 8) | ((0xffL & data[cursor++]) << 16) | ((0xffL & data[cursor++]) << 24) |
+                ((0xffL & data[cursor++]) << 32) | ((0xffL & data[cursor++]) << 40) | ((0xffL & data[cursor++]) << 48) | ((0xffL & data[cursor++]) << 56);
     }
 
     public byte[] readArray(int len) {

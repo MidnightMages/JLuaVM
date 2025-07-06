@@ -6,14 +6,17 @@ import dev.asdf00.jluavm.exceptions.LuaLoadingException;
 import dev.asdf00.jluavm.internals.Coroutine;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
+import dev.asdf00.jluavm.runtime.types.LuaHashMap;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.utils.ByteArrayReader;
+import dev.asdf00.jluavm.utils.Quadruple;
 import dev.asdf00.jluavm.utils.Triple;
 import dev.asdf00.jluavm.utils.Tuple;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.function.Function;
 
 public class StateDeserializer {
 
@@ -21,7 +24,7 @@ public class StateDeserializer {
      * @return a pair of coroutines, the first one being the root coroutine, the second one being the current coroutine
      * of the given state. Additionally, the isErroring flag of the vm state is returned.
      */
-    public static Triple<Coroutine, Coroutine, Boolean> deserialize(Map<String, ApiFunctionRegistry> registries, byte[] rawState) {
+    public static Quadruple<Coroutine, Coroutine, Boolean, Boolean> deserialize(Map<String, ApiFunctionRegistry> registries, byte[] rawState) {
         var reader = new ByteArrayReader(rawState);
         if (reader.readInt() != LuaVM_RT.STATE_SERIALIZATION_VERSION) {
             throw new IllegalArgumentException("mismatch in serialization version");
@@ -29,6 +32,7 @@ public class StateDeserializer {
         int rootCoIdx = reader.readInt();
         int curCoIdx = reader.readInt();
         boolean isErroring = reader.readBool();
+        boolean stopRequested = reader.readBool();
         var objs = new LuaObject[reader.readInt()];
         var delayed = new ByteArrayReader[objs.length];
 
@@ -111,9 +115,12 @@ public class StateDeserializer {
                     // function
                     if (rdr.readByte() == 1) {
                         // API function with registry
-                        var env = objs[rdr.readInt()];
-                        var closures = objs[rdr.readInt()].asArray();
-                        var regName = new String(rdr.readArray(rdr.readInt()), StandardCharsets.UTF_8);
+                        var env = maybeNull(objs, rdr.readInt());
+                        var closures = new LuaObject[rdr.readInt()];
+                        for (int j = 0; j < closures.length; j++) {
+                            closures[j] = objs[rdr.readInt()];
+                        }
+                        var regName = objs[rdr.readInt()].asString();
                         var funcName = new String(rdr.readArray(rdr.readInt()), StandardCharsets.UTF_8);
                         var additional = rdr.remaining() > 0 ? rdr.readArray(rdr.remaining()) : null;
                         var func = registries.get(regName).getFunction(funcName, env, closures, additional);
@@ -121,10 +128,10 @@ public class StateDeserializer {
                         lobj.refVal = func;
                     } else {
                         // generated lua function
+                        String code = objs[rdr.readInt()].asString();
                         var env = objs[rdr.readInt()];
                         var closures = objs[rdr.readInt()].asArray();
                         int unitIdx = rdr.readInt();
-                        String code = new String(rdr.readArray(rdr.remaining()), StandardCharsets.UTF_8);
                         try {
                             var func = LuaVM.compile(code)[unitIdx].newInstance(env, closures);
                             func.selfLuaObj = lobj;
@@ -147,10 +154,11 @@ public class StateDeserializer {
                         lobj.metaTable = objs[mtblIdx];
                     }
                     int kvPairs = rdr.remaining() / 8;
-                    var tbl = lobj.asMap();
+                    var tbl = new LuaHashMap();
                     for (int j = 0; j < kvPairs; j++) {
                         tbl.put(objs[rdr.readInt()], objs[rdr.readInt()]);
                     }
+                    lobj.refVal = tbl;
                 }
                 case 0b10_0000_0000 -> {
                     // array
@@ -190,6 +198,18 @@ public class StateDeserializer {
             fr.x().yieldTo = fr.y().asCoroutine();
         }
 
-        return new Triple<>(objs[rootCoIdx].asCoroutine(), objs[curCoIdx].asCoroutine(), isErroring);
+        return new Quadruple<>(objs[rootCoIdx].asCoroutine(), objs[curCoIdx].asCoroutine(), isErroring, stopRequested);
+    }
+
+    // =================================================================================================================
+    // public helpers
+    // =================================================================================================================
+
+    public static LuaObject maybeNull(LuaObject[] objs, int idx) {
+        return idx >= 0 ? objs[idx] : null;
+    }
+
+    public static <T> T maybeNull(LuaObject[] objs, int idx, Function<LuaObject, T> transform) {
+        return idx >= 0 ? transform.apply(objs[idx]) : null;
     }
 }

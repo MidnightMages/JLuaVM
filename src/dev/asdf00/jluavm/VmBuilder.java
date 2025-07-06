@@ -9,6 +9,7 @@ import dev.asdf00.jluavm.runtime.stdlib.*;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.StateDeserializer;
+import dev.asdf00.jluavm.utils.Quadruple;
 import dev.asdf00.jluavm.utils.Triple;
 
 import java.util.HashMap;
@@ -47,6 +48,10 @@ public class VmBuilder {
 
     public EnvVmBuilder withEnv(LuaObject env) {
         return new EnvVmBuilder(this, env);
+    }
+
+    public EnvVmBuilder modifyEnv(Consumer<LuaObject> modificator) {
+        return new EnvVmBuilder(this).modifyEnv(modificator);
     }
 
     public RootVmBuilder rootFunc(LuaFunction func) {
@@ -125,9 +130,9 @@ public class VmBuilder {
 
     public static class DeserializedVmBuilder {
         VmBuilder parent;
-        Triple<Coroutine, Coroutine, Boolean> state;
+        Quadruple<Coroutine, Coroutine, Boolean, Boolean> state;
 
-        DeserializedVmBuilder(VmBuilder parent, Triple<Coroutine, Coroutine, Boolean> state) {
+        DeserializedVmBuilder(VmBuilder parent, Quadruple<Coroutine, Coroutine, Boolean, Boolean> state) {
             this.parent = parent;
             this.state = state;
         }
@@ -144,6 +149,7 @@ public class VmBuilder {
         LTable.registerStdTable(stdLibReg);
         LString.registerStdString(stdLibReg);
         LCoroutine.registerStdCoroutine(stdLibReg);
+        LVmLib.registerStdVm(stdLibReg);
         return stdLibReg;
     }
 
@@ -154,6 +160,7 @@ public class VmBuilder {
         env.set("table", LuaObject.table());
         env.set("string", LuaObject.table());
         env.set("coroutine", LuaObject.table());
+        env.set("vm", LuaObject.table());
 
         // add all noninternal functions
         // all these functions are assumed to be stateless

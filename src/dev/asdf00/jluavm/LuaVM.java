@@ -40,6 +40,8 @@ public abstract class LuaVM {
     protected LuaObject _G = LuaObject.nil();
     protected LuaFunction rootFunc = null;
 
+    protected volatile boolean requestedStop = false;
+
     public static VmBuilder builder() {
         return new VmBuilder();
     }
@@ -58,7 +60,13 @@ public abstract class LuaVM {
 
     public abstract VmResult runWithArgs(LuaObject... rootArgs);
 
+    public abstract VmResult runContinue();
+
     public abstract byte[] serialize();
+
+    public void requestStop() {
+        requestedStop = true;
+    }
 
     // =================================================================================================================
     // static helper methods
@@ -205,6 +213,7 @@ public abstract class LuaVM {
     public enum VmRunState {
         SUCCESS,
         EXECUTION_ERROR,
+        PAUSED,
     }
 
     public record VmResult(VmRunState state, LuaObject[] returnVars) {

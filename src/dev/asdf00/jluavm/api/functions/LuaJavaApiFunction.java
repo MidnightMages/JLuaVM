@@ -5,6 +5,7 @@ import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.utils.ByteArrayBuilder;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -23,13 +24,12 @@ public abstract class LuaJavaApiFunction extends LuaFunction {
 
     @Override
     public final void serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs, ByteArrayBuilder bb) {
-        var regName = registry.registryID().getBytes(StandardCharsets.UTF_8);
         var funcName = registry.getSerialName(this).getBytes(StandardCharsets.UTF_8);
         bb.append(true) // serialized with registry
-                .append(_ENV.serialize(serialData, mappedObjs))
-                .append(LuaObject.of(closures).serialize(serialData, mappedObjs))
-                .append(regName.length)
-                .appendAll(regName)
+                .append(_ENV == null ? -1 : _ENV.serialize(serialData, mappedObjs))
+                .append(closures.length)
+                .appendAll(Arrays.stream(closures).mapToInt(c -> c.serialize(serialData, mappedObjs)).toArray())
+                .append(LuaObject.of(registry.registryID()).serialize(serialData, mappedObjs))
                 .append(funcName.length)
                 .appendAll(funcName);
         var extra = serialize(serialData, mappedObjs);

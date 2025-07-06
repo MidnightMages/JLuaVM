@@ -10,8 +10,25 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Stack;
+import java.util.function.Function;
+
+import static dev.asdf00.jluavm.runtime.utils.StateDeserializer.maybeNull;
 
 public final class Coroutine {
+    public enum State {
+        CREATED("suspended"),
+        RUNNING("running"),
+        SUSPENDED("suspended"),
+        BLOCKED("normal"),
+        DEAD("dead");
+
+        public final String luaName;
+
+        State(String luaName) {
+            this.luaName = luaName;
+        }
+    }
+
     public final LuaFunction rootFunc;
     public final Stack<FunctionCallFrame> luaCallStack;
     public boolean rootFail;
@@ -45,15 +62,14 @@ public final class Coroutine {
     public void serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs, ByteArrayBuilder bb) {
         bb.append(LuaObject.of(rootFunc).serialize(serialData, mappedObjs))
                 .append(rootFail)
-                .append(LuaObject.of(rootReturned).serialize(serialData, mappedObjs))
+                .append(rootReturned == null
+                        ? -1 // null
+                        : LuaObject.of(rootReturned).serialize(serialData, mappedObjs))
                 .append((byte) state.ordinal())
-                .append(isYieldable);
-
-        if (yieldTo == null) {
-            bb.append(-1);
-        } else {
-            bb.append(yieldTo.selfLuaObject.serialize(serialData, mappedObjs));
-        }
+                .append(isYieldable)
+                .append(yieldTo == null
+                        ? -1 // null
+                        : yieldTo.selfLuaObject.serialize(serialData, mappedObjs));
 
         for (int i = 0; i < luaCallStack.size(); i++) {
             var functionFrameBytes = luaCallStack.get(i).serialize(serialData, mappedObjs);
@@ -61,29 +77,14 @@ public final class Coroutine {
         }
     }
 
-    public enum State {
-        CREATED("suspended"),
-        RUNNING("running"),
-        SUSPENDED("suspended"),
-        BLOCKED("normal"),
-        DEAD("dead");
-
-        public final String luaName;
-
-        State(String luaName) {
-            this.luaName = luaName;
-        }
-    }
-
     public static Tuple<Coroutine, LuaObject> deserialize(LuaObject[] objs, LuaObject self, ByteArrayReader rdr) {
         LuaFunction func = objs[rdr.readInt()].getFunc();
         boolean fail = rdr.readBool();
-        LuaObject[] returned = objs[rdr.readInt()].asArray();
+        LuaObject[] returned = maybeNull(objs, rdr.readInt(), LuaObject::asArray);
         State state = State.values()[rdr.readByte()];
         boolean isYieldable = rdr.readBool();
-        int yieldToIdx = rdr.readInt();
         // this coroutine might not exist yet, we return the corresponding lua object in a tuple to resolve later
-        LuaObject yieldTo = yieldToIdx >= 0 ? objs[yieldToIdx] : null;
+        LuaObject yieldTo = maybeNull(objs, rdr.readInt());
         // still to read: stack
 
         Coroutine co = new Coroutine(func, new Stack<>(), fail, returned, state);

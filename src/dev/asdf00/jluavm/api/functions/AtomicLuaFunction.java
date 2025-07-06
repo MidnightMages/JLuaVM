@@ -22,7 +22,18 @@ public final class AtomicLuaFunction extends LuaJavaApiFunction {
     }
 
 
-    // helpers for lua functions of type F(a); F(a,b); F(a,b,...)
+    // helpers for lua functions of type F(); F(a); F(a,b); F(a,b,...)
+    public static AtomicLuaFunction forZeroResults(ApiFunctionRegistry registry, LLRunnable c) {
+        return new AtomicLuaFunction(registry, (vm, args) -> {
+            Coroutine cco = vm.getCurrentCoroutine();
+            boolean prevYieldability = cco.isYieldable;
+            cco.isYieldable = false;
+            c.run(vm);
+            var r = vm.isErroring() ? null : Singletons.EMPTY_LUA_OBJ_ARRAY;
+            cco.isYieldable = prevYieldability;
+            return r;
+        }, 1, false);
+    }
     public static AtomicLuaFunction forZeroResults(ApiFunctionRegistry registry, LLConsumer c) {
         return new AtomicLuaFunction(registry, (vm, args) -> {
             Coroutine cco = vm.getCurrentCoroutine();

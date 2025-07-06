@@ -49,6 +49,9 @@ public class MixedStateFunctionRegistry extends ApiFunctionRegistry {
 
     @Override
     public LuaJavaApiFunction getFunction(String serialName, LuaObject _ENV) {
+        if (_ENV == null && lessFuncMap.containsKey(serialName)) {
+            return getFunction(serialName);
+        }
         if (statefullFuncMap.containsKey(serialName)) {
             return statefullFuncMap.get(serialName).apply(_ENV);
         } else {

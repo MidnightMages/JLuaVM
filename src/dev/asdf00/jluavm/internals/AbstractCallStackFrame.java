@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Stack;
 
+import static dev.asdf00.jluavm.runtime.utils.StateDeserializer.maybeNull;
+
 public abstract sealed class AbstractCallStackFrame permits FunctionCallFrame, InternalCallFrame {
     // effectively finals
     public final LuaObject[] locals;
@@ -54,8 +56,12 @@ public abstract sealed class AbstractCallStackFrame permits FunctionCallFrame, I
                 .append(localCnt)
                 .append(curInlinedLocalCnt)
                 .append(resume)
-                .append(LuaObject.of(expressionStack).serialize(serialData, mappedObjs))
-                .append(LuaObject.of(rvals).serialize(serialData, mappedObjs));
+                .append(expressionStack == null
+                        ? -1
+                        : LuaObject.of(expressionStack).serialize(serialData, mappedObjs))
+                .append(rvals == null
+                        ? -1
+                        : LuaObject.of(rvals).serialize(serialData, mappedObjs));
 
         int size = closables.size();
         bb.append(size);
@@ -70,8 +76,8 @@ public abstract sealed class AbstractCallStackFrame permits FunctionCallFrame, I
         int localCnt = rdr.readInt();
         int curInlinedLocalCnt = rdr.readInt();
         int resume = rdr.readInt();
-        LuaObject[] expressionStack = objs[rdr.readInt()].asArray();
-        LuaObject[] rvals = objs[rdr.readInt()].asArray();
+        LuaObject[] expressionStack = maybeNull(objs, rdr.readInt(), LuaObject::asArray);
+        LuaObject[] rvals = maybeNull(objs, rdr.readInt(), LuaObject::asArray);
         int closeCnt = rdr.readInt();
         Stack<LuaObject> closables = new Stack<>();
         for (int i = 0; i < closeCnt; i++) {

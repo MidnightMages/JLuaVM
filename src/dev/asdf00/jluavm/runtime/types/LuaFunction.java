@@ -24,7 +24,7 @@ public abstract class LuaFunction {
     public LuaObject selfLuaObj; // should only be accessed by LuaObject#of(LuaFunction) and the StateDeserializer
 
     public LuaFunction() {
-        this(LuaObject.box(LuaObject.nil()), Singletons.EMPTY_LUA_OBJ_ARRAY);
+        this(null, Singletons.EMPTY_LUA_OBJ_ARRAY);
     }
 
     public LuaFunction(LuaObject _ENV, LuaObject[] closures) {

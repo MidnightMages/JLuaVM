@@ -45,7 +45,7 @@ public class ByteArrayBuilder {
         if (data.length == Integer.MAX_VALUE) {
             throw new IllegalStateException("Maximum size of ByteArrayBuilder (Integer.MAX_VALUE) exceeded");
         }
-        if (data.length >= size) {
+        if (data.length <= size) {
             // grow data array to fit another value
             data = Arrays.copyOf(data, data.length * 2);
         }
@@ -78,7 +78,7 @@ public class ByteArrayBuilder {
     }
 
     public ByteArrayBuilder appendAll(byte[] bytes) {
-        if ((long) bytes.length + (long) size > Integer.MAX_VALUE) {
+        if ((long) bytes.length + (long) size > (long) Integer.MAX_VALUE) {
             throw new IllegalStateException("Maximum size of ByteArrayBuilder (Integer.MAX_VALUE) exceeded");
         }
         if (size + bytes.length > data.length) {
@@ -88,12 +88,20 @@ public class ByteArrayBuilder {
         } else {
             System.arraycopy(bytes, 0, data, size, bytes.length);
         }
+        size += bytes.length;
         return this;
     }
 
     public ByteArrayBuilder appendAll(Iterable<Byte> bytes) {
         for (var b : bytes) {
             append(b);
+        }
+        return this;
+    }
+
+    public ByteArrayBuilder appendAll(int[] ints) {
+        for (int i = 0; i < ints.length; i++) {
+            append(ints[i]);
         }
         return this;
     }

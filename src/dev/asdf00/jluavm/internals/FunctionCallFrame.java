@@ -138,6 +138,6 @@ public final class FunctionCallFrame extends AbstractCallStackFrame {
             scopes.push(InternalCallFrame.deserialize(func, objs, rdr.slice(rdr.readInt())));
         }
 
-        return new FunctionCallFrame(superData, func, null, failCnt, isResumable, isProtected, msgHandler);
+        return new FunctionCallFrame(superData, func, scopes, failCnt, isResumable, isProtected, msgHandler);
     }
 }
