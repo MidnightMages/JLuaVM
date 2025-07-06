@@ -82,8 +82,8 @@ public class MixedStateFunctionRegistry extends ApiFunctionRegistry {
         lessReverseMap.put(apiFunction, name);
     }
 
-    public void register(String name, Class<? extends LuaJavaApiFunction> clazz, Function<LuaObject, LuaJavaApiFunction> instanciator) {
-        statefullFuncMap.put(name, instanciator);
+    public void register(String name, Class<? extends LuaJavaApiFunction> clazz, Function<LuaObject, LuaJavaApiFunction> instantiator) {
+        statefullFuncMap.put(name, instantiator);
         statefullReverseMap.put(clazz, name);
     }
 
