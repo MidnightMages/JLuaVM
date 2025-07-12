@@ -2196,6 +2196,7 @@ public class VmTest extends BaseVmTest {
                     return rv
                 end
                 rv = math.max(table.unpack(getBoxs({4,2,5,7,3,8,32,2,1,0,-2})))
+                return rv[1]
                 """, LuaObject.of(-2));
     }
 
@@ -2227,16 +2228,29 @@ public class VmTest extends BaseVmTest {
                     return rv
                 end
                 rv = math.min(table.unpack(getBoxs({4,2,5,7,3,8,32,2,1,0,-2})))
+                return rv[1]
                 """, LuaObject.of(32));
     }
 
     @Test
-    void mathMinNoArg() {
+    void mathMinMaxNoArg() {
         loadAssertRuntimeError("math.min()");
+        loadAssertRuntimeError("math.max()");
     }
 
     @Test
-    void mathMaxNoArg() {
-        loadAssertRuntimeError("math.max()");
+    void mathMinMaxInvalidArgs() {
+        for (int i = 0; i < 2; i++) {
+            var f = "math."+ (i == 0 ? "min" : "max");
+
+            loadAssertRuntimeError(f+"(nil, true)");
+            loadAssertRuntimeError(f+"(nil, nil)");
+        }
+    }
+
+    @Test
+    void mathMinMaxSingleNilArg() {
+        loadAssertSuccessAndRv("math.min(nil)", LuaObject.NIL);
+        loadAssertSuccessAndRv("math.max(nil)", LuaObject.NIL);
     }
 }
