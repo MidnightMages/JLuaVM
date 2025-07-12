@@ -2250,7 +2250,7 @@ public class VmTest extends BaseVmTest {
 
     @Test
     void mathMinMaxSingleNilArg() {
-        loadAssertSuccessAndRv("math.min(nil)", LuaObject.NIL);
-        loadAssertSuccessAndRv("math.max(nil)", LuaObject.NIL);
+        loadAssertSuccessAndRv("return math.min(nil)", LuaObject.NIL);
+        loadAssertSuccessAndRv("return math.max(nil)", LuaObject.NIL);
     }
 }
