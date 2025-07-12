@@ -2149,4 +2149,94 @@ public class VmTest extends BaseVmTest {
                 return rv
                 """, LuaObject.of("nil;nil;nil;nil;a;b;c;d;23;56;23;nil;nil;nil;"));
     }
+
+    @Test
+    void mathMaxMt() {
+        loadAssertSuccessAndRv("""
+                mt = {["__lt"]= function(a,b) return a[1]>b[1] end}
+                rv = math.max(setmetatable({5},mt), setmetatable({2},mt))
+                return rv[1]
+                """, LuaObject.of(2));
+    }
+
+    @Test
+    void mathMinMt() {
+        loadAssertSuccessAndRv("""
+                mt = {["__lt"]= function(a,b) return a[1]>b[1] end}
+                rv = math.min(setmetatable({5},mt), setmetatable({2},mt))
+                return rv[1]
+                """, LuaObject.of(5));
+    }
+
+    @Test
+    void weirdMathMaxMt() {
+        loadAssertSuccessAndRv("""
+                mt = {["__lt"]= function(a,b) return a[1]>b[1] end}
+                local function getBoxs(t)
+                    rv = {}
+                    for i=1,#t do
+                        rv[i] = setmetatable({t[i]},mt)
+                    end
+                    return rv
+                end
+                rv = math.max(table.unpack(getBoxs({4,2,5,7,3,8,32,2,1,0,-2})), setmetatable({2},mt))
+                return rv[1]
+                """, LuaObject.of(2));
+    }
+
+    @Test
+    void extendedMathMaxMt() {
+        loadAssertSuccessAndRv("""
+                mt = {["__lt"]= function(a,b) return a[1]>b[1] end}
+                local function getBoxs(t)
+                    rv = {}
+                    for i=1,#t do
+                        rv[i] = setmetatable({t[i]},mt)
+                    end
+                    return rv
+                end
+                rv = math.max(table.unpack(getBoxs({4,2,5,7,3,8,32,2,1,0,-2})))
+                """, LuaObject.of(-2));
+    }
+
+    @Test
+    void weirdMathMinMt() {
+        loadAssertSuccessAndRv("""
+                mt = {["__lt"]= function(a,b) return a[1]>b[1] end}
+                local function getBoxs(t)
+                    rv = {}
+                    for i=1,#t do
+                        rv[i] = setmetatable({t[i]},mt)
+                    end
+                    return rv
+                end
+                rv = math.min(table.unpack(getBoxs({4,2,5,7,3,8,32,2,1,0,-2})), setmetatable({2},mt))
+                return rv[1]
+                """, LuaObject.of(4));
+    }
+
+    @Test
+    void extendedMathMinMt() {
+        loadAssertSuccessAndRv("""
+                mt = {["__lt"]= function(a,b) return a[1]>b[1] end}
+                local function getBoxs(t)
+                    rv = {}
+                    for i=1,#t do
+                        rv[i] = setmetatable({t[i]},mt)
+                    end
+                    return rv
+                end
+                rv = math.min(table.unpack(getBoxs({4,2,5,7,3,8,32,2,1,0,-2})))
+                """, LuaObject.of(32));
+    }
+
+    @Test
+    void mathMinNoArg() {
+        loadAssertRuntimeError("math.min()");
+    }
+
+    @Test
+    void mathMaxNoArg() {
+        loadAssertRuntimeError("math.max()");
+    }
 }

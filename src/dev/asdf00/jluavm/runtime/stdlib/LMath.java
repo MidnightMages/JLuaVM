@@ -202,7 +202,6 @@ public class LMath {
                         var params = stackFrame[0].asArray();
                         if (resume == -1) { // initial call
                             i = 1;
-                            // TODO: add unit test for no args
                             min = params[0];
                         } else {
                             assert resume > 0; // should never be 0 and also not negative except -1
