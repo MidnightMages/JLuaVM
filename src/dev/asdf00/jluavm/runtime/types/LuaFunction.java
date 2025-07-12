@@ -52,7 +52,7 @@ public abstract class LuaFunction {
     public abstract int getMaxLocalsSize();
 
     /**
-     * @return argument count WITHOUT a possible params argument.
+     * @return argument count INCLUDING a possible params argument.
      */
     public abstract int getArgCount();
 
