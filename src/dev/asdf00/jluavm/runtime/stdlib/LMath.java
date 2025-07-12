@@ -200,9 +200,14 @@ public class LMath {
                         LuaObject min;
                         int i = resume;
                         var params = stackFrame[0].asArray();
+                        if (params.length < 1) {
+                            vm.error(funcBadArgError(isMax ? "math.max" : "math.min", 0, "no value given"));
+                            return;
+                        }
                         if (resume == -1) { // initial call
                             i = 1;
                             min = params[0];
+                            vm.registerLocals(2);
                         } else {
                             assert resume > 0; // should never be 0 and also not negative except -1
                             min = stackFrame[1];
@@ -229,8 +234,11 @@ public class LMath {
                                     vm.error(LuaObject.of("attempt to call a %s value".formatted(ltf.getTypeAsString())));
                                     return;
                                 }
-                                expressionStack[0] = min;
+                                stackFrame[1] = min;
                                 vm.callExternal(i + 1, ltf.getFunc(), isMax ? new LuaObject[]{min, arg} : new LuaObject[]{arg, min});
+                                return;
+                            } else {
+                                vm.error(LuaObject.of("Attempt to compare %s with %s".formatted(min.getTypeAsString(), arg.getTypeAsString())));
                                 return;
                             }
                             i++;
