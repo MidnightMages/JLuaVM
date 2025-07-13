@@ -4,6 +4,7 @@ import dev.asdf00.jluavm.api.functions.AtomicLuaFunction;
 import dev.asdf00.jluavm.api.functions.LuaJavaApiFunction;
 import dev.asdf00.jluavm.api.functions.MixedStateFunctionRegistry;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
+import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.RTUtils;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
@@ -190,7 +191,7 @@ public class LTable {
             return prevVal;
         }));
 
-        // TODO add table.sort (__lt and default < comparison)
+        // TODO add table.sort (test __lt mt comparison)
         registry.register(TABLE_PREFIX + "sort",
                 new LuaJavaApiFunction(registry) {
                     @Override
@@ -200,6 +201,7 @@ public class LTable {
                         LuaObject comp = RTUtils.checkPositionalArgError(vm, stackFrame, "table.sort", 1, x -> x.isNil() || x.isFunction(),
                                 LuaObject.NIL, new String[]{"function", "nil", "nothing"});
                         if (comp == null) return;
+                        var compFunc = comp.isNil() ? null : comp.getFunc();
 
                         // src: https://en.wikipedia.org/wiki/Heapsort#Standard_implementation
                         // 0 and 1 are the args
@@ -244,8 +246,18 @@ public class LTable {
                                         var a = map.getOrDefault(LuaObject.of(stackFrame[CHILD].asLong() + 1), null);
                                         var b = map.getOrDefault(LuaObject.of(stackFrame[CHILD].asLong() + 2), null);
 
-                                        vm.callExternal(1, comp.getFunc(), a, b); // TODO support __lt and default <
-                                        return;
+                                        if (compFunc != null) {
+                                            vm.callExternal(1, compFunc, a, b);
+                                            return;
+                                        }
+                                        else {
+                                            var res = LuaFunction.isLessThan(vm, 1, a, b);
+                                            if (res == null)
+                                                return; // wait for the resumption
+                                            // or if we get the result directly, then store that
+                                            xLTy = res.isTruthy();
+                                            resume = 1;
+                                        }
                                     }
                                     // resume 1
                                     if (resume == 1 && xLTy) {
@@ -256,8 +268,19 @@ public class LTable {
                                 if (resume < 2) {
                                     var c = map.getOrDefault(LuaObject.of(stackFrame[ROOT].asLong() + 1), null);
                                     var d = map.getOrDefault(LuaObject.of(stackFrame[CHILD].asLong() + 1), null);
-                                    vm.callExternal(2, comp.getFunc(), c, d);
-                                    return;
+
+                                    if (compFunc != null) {
+                                        vm.callExternal(2, compFunc, c, d);
+                                        return;
+                                    }
+                                    else {
+                                        var res = LuaFunction.isLessThan(vm, 2, c, d);
+                                        if (res == null)
+                                            return; // wait for the resumption
+                                        // or if we get the result directly, then store that
+                                        xLTy = res.isTruthy();
+                                        resume = 2;
+                                    }
                                 }
 
                                 // resume 2

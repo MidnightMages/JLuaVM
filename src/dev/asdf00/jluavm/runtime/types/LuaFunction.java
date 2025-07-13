@@ -231,6 +231,21 @@ public abstract class LuaFunction {
         }
     }
 
+    protected static LuaObject isLessThan(LuaVM_RT vm, int resumeLabel, LuaObject x, LuaObject y) {
+        if (x.isNumber() && y.isNumber() || x.isString() && y.isString()) {
+            return x.lt(y);
+        } else if (x.isTable() || y.isTable()) {
+            if (!x.getMetaValueOrNil(Singletons.__lt).isNil() || !y.getMetaValueOrNil(Singletons.__lt).isNil()) {
+                vm.callInternal(resumeLabel, LuaFunction::binaryOpWithMeta, "::binaryOpWithMeta", Singletons.__lt, x, y);
+            } else {
+                vm.error(LuaObject.of("Attempted to compare %s with %s without __lt being found".formatted(x.getTypeAsString(), y.getTypeAsString())));
+            }
+        } else {
+            vm.error(LuaObject.of("Attempted to compare %s with %s".formatted(x.getTypeAsString(), y.getTypeAsString())));
+        }
+        return null;
+    }
+
     protected static LuaObject lengthOf(LuaVM_RT vm, int resumeLabel, LuaObject obj) {
         if (obj.isString()) {
             // LUAC DEVIATION. We intentionally return the number of character instead of the length in bytes.
