@@ -364,10 +364,9 @@ public final class LuaObject {
         }
 
         if (doubleCalc) {
-            var dres = LuaObject.of(Math.floor(dx / dy));
-            return dres.hasLongRepr() ? LuaObject.of(dres.asLong()) : dres;
+            return LuaObject.of(Math.floor(dx / dy));
         }
-        return LuaObject.of(lx / ly);
+        return LuaObject.of((long)Math.floor((double)lx / ly));
     }
 
     public LuaObject mod(LuaObject other) {

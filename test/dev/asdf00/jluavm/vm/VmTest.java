@@ -2308,4 +2308,11 @@ public class VmTest extends BaseVmTest {
                             """.formatted(new String[]{", function(a, b) return a < b end", "", ", nil"}[i]),
                     LuaObject.of("1,4,32,46,85,"));
     }
+
+    @Test
+    void floorDivType() {
+        var rv = loadAssertSuccessGetRv("return -10//3,-10//3.0");
+        assertEquals(LuaObject.of(-4), rv[0]);
+        assertEquals(LuaObject.of(-4.0), rv[1]);
+    }
 }
