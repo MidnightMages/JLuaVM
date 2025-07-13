@@ -2387,4 +2387,11 @@ public class VmTest extends BaseVmTest {
                 return t[nil]
                 """, LuaObject.NIL);
     }
+
+    @Test
+    void tableSortRv() {
+        loadAssertSuccessAndRv("""
+                return table.sort({4,1,2})
+                """, new LuaObject[0]);
+    }
 }

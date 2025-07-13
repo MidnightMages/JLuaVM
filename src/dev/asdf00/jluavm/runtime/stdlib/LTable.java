@@ -296,8 +296,7 @@ public class LTable {
                                 }
                             }
                         }
-
-                        vm.returnValue(tbl);
+                        vm.returnValue();
                     }
 
                     @Override
