@@ -2341,4 +2341,50 @@ public class VmTest extends BaseVmTest {
                 return rv
                 """, LuaObject.of("4;2;5;7;3;8;32;2;1;0;-2;;32;8;7;5;4;3;2;2;1;0;-2;;"));
     }
+
+    @Test
+    void tableSetNanNil() {
+        loadAssertRuntimeError("""                
+                local t = {}
+                local nan = 0 / 0
+                t[nan] = 1
+                """);
+        loadAssertSuccess("""                
+                local t = {}
+                local inf = 1 / 0
+                t[inf] = 1
+                """);
+        loadAssertSuccess("""                
+                local t = {}
+                local ninf = -1 / 0
+                t[ninf] = 1
+                """);
+        loadAssertRuntimeError("""                
+                local t = {}
+                t[nil] = 1
+                """);
+    }
+
+    @Test
+    void tableGetNanNil() {
+        loadAssertSuccessAndRv("""                
+                local t = {}
+                local nan = 0 / 0
+                return t[nan]
+                """, LuaObject.NIL);
+        loadAssertSuccessAndRv("""                
+                local t = {}
+                local inf = 1 / 0
+                return t[inf]
+                """, LuaObject.NIL);
+        loadAssertSuccessAndRv("""                
+                local t = {}
+                local ninf = -1 / 0
+                return t[ninf]
+                """, LuaObject.NIL);
+        loadAssertSuccessAndRv("""                
+                local t = {}
+                return t[nil]
+                """, LuaObject.NIL);
+    }
 }
