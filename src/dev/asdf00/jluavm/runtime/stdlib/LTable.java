@@ -198,7 +198,7 @@ public class LTable {
                         LuaObject tbl = RTUtils.checkPositionalArgError(vm, stackFrame, "table.sort", 0, LuaObject::isTable, null, "table");
                         if (tbl == null) return;
                         LuaObject comp = RTUtils.checkPositionalArgError(vm, stackFrame, "table.sort", 1, x -> x.isNil() || x.isFunction(),
-                                LuaObject.NIL, new String[]{"number", "nil", "nothing"});
+                                LuaObject.NIL, new String[]{"function", "nil", "nothing"});
                         if (comp == null) return;
 
                         // src: https://en.wikipedia.org/wiki/Heapsort#Standard_implementation
