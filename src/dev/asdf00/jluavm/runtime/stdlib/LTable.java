@@ -1,7 +1,9 @@
 package dev.asdf00.jluavm.runtime.stdlib;
 
 import dev.asdf00.jluavm.api.functions.AtomicLuaFunction;
+import dev.asdf00.jluavm.api.functions.LuaJavaApiFunction;
 import dev.asdf00.jluavm.api.functions.MixedStateFunctionRegistry;
+import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.RTUtils;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
@@ -133,7 +135,7 @@ public class LTable {
                         return null;
                     }
 
-                    for (int i = (int)f.asLong(); i <= e.asLong(); i++) {
+                    for (int i = (int) f.asLong(); i <= e.asLong(); i++) {
                         slice.add(srcHashmap.getOrDefault(LuaObject.of(i), LuaObject.NIL));
                     }
                     var dstHashmap = a2.asMap();
@@ -188,7 +190,109 @@ public class LTable {
             return prevVal;
         }));
 
-        // TODO add table.sort
+        // TODO add table.sort (__lt and default < comparison)
+        registry.register(TABLE_PREFIX + "sort",
+                new LuaJavaApiFunction(registry) {
+                    @Override
+                    public void invoke(LuaVM_RT vm, LuaObject[] stackFrame, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
+                        LuaObject tbl = RTUtils.checkPositionalArgError(vm, stackFrame, "table.sort", 0, LuaObject::isTable, null, "table");
+                        if (tbl == null) return;
+                        LuaObject comp = RTUtils.checkPositionalArgError(vm, stackFrame, "table.sort", 1, x -> x.isNil() || x.isFunction(),
+                                LuaObject.NIL, new String[]{"number", "nil", "nothing"});
+                        if (comp == null) return;
+
+                        // src: https://en.wikipedia.org/wiki/Heapsort#Standard_implementation
+                        // 0 and 1 are the args
+                        final int START = 2;
+                        final int END = 3;
+                        final int ROOT = 4;
+                        final int CHILD = 5;
+
+                        var map = tbl.asMap();
+
+                        if (resume == -1) {
+                            var cnt = map.luaLen();
+                            vm.registerLocals(6);
+                            stackFrame[START] = LuaObject.of(cnt / 2);
+                            stackFrame[END] = LuaObject.of(cnt);
+                            resume = 0;
+                        }
+
+                        boolean xLTy = resume > 0 && returned[0].isTruthy();
+                        assert resume <= 2;
+                        while (stackFrame[END].asLong() > 1 || resume > 0) {
+                            if (resume <= 0) {
+                                if (stackFrame[START].asLong() > 0) {
+                                    stackFrame[START] = LuaObject.of(stackFrame[START].asLong() - 1);
+                                } else {
+                                    stackFrame[END] = LuaObject.of(stackFrame[END].asLong() - 1);
+
+                                    // swap
+                                    var tmp = map.getOrDefault(LuaObject.of(1), null);
+                                    var tmp2 = map.put(LuaObject.of(stackFrame[END].asLong() + 1), tmp);
+                                    map.put(LuaObject.of(1), tmp2);
+                                }
+
+                                stackFrame[ROOT] = stackFrame[START];
+                            }
+                            long iLeftChild;
+                            while ((iLeftChild = 2 * stackFrame[ROOT].asLong() + 1) < stackFrame[END].asLong() || resume > 0) {
+                                if (resume <= 0)
+                                    stackFrame[CHILD] = LuaObject.of(iLeftChild);
+                                if (resume == 1 || resume == 0 && (stackFrame[CHILD].asLong() + 1 < stackFrame[END].asLong())) {
+                                    if (resume <= 0) {
+                                        var a = map.getOrDefault(LuaObject.of(stackFrame[CHILD].asLong() + 1), null);
+                                        var b = map.getOrDefault(LuaObject.of(stackFrame[CHILD].asLong() + 2), null);
+
+                                        vm.callExternal(1, comp.getFunc(), a, b); // TODO support __lt and default <
+                                        return;
+                                    }
+                                    // resume 1
+                                    if (resume == 1 && xLTy) {
+                                        stackFrame[CHILD] = LuaObject.of(stackFrame[CHILD].asLong() + 1);
+                                    }
+                                }
+
+                                if (resume < 2) {
+                                    var c = map.getOrDefault(LuaObject.of(stackFrame[ROOT].asLong() + 1), null);
+                                    var d = map.getOrDefault(LuaObject.of(stackFrame[CHILD].asLong() + 1), null);
+                                    vm.callExternal(2, comp.getFunc(), c, d);
+                                    return;
+                                }
+
+                                // resume 2
+                                if (resume == 2 && xLTy) {
+                                    // swap
+                                    var tmp = map.getOrDefault(LuaObject.of(stackFrame[ROOT].asLong() + 1), null);
+                                    var tmp2 = map.put(LuaObject.of(stackFrame[CHILD].asLong() + 1), tmp);
+                                    map.put(LuaObject.of(stackFrame[ROOT].asLong() + 1), tmp2);
+                                    stackFrame[ROOT] = stackFrame[CHILD];
+                                    resume = 0;
+                                } else {
+                                    resume = 0;
+                                    break;
+                                }
+                            }
+                        }
+
+                        vm.returnValue(tbl);
+                    }
+
+                    @Override
+                    public int getMaxLocalsSize() {
+                        return 6;
+                    }
+
+                    @Override
+                    public int getArgCount() {
+                        return 2;
+                    }
+
+                    @Override
+                    public boolean hasParamsArg() {
+                        return false;
+                    }
+                });
 
         registry.register(TABLE_PREFIX + "unpack",
                 AtomicLuaFunction.vaForManyResults(registry, (vm, args) -> {

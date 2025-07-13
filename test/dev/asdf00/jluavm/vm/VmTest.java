@@ -2092,7 +2092,7 @@ public class VmTest extends BaseVmTest {
     }
 
     @Test
-    void tableInsertRemoveCheck(){
+    void tableInsertRemoveCheck() {
         loadAssertSuccessAndRv("""
                 local t = {["a"]=4}
                 t["a"] = nil
@@ -2112,6 +2112,7 @@ public class VmTest extends BaseVmTest {
                 return rv
                 """, LuaObject.of("nil;nil;nil;nil;23;56;23;876;23;56;23;434;56;nil;"));
     }
+
     @Test
     void tableMove2() {
         loadAssertSuccessAndRv("""
@@ -2124,6 +2125,7 @@ public class VmTest extends BaseVmTest {
                 return rv
                 """, LuaObject.of("nil;nil;nil;nil;23;56;23;876;3;0;23;56;23;nil;"));
     }
+
     @Test
     void tableMove3() {
         loadAssertSuccessAndRv("""
@@ -2136,6 +2138,7 @@ public class VmTest extends BaseVmTest {
                 return rv
                 """, LuaObject.of("nil;23;56;-23;876;56;-23;876;3;7;15;5;-10;nil;"));
     }
+
     @Test
     void tableMove4() {
         loadAssertSuccessAndRv("""
@@ -2241,10 +2244,10 @@ public class VmTest extends BaseVmTest {
     @Test
     void mathMinMaxInvalidArgs() {
         for (int i = 0; i < 2; i++) {
-            var f = "math."+ (i == 0 ? "min" : "max");
+            var f = "math." + (i == 0 ? "min" : "max");
 
-            loadAssertRuntimeError(f+"(nil, true)");
-            loadAssertRuntimeError(f+"(nil, nil)");
+            loadAssertRuntimeError(f + "(nil, true)");
+            loadAssertRuntimeError(f + "(nil, nil)");
         }
     }
 
@@ -2252,5 +2255,31 @@ public class VmTest extends BaseVmTest {
     void mathMinMaxSingleNilArg() {
         loadAssertSuccessAndRv("return math.min(nil)", LuaObject.NIL);
         loadAssertSuccessAndRv("return math.max(nil)", LuaObject.NIL);
+    }
+
+    @Test
+    void tableSorting2() {
+        loadAssertSuccessAndRv("""
+                local numbers = {5,3,12,54,3,2,-15,0,1,8554,3,8,4,32,1,4,85,46,2,2,1,847,98,96,6221,1,4,488,8,5,2,3,4,4556,6,21,4,4,5,6,87,7,88,9,16,63,1,8,1}
+                table.sort(numbers, function(a, b) return a < b end)
+                result = ""
+                for _, v in ipairs(numbers) do
+                    result = result .. v .. ","
+                end
+                return result
+                """, LuaObject.of("-15,0,1,1,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,4,4,5,5,5,6,6,7,8,8,8,9,12,16,21,32,46,54,63,85,87,88,96,98,488,847,4556,6221,8554,"));
+    }
+
+    @Test
+    void tableSorting3() {
+        loadAssertSuccessAndRv("""
+                local numbers = {32,1,4,85,46}
+                table.sort(numbers, function(a, b) return a < b end)
+                result = ""
+                for _, v in ipairs(numbers) do
+                    result = result .. v .. ","
+                end
+                return result
+                """, LuaObject.of("1,4,32,46,85,"));
     }
 }
