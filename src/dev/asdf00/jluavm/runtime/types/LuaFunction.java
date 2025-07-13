@@ -488,7 +488,7 @@ public abstract class LuaFunction {
                 t0 = t1.getMetaValueOrNil(t0);
                 if (t0.isNil()) {
                     // type incompatible with given unary operation
-                    vm.error(LuaObject.of("Attempt operation '%s' on a '%s' with a '%s'".formatted(t0.asString().substring(2), t1.getTypeAsString())));
+                    vm.error(LuaObject.of("Attempt operation '%s' on a '%s'".formatted(t0.asString().substring(2), t1.getTypeAsString())));
                     return;
                 }
                 if (t0.isFunction()) {
@@ -555,7 +555,7 @@ public abstract class LuaFunction {
             case 1:
                 // _ENV._EXT.<type>
                 t0 = indexedGet(vm, 2, t1, t0);
-                if (t1 == null) {
+                if (t0 == null) {
                     return;
                 }
             case 2:
