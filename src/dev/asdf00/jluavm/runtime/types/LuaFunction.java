@@ -456,7 +456,7 @@ public abstract class LuaFunction {
                 }
                 return;
             case 0:
-                vm.returnValue(t0);
+                vm.internalReturn(t0);
                 return;
             default:
                 throw new InternalLuaRuntimeError("should not reach end of fall-through switch");
