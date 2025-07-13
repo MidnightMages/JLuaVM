@@ -251,8 +251,7 @@ public class LTable {
                                         if (compFunc != null) {
                                             vm.callExternal(1, compFunc, a, b);
                                             return;
-                                        }
-                                        else {
+                                        } else {
                                             var res = LuaFunction.isLessThan(vm, 1, a, b);
                                             if (res == null)
                                                 return; // wait for the resumption
@@ -275,8 +274,7 @@ public class LTable {
                                     if (compFunc != null) {
                                         vm.callExternal(2, compFunc, c, d);
                                         return;
-                                    }
-                                    else {
+                                    } else {
                                         var res = LuaFunction.isLessThan(vm, 2, c, d);
                                         if (res == null)
                                             return; // wait for the resumption
