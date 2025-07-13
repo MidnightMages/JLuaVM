@@ -211,17 +211,19 @@ public class LTable {
 
                         var map = tbl.asMap();
 
+                        // init
                         if (resume == -1) {
                             var cnt = map.luaLen();
                             vm.registerLocals(6);
                             stackFrame[START] = LuaObject.of(cnt / 2);
                             stackFrame[END] = LuaObject.of(cnt);
-                            resume = 0;
+                            resume = 0; // then unify start and resume-iterations
                         }
 
-                        boolean xLTy = resume > 0 && returned[0].isTruthy();
+                        boolean xLTy = resume > 0 && returned[0].isTruthy(); // return value from compares
                         assert resume <= 2;
-                        while (stackFrame[END].asLong() > 1 || resume > 0) {
+                        assert resume >= 0;
+                        while (resume > 0 || stackFrame[END].asLong() > 1) { // resume-check is used to enter the loop to resume after the compares
                             if (resume <= 0) {
                                 if (stackFrame[START].asLong() > 0) {
                                     stackFrame[START] = LuaObject.of(stackFrame[START].asLong() - 1);
@@ -242,6 +244,7 @@ public class LTable {
                                     stackFrame[CHILD] = LuaObject.of(iLeftChild);
                                 if (resume == 1 || resume == 0 && (stackFrame[CHILD].asLong() + 1 < stackFrame[END].asLong())) {
                                     if (resume <= 0) {
+                                        // compare, result gets stored in xLTy
                                         var a = map.getOrDefault(LuaObject.of(stackFrame[CHILD].asLong() + 1), null);
                                         var b = map.getOrDefault(LuaObject.of(stackFrame[CHILD].asLong() + 2), null);
 
@@ -265,6 +268,7 @@ public class LTable {
                                 }
 
                                 if (resume < 2) {
+                                    // // compare, result gets stored in xLTy
                                     var c = map.getOrDefault(LuaObject.of(stackFrame[ROOT].asLong() + 1), null);
                                     var d = map.getOrDefault(LuaObject.of(stackFrame[CHILD].asLong() + 1), null);
 
