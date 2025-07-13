@@ -33,7 +33,6 @@ public class LGlobal {
 
         /* TODO, add the following ones: https://www.lua.org/manual/5.4/manual.html#6.1
         collectgarbage
-        error
         print
         tonumber
         warn
