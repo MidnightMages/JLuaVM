@@ -2315,4 +2315,30 @@ public class VmTest extends BaseVmTest {
         assertEquals(LuaObject.of(-4), rv[0]);
         assertEquals(LuaObject.of(-4.0), rv[1]);
     }
+
+    @Test
+    void tableSortMt() {
+        loadAssertSuccessAndRv("""
+                mt = {["__lt"]= function(a,b) return a[1]>b[1] end}
+                local function getBoxs(t)
+                    local rv = {}
+                    for i=1,#t do
+                        rv[i] = setmetatable({t[i]},mt)
+                    end
+                    return rv
+                end
+                rv = ""
+                function logTable(t)
+                    for _,v in ipairs(t) do
+                        rv = rv .. v[1] .. ";"
+                    end
+                    rv = rv .. ";"
+                end
+                t = getBoxs({4,2,5,7,3,8,32,2,1,0,-2})
+                logTable(t)
+                table.sort(t)
+                logTable(t)
+                return rv
+                """, LuaObject.of("4;2;5;7;3;8;32;2;1;0;-2;;32;8;7;5;4;3;2;2;1;0;-2;;"));
+    }
 }

@@ -191,7 +191,6 @@ public class LTable {
             return prevVal;
         }));
 
-        // TODO add table.sort (test __lt mt comparison)
         registry.register(TABLE_PREFIX + "sort",
                 new LuaJavaApiFunction(registry) {
                     @Override
