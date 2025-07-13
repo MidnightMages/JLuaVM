@@ -7,6 +7,8 @@ import dev.asdf00.jluavm.runtime.types.LuaObject;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
+import java.util.ArrayList;
+
 import static dev.asdf00.jluavm.Util.expandOptions;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -294,24 +296,44 @@ public class VmTest extends BaseVmTest {
                 """, LuaSemanticException.class);
     }
 
-    @SuppressWarnings("RedundantStringFormatCall")
     @Test
     void floorDiv() {
         // assert that LUA{a//b} == floor((float)a/(float)b) for pos and negative
-        for (int a = -10; a < 10; a++) {
-            for (int b = -10; b < 10; b++) {
+        var expectedResult = new ArrayList<Double>();
+        for (int a = -10; a <= 10; a++) {
+            for (int b = -10; b <= 10; b++) {
                 if (b == 0)
                     continue;
 
-                System.out.println("a: %s, b:%s".formatted(a, b));
                 var expected = Math.floor((float) a / (float) b);
-                var vm = LuaVM.builder().rootFunc("return %s//%s".formatted((float) a, (float) b)).build();
-                var res = vm.run();
-                assertEquals(LuaVM.VmRunState.SUCCESS, res.state());
-                var rvs = res.returnVars();
-                assertEquals(1, rvs.length);
-                var rv = rvs[0].asDouble();
-                assertEquals(expected, rv, 0.000001f);
+                expectedResult.add(expected);
+            }
+        }
+        for (int j = 0; j < 4; j++) {
+            boolean ad = (j&1) > 0;
+            boolean bd = (j&2) > 0;
+
+            var code = """
+                rv = {}
+                for a=-10%s, 10do
+                   for b = -10%s, 10 do
+                       if b ~= 0 then
+                           rv[#rv+1] = a // b
+                       end
+                    end
+                end
+                return rv
+                """.formatted(ad ? ".0" : "", bd ? ".0":"");
+            var vm = LuaVM.builder().rootFunc(code).build();
+            var res = vm.run();
+            assertEquals(LuaVM.VmRunState.SUCCESS, res.state());
+            var rvs = res.returnVars();
+            assertEquals(1, rvs.length);
+            var resArray = rvs[0].asMap();
+            assertEquals(expectedResult.size(), resArray.luaLen());
+            for (int i = 0; i < expectedResult.size(); i++) {
+                var rv = resArray.getOrDefault(LuaObject.of(i + 1), null).asDouble();
+                assertEquals(expectedResult.get(i), rv, 0.000001f, "ad=%s, bd=%s".formatted(ad, bd));
             }
         }
     }
