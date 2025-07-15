@@ -40,6 +40,16 @@ Similarly, in these cases the lua spec is not followed (meaning if LuaC follows 
     This function does not accept two seeds, but instead only one. Similarly it also only returns one number. Extra arguments are ignored.
 
 ## Spec extensions
-- **_EXT**
 
-    TODO document
+- **Type Extension Methods via `_ENV["_EXT"]`**
+
+    'Vanilla' Lua supports setting type-metatables using `debug.setmetatable`, e.g. for the string type. This, to our knowledge, however only works on a global level, so you cannot easily configure this on a per-environment setting.
+
+    We have therefore added support for what we call "Type Extension Methods", as they behave similarly to extension methods in C#. If an index operation fails and would normally result in an error, we try to perform a lookup in a subtable of _EXT. 
+
+    For example, the following code `"test":sub(1,3)` is processed as follows: 
+    - "test" is a string, hence is not indexable, nor can contain a metatable, so we immediately check for an extension function (or throw an index error otherwise)
+    - So we now check for `_ENV["_EXT"]["string"]["sub"]`, which by default does exist, as `_ENV._EXT.string` is set to a table that contains most of the string-library functions.
+
+    In more general terms we access `_ENV["_EXT][NAME OF TYPE][NAME OF FUNCTION]` (where `_ENV` is often equivalent to `_G`). If no match is found, we simply raise the usual error.
+
