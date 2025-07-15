@@ -66,7 +66,7 @@ public class LTable {
 
         registry.register(TABLE_PREFIX + "insert",
                 AtomicLuaFunction.vaForManyResults(registry, (vm, args) -> {
-                    // LuaC deviation (as the lua way seems inconsistent across sequences and dicts):
+                    // LUAC DEVIATION (as the lua way seems inconsistent across sequences and dicts):
                     // take all elements tbl[pos] until, excluding the next hole (or nil) and shift them up by 1 (all raw, no metatable interaction)
                     // then check if tbl has a metamethod __newindex and, if so, call __newindex, else rawset tbl[pos] to element
 
