@@ -38,3 +38,8 @@ Similarly, in these cases the lua spec is not followed (meaning if LuaC follows 
 - **math.randomseed(seed)**
 
     This function does not accept two seeds, but instead only one. Similarly it also only returns one number. Extra arguments are ignored.
+
+## Spec extensions
+- **_EXT**
+
+    TODO document
