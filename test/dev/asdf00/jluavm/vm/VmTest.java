@@ -2394,4 +2394,15 @@ public class VmTest extends BaseVmTest {
                 return table.sort({4,1,2})
                 """, new LuaObject[0]);
     }
+
+    @Test
+    void typeExtMethod() {
+        loadAssertSuccessAndRv("""
+                return "test":sub(1,3)
+                """, LuaObject.of("tes"));
+        loadAssertSuccessAndRv("""
+                _G["_EXT"]["boolean"] = {["f"] = function(a,b) return "a"..tostring(a)..b end}
+                return false:f(123)
+                """, LuaObject.of("afalse123"));
+    }
 }
