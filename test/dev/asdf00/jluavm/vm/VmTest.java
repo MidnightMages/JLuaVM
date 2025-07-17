@@ -2405,4 +2405,29 @@ public class VmTest extends BaseVmTest {
                 return false:f(123)
                 """, LuaObject.of("afalse123"));
     }
+
+    @Test
+    void horrificMtResume() {
+        loadAssertSuccessAndRv("""
+                rv = ""
+                function log(x) rv = rv..";"..tostring(x) end
+                
+                a = 0
+                t = setmetatable({}, {["__add"] = function()
+                    log("a_"..tostring(a));
+                    coroutine.yield();
+                    log("a2_"..tostring(a))
+                    return a
+                end})
+                log("0")
+                local co = coroutine.create(function()
+                    for i=1,5 do
+                       log("b"..tostring(t + i))
+                       a = a * 5 + i
+                    end
+                end)
+                while coroutine.status(co) ~= "dead" do a = a*1.5; coroutine.resume(co) end
+                return rv
+                """, LuaObject.of(";0;a_0.0;a2_0.0;b0.0;a_1.0;a2_1.5;b1.5;a_9.5;a2_14.25;b14.25;a_74.25;a2_111.375;b111.375;a_560.875;a2_841.3125;b841.3125"));
+    }
 }
