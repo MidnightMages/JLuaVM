@@ -5,7 +5,6 @@ import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.utils.ByteArrayBuilder;
 
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -24,8 +23,11 @@ public abstract class AbstractGeneratedLuaFunction extends LuaFunction {
             bb.append(false) // not serialized with registry
                     .append(LuaObject.of((String) codeField.get(null)).serialize(serialData, mappedObjs))
                     .append(_ENV.serialize(serialData, mappedObjs))
-                    .append(LuaObject.of(closures).serialize(serialData, mappedObjs))
-                    .append(dpt);
+                    .append(closures.length);
+            for (var c : closures) {
+                bb.append(c == null ? -1 : c.serialize(serialData, mappedObjs));
+            }
+            bb.append(dpt);
         } catch (ReflectiveOperationException e) {
             throw new InternalLuaSerializationError("Reflection error while serializing a generated lua function", e);
         }

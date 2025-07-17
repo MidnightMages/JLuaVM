@@ -130,7 +130,10 @@ public class StateDeserializer {
                         // generated lua function
                         String code = objs[rdr.readInt()].asString();
                         var env = objs[rdr.readInt()];
-                        var closures = objs[rdr.readInt()].asArray();
+                        var closures = new LuaObject[rdr.readInt()];
+                        for (int j = 0; j < closures.length; j++) {
+                            closures[j] = maybeNull(objs, rdr.readInt());
+                        }
                         int unitIdx = rdr.readInt();
                         try {
                             var func = LuaVM.compile(code)[unitIdx].newInstance(env, closures);
@@ -164,7 +167,7 @@ public class StateDeserializer {
                     // array
                     var internal = new LuaObject[rdr.remaining() / 4];
                     for (int j = 0; j < internal.length; j++) {
-                        internal[j] = objs[rdr.readInt()];
+                        internal[j] = maybeNull(objs, rdr.readInt());
                     }
                     lobj.refVal = internal;
                 }

@@ -1267,8 +1267,7 @@ public final class LuaObject {
                 var bb = new ByteArrayBuilder();
                 bb.append(Types.ARRAY);
                 for (var v : asArray()) {
-                    assert v != null;
-                    bb.append(v.serialize(serialData, mappedObjs));
+                    bb.append(v == null ? -1 : v.serialize(serialData, mappedObjs));
                 }
                 serialData.set(ownIdx, bb.toArray());
             }
