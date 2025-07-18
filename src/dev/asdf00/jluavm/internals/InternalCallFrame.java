@@ -46,14 +46,25 @@ public final class InternalCallFrame extends AbstractCallStackFrame {
     public byte[] serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs) {
         var bb = new ByteArrayBuilder();
         serialize(serialData, mappedObjs, bb);
-        bb.append(LuaObject.of(arguments).serialize(serialData, mappedObjs))
-                .appendAll(funcName.getBytes(StandardCharsets.UTF_8));
+        if (arguments == null) {
+            bb.append(-1);
+        } else {
+            bb.append(arguments.length);
+            for (var lo : arguments) {
+                bb.append(lo.serialize(serialData, mappedObjs));
+            }
+        }
+        bb.appendAll(funcName.getBytes(StandardCharsets.UTF_8));
         return bb.toArray();
     }
 
     public static InternalCallFrame deserialize(LuaFunction parentFunc, LuaObject[] objs, ByteArrayReader rdr) {
         DataContainer container = abstractDeserialize(objs, rdr);
-        LuaObject[] arguments = objs[rdr.readInt()].asArray();
+        int argLen = rdr.readInt();
+        LuaObject[] arguments = argLen == -1 ? null : new LuaObject[argLen];
+        for (int i = 0; i < argLen; i++) {
+            arguments[i] = objs[rdr.readInt()];
+        }
         String funcName = new String(rdr.readArray(rdr.remaining()), StandardCharsets.UTF_8);
 
         LFunc callable = LuaFunction.staticLFuncs.get(funcName);

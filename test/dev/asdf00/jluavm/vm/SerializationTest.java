@@ -5,7 +5,9 @@ import dev.asdf00.jluavm.LuaVM.VmResult;
 import dev.asdf00.jluavm.LuaVM.VmRunState;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
+
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class SerializationTest extends BaseVmTest {
 
@@ -16,9 +18,9 @@ public class SerializationTest extends BaseVmTest {
                 return 1
                 """).build();
         VmResult result = assertDoesNotThrow(() -> vm.run());
-        assertEquals(result, VmResult.of(VmRunState.PAUSED));
+        assertEquals(VmResult.of(VmRunState.PAUSED), result);
         result = assertDoesNotThrow(() -> vm.runContinue());
-        assertEquals(result, VmResult.of(VmRunState.SUCCESS, LuaObject.of(1)));
+        assertEquals(VmResult.of(VmRunState.SUCCESS, LuaObject.of(1)), result);
     }
 
     @Test
@@ -35,11 +37,11 @@ public class SerializationTest extends BaseVmTest {
                 return test
                 """).build();
         VmResult result = assertDoesNotThrow(() -> vm1.run());
-        assertEquals(result, VmResult.of(VmRunState.PAUSED));
+        assertEquals(VmResult.of(VmRunState.PAUSED), result);
         var state = assertDoesNotThrow(() -> vm1.serialize());
         var vm2 = assertDoesNotThrow(() -> LuaVM.builder().fromState(state).build());
         result = assertDoesNotThrow(() -> vm2.runContinue());
-        assertEquals(result, VmResult.of(VmRunState.SUCCESS, LuaObject.of(1)));
+        assertEquals(VmResult.of(VmRunState.SUCCESS, LuaObject.of(1)), result);
     }
 
     @Test
@@ -50,11 +52,11 @@ public class SerializationTest extends BaseVmTest {
                 return test
                 """).build();
         VmResult result = assertDoesNotThrow(() -> vm1.run());
-        assertEquals(result, VmResult.of(VmRunState.PAUSED));
+        assertEquals(VmResult.of(VmRunState.PAUSED), result);
         var state = assertDoesNotThrow(() -> vm1.serialize());
         var vm2 = assertDoesNotThrow(() -> LuaVM.builder().fromState(state).build());
         result = assertDoesNotThrow(() -> vm2.runContinue());
-        assertEquals(result, VmResult.of(VmRunState.SUCCESS, LuaObject.of(1)));
+        assertEquals(VmResult.of(VmRunState.SUCCESS, LuaObject.of(1)), result);
     }
 
     @Test
@@ -80,7 +82,7 @@ public class SerializationTest extends BaseVmTest {
                              a_c2 = {678}
                              a_c3 = {} -- new table, should affect closured var
                              y = y + k
-                
+                                
                              root_c1 = 9786
                              root_c2 = {5464}
                              root_c3 = {} -- new table, should affect closured var
@@ -109,10 +111,46 @@ public class SerializationTest extends BaseVmTest {
                      return rv 
                 """).build();
         VmResult result = assertDoesNotThrow(() -> vm1.run());
-        assertEquals(result, VmResult.of(VmRunState.PAUSED));
+        assertEquals(VmResult.of(VmRunState.PAUSED), result);
         var state = assertDoesNotThrow(() -> vm1.serialize());
         var vm2 = assertDoesNotThrow(() -> LuaVM.builder().fromState(state).build());
         result = assertDoesNotThrow(() -> vm2.runContinue());
-        assertEquals(result, VmResult.of(VmRunState.SUCCESS, LuaObject.of("7,51;7,51;7,55;r,190;")));
+        assertEquals(VmResult.of(VmRunState.SUCCESS, LuaObject.of("7,51;7,51;7,55;r,190;")), result);
+    }
+
+    @Test
+    void coroutineWrap() {
+        var vm1 = LuaVM.builder().rootFunc("""
+                rv = ""
+                local function log(...) rv = rv .. tostring(table.concat(table.pack(...),","))..";" end
+                
+                local f = function()
+                    local x = 1
+                    for i=1,10 do
+                        log(x, i)
+                        coroutine.yield()
+                        x = x + 1
+                        log(x, i)
+                    end
+                end
+                local co1 = coroutine.wrap(f)
+                local co2 = coroutine.wrap(f)
+                vm.pause()
+                co1()
+                co2()
+                vm.pause()
+                co1()
+                co2()
+                return rv
+                """).build();
+        VmResult result = assertDoesNotThrow(() -> vm1.run());
+        var box = new LuaVM[]{vm1};
+        for (int i = 0; i < 2; i++) {
+            assertEquals(VmResult.of(VmRunState.PAUSED), result);
+            var state = assertDoesNotThrow(() -> box[0].serialize());
+            box[0] = assertDoesNotThrow(() -> LuaVM.builder().fromState(state).build());
+            result = assertDoesNotThrow(() -> box[0].runContinue());
+        }
+        assertEquals(VmResult.of(VmRunState.SUCCESS, LuaObject.of("1,1;1,1;2,1;2,2;2,1;2,2;")), result);
     }
 }
