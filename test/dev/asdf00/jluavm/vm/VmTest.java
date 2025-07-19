@@ -2411,7 +2411,7 @@ public class VmTest extends BaseVmTest {
         loadAssertSuccessAndRv("""
                 rv = ""
                 function log(x) rv = rv..";"..tostring(x) end
-                
+                                
                 a = 0
                 t = setmetatable({}, {["__add"] = function()
                     log("a_"..tostring(a));
@@ -2429,5 +2429,18 @@ public class VmTest extends BaseVmTest {
                 while coroutine.status(co) ~= "dead" do a = a*1.5; coroutine.resume(co) end
                 return rv
                 """, LuaObject.of(";0;a_0.0;a2_0.0;b0.0;a_1.0;a2_1.5;b1.5;a_9.5;a2_14.25;b14.25;a_74.25;a2_111.375;b111.375;a_560.875;a2_841.3125;b841.3125"));
+    }
+
+    @Test
+    void loadCallerEnv() {
+        var code = """
+                _G["test"] = 123
+                local f = load("%s[\\"test2\\"] = 1234; return 1", "name", "t", {})()
+                assert(f == 1, "return value is wrong")
+
+                return _G["test"], _G["test2"]
+                """;
+        loadAssertSuccessAndRv(code.formatted("_ENV"), new LuaObject[]{LuaObject.of(123), LuaObject.NIL}); // _ENV does get set automatically -> no error
+        loadAssertRuntimeError(code.formatted("_G")); // the inner env does not get _G set, therefore _G["test"] is trying to index the nil value _G
     }
 }
