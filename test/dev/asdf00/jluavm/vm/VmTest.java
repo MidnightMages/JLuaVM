@@ -2443,4 +2443,17 @@ public class VmTest extends BaseVmTest {
         loadAssertSuccessAndRv(code.formatted("_ENV"), new LuaObject[]{LuaObject.of(123), LuaObject.NIL}); // _ENV does get set automatically -> no error
         loadAssertRuntimeError(code.formatted("_G")); // the inner env does not get _G set, therefore _G["test"] is trying to index the nil value _G
     }
+
+    @Test
+    void varArgAttemptToAccessTable() {
+        var error = loadAssertRuntimeErrorGetAsString("""
+                function f(...)
+                    local a = ...
+                    return a.abc
+                end
+                return f(1,2,3)
+                """);
+
+        assertEquals("Attempt to index a number value",error[0].asString());
+    }
 }

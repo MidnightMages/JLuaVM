@@ -46,6 +46,13 @@ public abstract class BaseVmTest {
         }
     }
 
+    protected static LuaObject[] loadAssertRuntimeErrorGetAsString(String s) {
+        LuaVM vm = assertDoesNotThrow(() -> LuaVM.builder().rootFunc(s).build());
+        var res = assertDoesNotThrow(vm::run);
+        Assertions.assertEquals(LuaVM.VmRunState.EXECUTION_ERROR, res.state());
+        return res.returnVars();
+    }
+
     protected static void loadAssertRuntimeError(String s, String expectedErrorMessage) {
         for (var expanded : expandOptions(s)) {
             LuaVM vm = assertDoesNotThrow(() -> LuaVM.builder().rootFunc(expanded).build());
