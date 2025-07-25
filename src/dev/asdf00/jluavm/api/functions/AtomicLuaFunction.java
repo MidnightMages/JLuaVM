@@ -58,6 +58,19 @@ public final class AtomicLuaFunction extends LuaJavaApiFunction {
         }, 2, false);
     }
 
+
+    public static AtomicLuaFunction forZeroResults(ApiFunctionRegistry registry, LLTriConsumer c) {
+        return new AtomicLuaFunction(registry, (vm, args) -> {
+            Coroutine cco = vm.getCurrentCoroutine();
+            boolean prevYieldability = cco.isYieldable;
+            cco.isYieldable = false;
+            c.accept(vm, args[0], args[1], args[2]);
+            var r = vm.isErroring() ? null : Singletons.EMPTY_LUA_OBJ_ARRAY;
+            cco.isYieldable = prevYieldability;
+            return r;
+        }, 3, false);
+    }
+
     public static AtomicLuaFunction vaForZeroResults(ApiFunctionRegistry registry, LLVaVoidFunction c) {
         return new AtomicLuaFunction(registry, (vm, args) -> {
             Coroutine cco = vm.getCurrentCoroutine();
