@@ -2456,4 +2456,12 @@ public class VmTest extends BaseVmTest {
 
         assertEquals("Attempt to index a number value",error[0].asString());
     }
+
+    @Test
+    void shebang() {
+        loadAssertSuccessAndRv("""
+                #;return false
+                return true
+                """, LuaObject.TRUE);
+    }
 }
