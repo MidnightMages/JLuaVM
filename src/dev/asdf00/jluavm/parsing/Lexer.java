@@ -26,6 +26,11 @@ public class Lexer {
     public Lexer(char[] text) {
         input = new CharStream(text);
         cur = input.next();
+        if (cur == '#') { // if file starts with #, ignore first line to achieve luac compliance regarding shebangs
+            do {
+                cur = input.next();
+            } while (cur != '\r' && cur != '\n');
+        }
     }
 
     private void advance() {
