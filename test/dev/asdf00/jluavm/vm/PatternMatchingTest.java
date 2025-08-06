@@ -3,7 +3,7 @@ package dev.asdf00.jluavm.vm;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import org.junit.jupiter.api.Test;
 
-public class PatternMatchingTest extends VmTest {
+public class PatternMatchingTest extends BaseVmTest {
     @Test
     void gmatchIndexExtraction() {
         loadAssertSuccessAndRv("""
