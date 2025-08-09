@@ -2464,4 +2464,11 @@ public class VmTest extends BaseVmTest {
                 return true
                 """, LuaObject.TRUE);
     }
+
+    @Test
+    void largeIntConstParsing() {
+        loadAssertSuccessAndRv("return 0x79999999", LuaObject.of(0x79999999L));
+        loadAssertSuccessAndRv("return 0x80000000", LuaObject.of(0x80000000L));
+        loadAssertSuccessAndRv("return 0x95cfef1f", LuaObject.of(0x95cfef1fL));
+    }
 }
