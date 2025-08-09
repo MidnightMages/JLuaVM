@@ -27,7 +27,7 @@ public final class ConstantNode extends Node {
     }
 
     public static ConstantNode ofLong(Position sourcePos, long lVal) {
-        return new ConstantNode(sourcePos, "LuaObject.of(%d)".formatted(lVal));
+        return new ConstantNode(sourcePos, "LuaObject.of(%dL)".formatted(lVal));
     }
 
     public static ConstantNode ofDouble(Token tk) {
