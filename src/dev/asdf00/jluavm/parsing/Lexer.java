@@ -172,9 +172,9 @@ public class Lexer {
                 if (number.startsWith("0x")) {
                     if (isInteger) {
                         nVal = parseHexDouble(number.substring(2));
-                        if (nVal <= Long.MAX_VALUE) {
+                        if (nVal - Long.MAX_VALUE - Long.MAX_VALUE <= 0 ) {
                             nVal = -1;
-                            lVal = Long.parseLong(number.substring(2), 16);
+                            lVal = Long.parseUnsignedLong(number.substring(2), 16);
                         }
                     } else {
                         int point = number.indexOf('.');
@@ -479,7 +479,7 @@ public class Lexer {
 
     public static double parseHexDouble(String num) {
         double d = 0;
-        for (int i = num.length() - 1; i >= 0; i--) {
+        for (int i = 0; i < num.length(); i++) {
             d *= 16;
             char c = num.charAt(i);
             if (isDecDigit(c)) {
