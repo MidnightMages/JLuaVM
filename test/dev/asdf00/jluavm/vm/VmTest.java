@@ -2470,5 +2470,7 @@ public class VmTest extends BaseVmTest {
         loadAssertSuccessAndRv("return 0x79999999", LuaObject.of(0x79999999L));
         loadAssertSuccessAndRv("return 0x80000000", LuaObject.of(0x80000000L));
         loadAssertSuccessAndRv("return 0x95cfef1f", LuaObject.of(0x95cfef1fL));
+        loadAssertSuccessAndRv("return 0x8000000000000000", LuaObject.of(-9223372036854775808L));
+        loadAssertSuccessAndRv("return 0x80000000000000000", LuaObject.of(0));
     }
 }
