@@ -1,10 +1,9 @@
 package dev.asdf00.jluavm.lexer;
 
+import dev.asdf00.jluavm.exceptions.loading.LuaLexerException;
 import dev.asdf00.jluavm.parsing.Lexer;
 import dev.asdf00.jluavm.parsing.container.Token;
 import dev.asdf00.jluavm.parsing.container.TokenType;
-import dev.asdf00.jluavm.exceptions.loading.LuaLexerException;
-import dev.asdf00.jluavm.runtime.types.LuaObject;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -370,7 +369,7 @@ public class LexerTest {
 
     @Test
     void numeralFails() {
-        var number = "1.;1.5e;0x;0x1f.;0x1f.e;34.e3".split(";");
+        var number = "1.5e;0x;0x.;0x1f.p;34.p3".split(";");
         for (var t : number) {
             assertThrows(LuaLexerException.class, () -> {
                 var l = new Lexer("local a ={%s}=={%s}\nb = a +{%s}*2".formatted(t, t, t));
@@ -381,7 +380,7 @@ public class LexerTest {
 
     @Test
     void weirdNumerals() {
-        var number = "0xffd.2;0xffd.2p3;0xffd.2e2;03.2p4;3.2e5;0x45d;36;3.2p-4;3.2e-4".split(";");
+        var number = "0xffd.2;0xffd.2p3;0xffd.2e2;0x03.2p4;3.3e5;0x45d;36;3.2e-4".split(";");
         for (var t : number) {
             assertDoesNotThrow(() -> {
                 var l = new Lexer("local a ={%s}=={%s}\nb = a +{%s}*2".formatted(t, t, t));
@@ -462,14 +461,18 @@ public class LexerTest {
 
     @Test
     void funnyHexNumber() {
-        lexAssertTokens("0X1.921FB54442D18P+1", "3.1415926535898");
+        // LUAC DEVIATION. Our precision seems to be 2 digits higher
+        var toks = lexAndCollectTokens("0X1.921FB54442D18P+1"); // = 3.1415926535898
+        assertEquals(toks.get(0).type(), TokenType.NUMERAL);
+        assertEquals(3.141592653589793, toks.get(0).nVal());
+        assertEquals(toks.get(1).type(), TokenType.EOF);
     }
 
     @Test
     void expNumber() {
         var toks = lexAndCollectTokens("1e2");
         assertEquals(toks.get(0).type(), TokenType.NUMERAL);
-        assertEquals(toks.get(0).nVal(), 100);
+        assertEquals(100, toks.get(0).nVal());
         assertEquals(toks.get(1).type(), TokenType.EOF);
     }
 

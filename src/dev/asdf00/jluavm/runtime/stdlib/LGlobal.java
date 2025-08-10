@@ -1,11 +1,13 @@
 package dev.asdf00.jluavm.runtime.stdlib;
 
+import dev.asdf00.jluavm.api.functions.AtomicLuaFunction;
 import dev.asdf00.jluavm.api.functions.LuaJavaApiFunction;
 import dev.asdf00.jluavm.api.functions.MixedStateFunctionRegistry;
 import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
 import dev.asdf00.jluavm.exceptions.loading.LuaParserException;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
-import dev.asdf00.jluavm.api.functions.AtomicLuaFunction;
+import dev.asdf00.jluavm.parsing.Lexer;
+import dev.asdf00.jluavm.parsing.container.Position;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.types.LuaObject.Types;
@@ -34,7 +36,6 @@ public class LGlobal {
         /* TODO, add the following ones: https://www.lua.org/manual/5.4/manual.html#6.1
         collectgarbage
         print
-        tonumber
         warn
          */
 
@@ -135,8 +136,27 @@ public class LGlobal {
                     }
                 });
 
-        registry.register("error",
-                AtomicLuaFunction.forZeroResults(registry, (vm, err) -> vm.error(err)));
+        registry.register("error", AtomicLuaFunction.forZeroResults(registry, LuaVM_RT::error));
+
+        registry.register("tonumber", AtomicLuaFunction.forOneResult(registry, (vm, x) -> {
+            if (x.isNumber())
+                return x;
+            if (!x.isString())
+                return LuaObject.NIL;
+            try {
+                var chars = x.asString().strip();
+                Integer[] currCharPtr = new Integer[]{0};
+                var res = Lexer.parseNumber(new Position(0, 0, 0),
+                        () -> currCharPtr[0] >= chars.length() ? (char) -1 : chars.charAt(currCharPtr[0]),
+                        () -> currCharPtr[0]++);
+                if (res.consumedString().equals(chars))
+                    return res.dVal() < 0 ? LuaObject.of(res.lVal()) : LuaObject.of(res.dVal());
+                else
+                    return LuaObject.NIL;
+            } catch (LuaParserException e) {
+                return LuaObject.NIL;
+            }
+        }));
 
         registry.register("$inner.ipairs",
                 AtomicLuaFunction.forManyResults(registry, (itrVm, myTbl, ctrl) -> {

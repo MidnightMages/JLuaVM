@@ -900,6 +900,10 @@ public class VmTest extends BaseVmTest {
                 local num = tonumber("123.4")
                 return num
                 """, LuaObject.of(123.4));
+        loadAssertSuccessAndRv("""
+                local num = tonumber("123;")
+                return num
+                """, LuaObject.NIL);
     }
 
     @Test
@@ -2472,5 +2476,7 @@ public class VmTest extends BaseVmTest {
         loadAssertSuccessAndRv("return 0x95cfef1f", LuaObject.of(0x95cfef1fL));
         loadAssertSuccessAndRv("return 0x8000000000000000", LuaObject.of(-9223372036854775808L));
         loadAssertSuccessAndRv("return 0x80000000000000000", LuaObject.of(0));
+        loadAssertSuccessAndRv("return 9223372036854775807", LuaObject.of(9223372036854775807L));
+        loadAssertSuccessAndRv("return 9223372036854775808", LuaObject.of(9223372036854775808d));
     }
 }
