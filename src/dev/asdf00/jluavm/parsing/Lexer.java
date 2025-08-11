@@ -368,7 +368,7 @@ public class Lexer {
         consumeWhile.apply(Lexer::isDecDigit);
 
         // now we have a set of digits (or empty if actual number starts with a period)
-        if (consumed.length() == 1 && getCurrChar.get() == 'x') { // 0x prefix
+        if (consumed.length() == 1 && consumed.charAt(0) == '0' && getCurrChar.get() == 'x') { // 0x prefix
             consumeAndAdvance.run();
             consumeWhile.apply(Lexer::isHexDigit); // consume any hex digits
             // now we got 0x445465ab
@@ -468,6 +468,9 @@ public class Lexer {
                 throw new LuaLexerException(globalStartPos, "%s is not a valid number".formatted(consumed.toString()));
             }
         } else { // we are done, next characters must be part of another token
+            if (isIdentContination(getCurrChar.get())) {
+                throw new LuaLexerException(globalStartPos, "%s is not a valid number".formatted(consumed.toString()));
+            }
             // return the number
             // 2^63 is the first number that does not fit into a lua integer
             var consumedStr = consumed.toString();

@@ -128,8 +128,9 @@ public class ParserTest {
                 "=1", "local local i = 1",
                 "local §and|or|not|function§ = §123|'aaa'|\"aaaaa\"|a|§",
                 "(§a||a+1§)[1]",
-                "::§function|1aaa,end§::", "::", "goto §not|do||\n§",
-                "if true then return 1 else return 2 else return 3 end"
+                "::§function|baaa,end§::", "::", "goto §not|do||\n§",
+                "if true then return 1 else return 2 else return 3 end",
+                "::1234::"
         };
 
         snippets = expandOptions(snippets);
@@ -139,10 +140,14 @@ public class ParserTest {
         var semanticSnippets = new String[]{
                 "goto\ntest"
         };
-
-        semanticSnippets = expandOptions(semanticSnippets);
         for (var s : semanticSnippets)
             assertThrows(LuaSemanticException.class,() -> parse(s), "Testcode: " + s);
+
+        var lexerSnippets = new String[]{
+                "::1aaa,end::"
+        };
+        for (var s : lexerSnippets)
+            assertThrows(LuaLexerException.class,() -> parse(s), "Testcode: " + s);
     }
 
     @Test

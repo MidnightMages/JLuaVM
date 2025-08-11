@@ -315,7 +315,7 @@ public class VmTest extends BaseVmTest {
 
             var code = """
                     rv = {}
-                    for a=-10%s, 10do
+                    for a=-10%s, 10 do
                        for b = -10%s, 10 do
                            if b ~= 0 then
                                rv[#rv+1] = a // b

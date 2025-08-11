@@ -369,7 +369,7 @@ public class LexerTest {
 
     @Test
     void numeralFails() {
-        var number = "1.5e;0x;0x.;0x1f.p;34.p3".split(";");
+        var number = "1xCAFE;1.5e;0x;0x.;0x1f.p;34.p3".split(";");
         for (var t : number) {
             assertThrows(LuaLexerException.class, () -> {
                 var l = new Lexer("local a ={%s}=={%s}\nb = a +{%s}*2".formatted(t, t, t));
