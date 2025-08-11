@@ -144,13 +144,21 @@ public class LGlobal {
             if (!x.isString())
                 return LuaObject.NIL;
             try {
-                var chars = x.asString().strip();
+                var charsRaw = x.asString().strip();
+                int mul = 1;
                 Integer[] currCharPtr = new Integer[]{0};
+                if (charsRaw.charAt(0) == '-') {
+                    mul = -1;
+                    charsRaw = charsRaw.substring(1);
+                } else if (charsRaw.charAt(0) == '+') {
+                    charsRaw = charsRaw.substring(1);
+                }
+                var chars = charsRaw;
                 var res = Lexer.parseNumber(new Position(0, 0, 0),
                         () -> currCharPtr[0] >= chars.length() ? (char) -1 : chars.charAt(currCharPtr[0]),
                         () -> currCharPtr[0]++);
                 if (res.consumedString().equals(chars))
-                    return res.dVal() < 0 ? LuaObject.of(res.lVal()) : LuaObject.of(res.dVal());
+                    return res.dVal() < 0 ? LuaObject.of(res.lVal() * mul) : LuaObject.of(res.dVal() * mul);
                 else
                     return LuaObject.NIL;
             } catch (LuaParserException e) {

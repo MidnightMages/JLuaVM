@@ -904,6 +904,14 @@ public class VmTest extends BaseVmTest {
                 local num = tonumber("123;")
                 return num
                 """, LuaObject.NIL);
+        loadAssertSuccessAndRv("""
+                local num = tonumber("-123.45")
+                return num
+                """, LuaObject.of(-123.45));
+        loadAssertSuccessAndRv("""
+                local num = tonumber("+123.44")
+                return num
+                """, LuaObject.of(123.44));
     }
 
     @Test
