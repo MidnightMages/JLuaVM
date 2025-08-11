@@ -380,7 +380,7 @@ public class LexerTest {
 
     @Test
     void weirdNumerals() {
-        var number = "0xffd.2;0xffd.2p3;0xffd.2e2;0x03.2p4;3.3e5;0x45d;36;3.2e-4".split(";");
+        var number = "0xffd.2;0xffd.2p3;0xffd.2e2;0x03.2p4;3.3e5;0x45d;36;3.2e-4;0x0.1e".split(";");
         for (var t : number) {
             assertDoesNotThrow(() -> {
                 var l = new Lexer("local a ={%s}=={%s}\nb = a +{%s}*2".formatted(t, t, t));
