@@ -1,18 +1,16 @@
 package dev.asdf00.jluavm.runtime.types;
 
 import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
-import dev.asdf00.jluavm.exceptions.loading.InternalLuaLexerError;
+import dev.asdf00.jluavm.exceptions.loading.LuaParserException;
 import dev.asdf00.jluavm.internals.Coroutine;
 import dev.asdf00.jluavm.parsing.Lexer;
+import dev.asdf00.jluavm.parsing.container.Position;
 import dev.asdf00.jluavm.utils.ByteArrayBuilder;
 
 import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.*;
-
-import static dev.asdf00.jluavm.parsing.Lexer.isDecDigit;
-import static dev.asdf00.jluavm.parsing.Lexer.parseHexDouble;
 
 @SuppressWarnings("unused")
 public final class LuaObject {
@@ -687,12 +685,12 @@ public final class LuaObject {
     // coerse to number
     // =================================================================================================================
 
+    private static final String STRING_LONG_MIN_VALUE = Long.toString(Long.MIN_VALUE);
     /**
      * This method is directly taken from {@linkplain Lexer}.
      * TODO: correctly coerce Long.MIN_VAL to long instead of double
      */
-    @SuppressWarnings("DataFlowIssue")
-    private CoercedString coerceToNumber() {
+    public CoercedString coerceToNumber() {
         assert isString() : "trying to coerce non-string";
         if ((markWord & 0b11) != 0) {
             // already coerced this string, only read cached result
@@ -702,197 +700,51 @@ public final class LuaObject {
             return null;
         }
 
-        final String stVal = (String) refVal;
-
-        char[] cur = new char[1];
-        char[] la = new char[1];
-
-        Runnable advance = new Runnable() {
-            private final int len = stVal.length();
-            private int i = 0;
-
-            {
-                cur[0] = i < len ? stVal.charAt(i) : (char) -1;
-                i++;
-                la[0] = i < len ? stVal.charAt(i) : (char) -1;
-                i++;
-            }
-
-            @Override
-            public void run() {
-                cur[0] = la[0];
-                la[0] = i < len ? stVal.charAt(i) : (char) -1;
-                i++;
-            }
-        };
-
-        // skip whitespace
-        while (Character.isWhitespace(cur[0])) {
-            advance.run();
-        }
-
-        boolean positive = true;
-        if (cur[0] == '-') {
-            positive = false;
-            advance.run();
-        }
-
-        if (!isDecDigit(cur[0]) && !(cur[0] == '.' && isDecDigit(la[0]))) {
-            // fail to coerce
-            markWord |= 0b100;
-            return null;
-        }
-
-        boolean isInteger = true;
-        boolean isHex = false;
-        boolean isExp = false;
-        boolean isValid = true;
-        boolean allowPM = false;
-        final var nb = new StringBuilder();
-        nb.append(cur);
-        if (cur[0] == '0') {
-            advance.run();
-            if (cur[0] == 'x' || cur[0] == 'X') {
-                isHex = true;
-                isValid = false;
-                nb.append(cur);
-                advance.run();
-            }
-        } else if (cur[0] != '.') {
-            advance.run();
-        }
-
-        Runnable step = () -> {
-            nb.append(cur[0]);
-            advance.run();
-        };
-        for (; ; step.run()) {
-            if (allowPM) {
-                allowPM = false;
-                isExp = true;
-                if (cur[0] == '+' || cur[0] == '-') {
-                    isValid = false;
-                    continue;
-                }
-            }
-            if (isDecDigit(cur[0])) {
-                isValid = true;
-                continue;
-            }
-            if (isHex) {
-                if (('a' <= cur[0] && cur[0] <= 'f') || ('A' <= cur[0] && cur[0] <= 'F')) {
-                    continue;
-                }
-            }
-            if (isInteger) {
-                if (cur[0] == '.') {
-                    isInteger = false;
-                    isValid = false;
-                    isHex = false;
-                    continue;
-                }
-            } else if (!isExp) {
-                // exponent?
-                if (!isValid) {
-                    // fail to coerce
-                    markWord |= 0b100;
-                    return null;
-                }
-                if (cur[0] == 'p' || cur[0] == 'P' || cur[0] == 'e' || cur[0] == 'E') {
-                    isInteger = false;
-                    isHex = false;
-                    allowPM = true;
-                    isValid = false;
-                    continue;
-                }
-            }
-            break;
-        }
-
-        String number = nb.toString();
-        if (!isValid) {
-            // failed to coerce
-            markWord |= 0b100;
-            return null;
-        }
+        // actual parsing
         try {
-            double doubleValue;
-            long longValue = -1;
-            if (number.startsWith("0x")) {
-                if (isInteger) {
-                    doubleValue = parseHexDouble(number.substring(2));
-                    if (doubleValue <= Long.MAX_VALUE) {
-                        doubleValue = -1;
-                        longValue = Long.parseLong(number.substring(2), 16);
-                    }
-                } else {
-                    int point = number.indexOf('.');
-                    int ppos = number.indexOf('p');
-                    if (ppos < 0) {
-                        ppos = number.indexOf('P');
-                    }
-                    int epos = number.indexOf('e');
-                    if (epos < 0) {
-                        epos = number.indexOf('E');
-                    }
-                    if (ppos < 0 && epos < 0) {
-                        doubleValue = parseHexDouble(number.substring(2, point)) + Double.parseDouble(number.substring(point));
-                    } else {
-                        double a = epos < 0 ? 2 : 10;
-                        int splitter = epos < 0 ? ppos : epos;
-                        doubleValue = parseHexDouble(number.substring(2, point)) + Double.parseDouble(number.substring(point, splitter))
-                                * Math.pow(a, Double.parseDouble(number.substring(splitter + 1)));
-                    }
-                }
-            } else {
-                if (isInteger) {
-                    doubleValue = Double.parseDouble(number);
-                    if (doubleValue <= Long.MAX_VALUE) {
-                        doubleValue = -1;
-                        longValue = Long.parseLong(number);
-                    }
-                } else {
-                    int ppos = number.indexOf('p');
-                    if (ppos < 0) {
-                        ppos = number.indexOf('P');
-                    }
-                    int epos = number.indexOf('e');
-                    if (epos < 0) {
-                        epos = number.indexOf('E');
-                    }
-                    if (ppos < 0 && epos < 0) {
-                        doubleValue = Double.parseDouble(number);
-                    } else {
-                        double a = epos < 0 ? 2 : 10;
-                        int splitter = epos < 0 ? ppos : epos;
-                        doubleValue = Double.parseDouble(number.substring(0, splitter)) * Math.pow(a, Double.parseDouble(number.substring(splitter + 1)));
-                    }
-                }
-            }
-            if (!positive) {
-                if (isInteger) {
-                    longValue = -longValue;
-                } else {
-                    doubleValue = -doubleValue;
-                }
-            }
-            // save result to cache
-            markWord |= 1 << (isInteger ? 1 : 0);
-            if (isInteger) {
+            var charsRaw = this.asString().strip();
+            if (charsRaw.equals(STRING_LONG_MIN_VALUE)) {
                 markWord |= 0b10;
-                lVal = longValue;
-            } else {
-                markWord |= 1;
-                dVal = doubleValue;
+                dVal = -1;
+                lVal = Long.MIN_VALUE;
+                return new CoercedString(false, -1, Long.MIN_VALUE);
             }
-            return new CoercedString(!isInteger, doubleValue, longValue);
-        } catch (NumberFormatException e) {
-            throw new InternalLuaLexerError("Unexpected failure while reading number '%s'".formatted(number), e);
+            int mul = 1;
+            int[] currCharPtr = new int[]{0};
+            if (charsRaw.charAt(0) == '-') {
+                mul = -1;
+                charsRaw = charsRaw.substring(1);
+            } else if (charsRaw.charAt(0) == '+') {
+                charsRaw = charsRaw.substring(1);
+            }
+            var chars = charsRaw;
+            var res = Lexer.parseNumber(new Position(0, 0, 0),
+                    () -> currCharPtr[0] >= chars.length() ? (char) -1 : chars.charAt(currCharPtr[0]),
+                    () -> currCharPtr[0]++);
+            if (res.consumedString().equals(chars)) {
+                // save result to cache
+                var isInteger = res.dVal() < 0;
+                markWord |= 1 << (isInteger ? 1 : 0);
+                if (isInteger) {
+                    markWord |= 0b10;
+                    lVal = res.lVal() * mul;
+                    dVal = -1;
+                } else {
+                    markWord |= 1;
+                    dVal = res.dVal() * mul;
+                    lVal = -1;
+                }
+                return new CoercedString(!isInteger, dVal, lVal);
+            }
+            // else fallthrough
+        } catch (LuaParserException ignored) {
         }
+        // failed to coerce
+        markWord |= 0b100;
+        return null;
     }
 
-    private record CoercedString(boolean isDouble, double dVal, long lVal) {
-
+    public record CoercedString(boolean isDouble, double dVal, long lVal) {
     }
 
     // =================================================================================================================
