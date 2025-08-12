@@ -364,7 +364,7 @@ public final class LuaObject {
         if (doubleCalc) {
             return LuaObject.of(Math.floor(dx / dy));
         }
-        return LuaObject.of((long)Math.floor((double)lx / ly));
+        return LuaObject.of((long) Math.floor((double) lx / ly));
     }
 
     public LuaObject mod(LuaObject other) {
@@ -686,10 +686,7 @@ public final class LuaObject {
     // =================================================================================================================
 
     private static final String STRING_LONG_MIN_VALUE = Long.toString(Long.MIN_VALUE);
-    /**
-     * This method is directly taken from {@linkplain Lexer}.
-     * TODO: correctly coerce Long.MIN_VAL to long instead of double
-     */
+
     public CoercedString coerceToNumber() {
         assert isString() : "trying to coerce non-string";
         if ((markWord & 0b11) != 0) {

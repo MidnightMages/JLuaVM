@@ -423,14 +423,12 @@ public class Lexer {
                 next = getCurrChar.get();
                 if (next == '-' || next == '+' || isDecDigit(next)) {
                     d *= next == '-' ? -1 : 1;
-                    if(!isDecDigit(next)) // if it was - or +
+                    if (!isDecDigit(next)) // if it was - or +
                         consumeAndAdvance.run();
                     // next up may be a base10 number
                     var exp = consumeWhile.apply(Lexer::isDecDigit);
                     d *= Math.pow(2, Long.parseUnsignedLong(exp, 10));
-                }
-                else
-                {
+                } else {
                     throw new LuaLexerException(globalStartPos, "malformed exponent in number %s".formatted(consumed.toString()));
                 }
             }
@@ -489,10 +487,10 @@ public class Lexer {
 
     private static boolean isIdentStart(char c) {
         return c != CEOF && (c == '_' |
-                ((((1 << Character.UPPERCASE_LETTER) |
-                        (1 << Character.LOWERCASE_LETTER) |
-                        (1 << Character.TITLECASE_LETTER))
-                        >> Character.getType(c)) & 1) != 0);
+                             ((((1 << Character.UPPERCASE_LETTER) |
+                                (1 << Character.LOWERCASE_LETTER) |
+                                (1 << Character.TITLECASE_LETTER))
+                               >> Character.getType(c)) & 1) != 0);
     }
 
     private static boolean isIdentContination(char c) {

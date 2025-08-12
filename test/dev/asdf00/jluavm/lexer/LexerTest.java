@@ -62,26 +62,26 @@ public class LexerTest {
                 local coroutineResumeOrig = _G.coroutine.resume
 
                 --[[
-                
+                                
                 _G.computer = {}
                 _G.computer.sleep = function(duration) -- performs a non-wasteful-sleep
-                
+                                
                 end
-                
+                                
                 _G.computer.getMachineEvents = function() -- returns (string eventName, varargsPacked)[]
                     return {}
                 end
-                
+                                
                 _G.computer.waitForMachineEvent = function(timeout) -- returns after timeout or instantly if GetMachineEvents were to return a non-empty table
-                
+                                
                 end
-                
+                                
                 _G.computer.shutdown = function(reboot)
-                
+                                
                 end
-                
+                                
                 _G.computer.uptime = function() -- time since computer boot (not increasing while paused)
-                
+                                
                 end
                 ]]""", "LOCAL;IDENT;ASSIGN;IDENT;DOT;IDENT;DOT;IDENT;EOF");
     }
@@ -90,38 +90,38 @@ public class LexerTest {
     void complexSnippet() {
         var lexer = new Lexer("""
                 local coroutineResumeOrig = _G.coroutine.resume
-                
+                                
                 --[[
-                
+                                
                 _G.computer = {}
                 _G.computer.sleep = function(duration) -- performs a non-wasteful-sleep
-                
+                                
                 end
-                
+                                
                 _G.computer.getMachineEvents = function() -- returns (string eventName, varargsPacked)[]
                     return {}
                 end
-                
+                                
                 _G.computer.waitForMachineEvent = function(timeout) -- returns after timeout or instantly if GetMachineEvents were to return a non-empty table
-                
+                                
                 end
-                
+                                
                 _G.computer.shutdown = function(reboot)
-                
+                                
                 end
-                
+                                
                 _G.computer.uptime = function() -- time since computer boot (not increasing while paused)
-                
+                                
                 end
                 ]]
-                
+                                
                 local coroutineResumedByMap = {} -- Dict<coroutine coroutine, coroutine parent>
                 local coroutineExecutionQueue = {}
                 local coroutineRescheduleMap = {} -- Dict<coroutine co, number earliestRescheduleTimestamp>
                 local coroutineResumptionArguments = {} -- Dict<coroutine co, varargsPacked args>
                 local shutdownTasks = {} -- function[]
                 local eventQueue = {} -- (string eventName, varargsPacked)[]
-                
+                                
                 local subscribedCoroutineMap = {} -- Dict<string eventname, (coroutine subscribedCoroutine)[]>
                 local subscribedCoroutineMap_Inverse = {} -- Dict<coroutine subscribedCoroutine, string eventname>
                 local function subscribedCoroutineMap_add(eventKey, newCoroutine)
@@ -133,7 +133,7 @@ public class LexerTest {
                     end
                     subscribedCoroutineMap_Inverse[newCoroutine] = eventKey
                 end
-                
+                                
                 local function subscribedCoroutineMap_removeByKey(eventKey)
                     local existing = subscribedCoroutineMap[eventKey]
                     for i = 1, #existing do
@@ -141,7 +141,7 @@ public class LexerTest {
                     end
                     subscribedCoroutineMap[eventKey] = nil
                 end
-                
+                                
                 local function subscribedCoroutineMap_removeByValue(coroutine)
                     local existingTable = subscribedCoroutineMap[subscribedCoroutineMap_Inverse[coroutine]]
                     for i = 1, #existingTable do
@@ -150,15 +150,15 @@ public class LexerTest {
                             break
                         end
                     end
-                
+                                
                     subscribedCoroutineMap_Inverse[coroutine] = nil
                 end
-                
+                                
                 local function enqueueCoroutineWithArgs(co, packedVarArgs)
                     coroutineResumptionArguments[co] = packedVarArgs
                     table.insert(coroutineExecutionQueue, co)
                 end
-                
+                                
                 local function processEvent(eventTable)
                     local eventName = eventTable[1]
                     local toExecute = subscribedCoroutineMap[eventName]
@@ -170,12 +170,12 @@ public class LexerTest {
                         subscribedCoroutineMap_removeByKey(eventName)
                     end
                 end
-                
+                                
                 local COROUTINE_WAIT_TYPE = {}
                 COROUTINE_WAIT_TYPE.EVENT_OR_TIMEOUT = 1 -- {type}
                 COROUTINE_WAIT_TYPE.SUB_YIELDRET = 2  -- {type}
                 COROUTINE_WAIT_TYPE.SUPER_RESUMPTION = 3 -- {type}
-                
+                                
                 local coroutineWaitReason = nil
                 ---@diagnostic disable-next-line: duplicate-set-field
                 _G.coroutine.resume = function(co, ...)
@@ -183,8 +183,8 @@ public class LexerTest {
                     coroutineWaitReason = COROUTINE_WAIT_TYPE.SUB_YIELDRET
                     _G.coroutine.yield({co, table.pack(...)})
                 end
-                
-                
+                                
+                                
                 ---@diagnostic disable-next-line: duplicate-set-field
                 _G.coroutine.wrap = function(f)
                     local co = _G.coroutine.create(f)
@@ -196,27 +196,27 @@ public class LexerTest {
                         return table.unpack(packed, 2)
                     end
                 end
-                
+                                
                 _G.os = {}
                 _G.os.spawnCoroutine = function(func, ...) -- Creates a new coroutine that is managed by the scheduler but does not have a parent, optionally with arguments
                     local co = _G.coroutine.create(func)
                     enqueueCoroutineWithArgs(co, table.pack(...))
                 end
-                
+                                
                 _G.event = {}
                 event.pull = function(timeout, eventName)
                     if timeout == nil and eventName == nil then
                        error("At least one argument must be non-nil.")
                     end
-                
+                                
                     coroutineWaitReason = COROUTINE_WAIT_TYPE.EVENT_OR_TIMEOUT
                     return _G.coroutine.yield({timeout, eventName})
                 end
-                
+                                
                 event.push = function(eventName, ...)
                     table.insert(eventQueue, {eventName, table.pack(...)})
                 end
-                
+                                
                 event.subscribe = function(eventName, func)
                     local unsubscriber = {}
                     if eventName == "shutdown" then
@@ -231,7 +231,7 @@ public class LexerTest {
                     else
                         unsubscriber["unsubscribed"] = false
                         function unsubscriber:unsubscribe() self.unsubscribed = true end
-                
+                                
                         os.spawnCoroutine(function()
                             while true do
                                 local args = table.pack(event.pull(nil, eventName))
@@ -244,26 +244,26 @@ public class LexerTest {
                     end
                     return unsubscriber
                 end
-                
-                
+                                
+                                
                 _G.os.sleep = function(duration)
                     _G.event.pull(duration, nil)
                 end
-                
+                                
                 local shutdownOs = false
                 local rebootOs = nil
-                
+                                
                 _G.os.shutdown = function(reboot)
                     shutdownOs = true
                     rebootOs = reboot or false
                 end
-                
+                                
                 local function printSched(...)
                     print("[Scheduler]",...)
                 end
-                
+                                
                 local lastCoroutineStartTime = nil -- TODO add yield hook, and if non nil and greater than the timeout then we do something
-                
+                                
                 local function coroutineScheduler()
                     local i = 1
                     while true do
@@ -275,12 +275,12 @@ public class LexerTest {
                             printSched("Shutdown complete")
                             computer.shutdown(rebootOs)
                         end
-                
+                                
                         -- check event queues
                         for j = 1, #eventQueue do processEvent(eventQueue[i]) end
                         local machineEvents = computer.getMachineEvents()
                         for j = 1, #machineEvents do processEvent(machineEvents[i]) end
-                
+                                
                         -- process timeouts
                         local now = computer.uptime()
                         local removed = {}
@@ -293,22 +293,22 @@ public class LexerTest {
                             elseif v < earliestTimestamp then
                                 earliestTimestamp = v
                             end
-                
+                                
                         end
                         for j = 1, #removed do coroutineRescheduleMap[removed[j]] = nil end
-                
+                                
                         -- efficiently sleep if there are no tasks
                         if #coroutineExecutionQueue == 0 then
                             local waitTime = math.max(earliestTimestamp-now,0)
                             computer.waitForMachineEvent(waitTime)
                             goto continue
                         end
-                
+                                
                         -- process the next task
                         local nextCo = table.remove(coroutineExecutionQueue, 0)
                         local nextArgs = coroutineResumptionArguments[nextCo]
                         coroutineResumptionArguments[nextCo] = nil
-                
+                                
                         coroutineWaitReason = COROUTINE_WAIT_TYPE.SUPER_RESUMPTION
                         lastCoroutineStartTime = computer.uptime()
                         local coReturnValue = nil
@@ -318,13 +318,13 @@ public class LexerTest {
                             coReturnValue = table.pack(coroutineResumeOrig(nextCo))
                         end
                         lastCoroutineStartTime = nil
-                
+                                
                         if coroutineWaitReason == COROUTINE_WAIT_TYPE.EVENT_OR_TIMEOUT then
                             assert(coReturnValue[1] == true, "EVENT_OR_TIMEOUT failed")
                             local coData = coReturnValue[2]
                             local timeout = coData[1]
                             local eventName = coData[2]
-                
+                                
                             if timeout ~= nil then coroutineRescheduleMap[nextCo] = computer.uptime() + timeout end
                             if eventName ~= nil then subscribedCoroutineMap_add(eventName, nextCo) end
                         elseif coroutineWaitReason == COROUTINE_WAIT_TYPE.SUB_YIELDRET then -- coReturnValue: {bool success, {coroutine co to resume, packedVarArgs}}
@@ -348,19 +348,19 @@ public class LexerTest {
                             error("Not implemented")
                         end
                         ::continue::
-                
+                                
                         if coroutine.running() ~= nil then -- if not in hypervisor mode
                             coroutine.yield()
                         end
                     end
                     error("All coroutines have exited. Shutdown time?")
                 end
-                
-                
+                                
+                                
                 local function boot()
-                
+                                
                 end
-                
+                                
                 os.spawnCoroutine(boot)
                 coroutineScheduler()
                 """);
@@ -455,7 +455,7 @@ public class LexerTest {
                 "local a = [=§a|=a|==a|,|;|-§[abcef]]",
         };
         for (var s : expandOptions(snippets)) {
-            assertThrows(LuaLexerException.class, () -> lexAndCollectTokens(s), ()->"Code was "+s );
+            assertThrows(LuaLexerException.class, () -> lexAndCollectTokens(s), () -> "Code was " + s);
         }
     }
 
