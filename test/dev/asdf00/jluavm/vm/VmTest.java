@@ -2487,4 +2487,17 @@ public class VmTest extends BaseVmTest {
         loadAssertSuccessAndRv("return 9223372036854775807", LuaObject.of(9223372036854775807L));
         loadAssertSuccessAndRv("return 9223372036854775808", LuaObject.of(9223372036854775808d));
     }
+
+    @Test
+    void loopFuncsSelfClosureNotABox() {
+        loadAssertSuccessAndRv("""
+                for _ in ipairs({}) do end
+                local function a() end
+                local function b() end
+                local function c() end
+                local function d() end
+                local function f() return f end
+                return 123
+                """, LuaObject.of(123));
+    }
 }
