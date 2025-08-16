@@ -2492,10 +2492,7 @@ public class VmTest extends BaseVmTest {
     void loopFuncsSelfClosureNotABox() {
         loadAssertSuccessAndRv("""
                 for _ in ipairs({}) do end
-                local function a() end
-                local function b() end
-                local function c() end
-                local function d() end
+                local a,b,c,d
                 local function f() return f end
                 return 123
                 """, LuaObject.of(123));
