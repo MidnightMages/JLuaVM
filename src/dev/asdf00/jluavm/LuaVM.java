@@ -134,7 +134,7 @@ public abstract class LuaVM {
         var depts = new Field[jClasses.length];
         for (int i = 0; i < constructors.length; i++) {
             try {
-                constructors[i] = jClasses[i].getDeclaredConstructor(LuaObject[].class, LuaObject[].class);
+                constructors[i] = jClasses[i].getDeclaredConstructor(LuaObject.class, LuaObject[].class);
                 depts[i] = jClasses[i].getDeclaredField("innerFunctions");
             } catch (ReflectiveOperationException e) {
                 throw new InternalLuaLoadingError(e);
@@ -200,7 +200,7 @@ public abstract class LuaVM {
         }
         // return constructor for root function
         try {
-            rootFunc = constructors[constructors.length - 1].newInstance(new LuaObject[]{_G}, Singletons.EMPTY_LUA_OBJ_ARRAY);
+            rootFunc = constructors[constructors.length - 1].newInstance(_G, Singletons.EMPTY_LUA_OBJ_ARRAY);
         } catch (ReflectiveOperationException e) {
             throw new RuntimeException(e);
         }

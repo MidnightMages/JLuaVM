@@ -2,9 +2,12 @@ package dev.asdf00.jluavm;
 
 import dev.asdf00.jluavm.exceptions.DelayedJavaCompilationException;
 import dev.asdf00.jluavm.internals.DelayedJavaCompiler;
+import dev.asdf00.jluavm.lualoaded.GeneratedLuaFunc_1;
+import dev.asdf00.jluavm.lualoaded.GeneratedLuaFunc_2;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import org.junit.jupiter.api.Test;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -56,22 +59,23 @@ public class ClassLoadingTest {
     public void javacFailure() {
         assertThrows(DelayedJavaCompilationException.class, () -> DelayedJavaCompiler.compileAndLoad(LuaFunction.class.getClassLoader(), "dev.asdf00.jluavm.lualoaded.Fail0", "00asdf"));
     }
+//
+//    @Test
+//    public void dumpStuff() {
+//        LuaVM.builder().emptyEnv().rootFunc("").build().dumpJICFor("""
+//                        if true then local a1 end
+//                        local f -- crashes here
+//                        f = function() return f end
+//                        """,
+//                Path.of("test"));
+//    }
+//
+//    @Test
+//    @SuppressWarnings("unchecked")
+//    public void debugDumpedStuff() throws Exception {
+//        var vm = LuaVM.builder().rootFunc("").build();
+//        vm.withDumpedRoot(Files.readString(Path.of("test/dev/asdf00/jluavm/lualoaded/depts.txt")), GeneratedLuaFunc_1.class, GeneratedLuaFunc_2.class);
+//        var cres = vm.run();
+//    }
 
-    /*-
-    public void dumpStuff() {
-        LuaVM.create().dumpJICFor("""
-                        return 1 + 2
-                        """,
-                Path.of("test"));
-    }
-
-    // @Test
-    @SuppressWarnings("unchecked")
-    public void debugDumpedStuff() throws Exception {
-        var vm = LuaVM.create();
-        vm.withStdLib();
-        // vm.withDumpedRoot(Files.readString(Path.of("test/dev/asdf00/jluavm/lualoaded/depts.txt")), GeneratedLuaFunc_0.class);
-        var cres = vm.run();
-    }
-     */
 }
