@@ -94,8 +94,9 @@ public final class LuaObject {
             case Types.FUNCTION -> "function";
             case Types.USERDATA -> "userdata";
             case Types.THREAD -> "thread";
-            case Types.TABLE, Types.ARRAY -> "table";
-            case Types.BOX -> "box<" + ((LuaObject) refVal).getTypeAsString() + ">";
+            case Types.TABLE -> "table";
+            case Types.ARRAY -> "_array";
+            case Types.BOX -> "_box<" + ((LuaObject) refVal).getTypeAsString() + ">";
             default -> throw new IllegalStateException("Unexpected case value: " + type);
         };
     }
