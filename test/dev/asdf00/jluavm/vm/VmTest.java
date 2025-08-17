@@ -2457,7 +2457,17 @@ public class VmTest extends BaseVmTest {
     }
 
     @Test
-    void varArgAttemptToAccessTable() {
+    void varArgAttemptToAccessArray() {
+        var error = loadAssertRuntimeErrorGetAsString("""
+                local a = ...
+                return a.abc
+                """);
+
+        assertEquals("Attempt to index a nil value", error[0].asString());
+    }
+
+    @Test
+    void varArgAttemptToAccessArrayFunc() {
         var error = loadAssertRuntimeErrorGetAsString("""
                 function f(...)
                     local a = ...
@@ -2466,7 +2476,7 @@ public class VmTest extends BaseVmTest {
                 return f(1,2,3)
                 """);
 
-        assertEquals("Attempt to index a number value",error[0].asString());
+        assertEquals("Attempt to index a number value", error[0].asString());
     }
 
     @Test
