@@ -1,5 +1,5 @@
 # Lua / LuaC deviations
-This document describes all known cases where JLuaVM deviates from LuaC or the Lua spec itself.
+This document describes all known cases where JLuaVM deviates from LuaC (the official implementation of a LUA interpreter) or the Lua specification itself.
 Please report any cases that are not listed yet by opening an issue ticket.
 
 ## LuaC deviations
@@ -32,9 +32,13 @@ In the following cases JLuaVM behaves differently than LuaC, but we still fulfil
 
     Differs slightly as the table-length operator behaves differently.
 
+- **parsing and then printing hex-float numbers**
 
-## Lua language spec deviations
-Similarly, in these cases the lua spec is not followed (meaning if LuaC follows the specification, the behaviour will also differ from LuaC):
+    JLuaVM appears to offer a couple more digits of precisions than LuaC when outputting numbers.
+
+
+## Lua language specification deviations
+Similarly, in these cases the lua specification (spec) is not followed (meaning if LuaC follows the spec, the behaviour will also differ from LuaC):
 - **math.randomseed(seed)**
 
     This function does not accept two seeds, but instead only one. Similarly it also only returns one number. Extra arguments are ignored.
