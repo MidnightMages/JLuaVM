@@ -8,6 +8,11 @@ Differences in behaviour compared to the Lua specification itself and LuaC can b
 
 TODO explain what is missing
 
+## Acknowledgement
+The DelayedJavaCompiler class, in the package `dev.asdf00.jluavm.internals`, is largely taken from Java Object Oriented Reflection library (jOOR) which, itself, 
+is distributed under the Apache License Version 2.0 with the source code available [on Github](https://github.com/jOOQ/jOOR).
+
+
 ## Contributing
 
 If you wish to contribute, feel free to clone the repository and propose changes. You should however be careful when modifying code that works directly with the LuaVM_RT instance (essentially any code containing `vm.`). 
