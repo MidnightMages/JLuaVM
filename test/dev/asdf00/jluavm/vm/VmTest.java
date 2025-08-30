@@ -2506,4 +2506,10 @@ public class VmTest extends BaseVmTest {
                 f = function() return f end
                 """, LuaObject.of(123));
     }
+    @Test
+    void numberTostringSci() {
+        loadAssertSuccessAndRv("""
+                return table.concat({tostring(-1e-06),tostring(0.000001),tostring(0.1),tostring(1000),tostring(1000000),tostring(5.12334e12)},";")
+                """, LuaObject.of("-1e-06;1e-06;0.1;1000;1000000;5123340000000.0"));
+    }
 }

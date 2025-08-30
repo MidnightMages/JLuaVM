@@ -458,7 +458,10 @@ public class Lexer {
             }
         } else if (getCurrChar.get() == 'e') { // always double; number like 1e2
             consumeAndAdvance.run();
-            // next up may be a base 10 exponent
+            // next up may be a base 10 exponent (which might start with a minus)
+            if (getCurrChar.get() == '-')
+                consumeAndAdvance.run();
+
             consumeWhile.apply(Lexer::isDecDigit);
             try {
                 return new NumberParseResult(Double.parseDouble(consumed.toString()), -1, consumed.toString());
