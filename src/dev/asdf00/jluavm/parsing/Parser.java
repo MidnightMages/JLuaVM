@@ -57,7 +57,7 @@ public final class Parser {
     private SpecificVarInfo define(Token ident, int attributes) {
         SpecificVarInfo info = symTab.add(ident, (attributes & 1) == 1, (attributes & 2) == 2);
         if (info == null) {
-            throw new LuaSemanticException(ident.pos(), "'%s' is defined twice!".formatted(cur.stVal()));
+            throw new LuaSemanticException(ident.pos(), "'%s' is defined twice!".formatted(ident.stVal()));
         }
         return info;
     }
