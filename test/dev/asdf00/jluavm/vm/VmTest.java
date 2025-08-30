@@ -4,6 +4,7 @@ import dev.asdf00.jluavm.LuaVM;
 import dev.asdf00.jluavm.exceptions.loading.LuaParserException;
 import dev.asdf00.jluavm.exceptions.loading.LuaSemanticException;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
+import dev.asdf00.jluavm.runtime.utils.Singletons;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
@@ -2504,7 +2505,7 @@ public class VmTest extends BaseVmTest {
                 if true then local a1 end
                 local f -- crashes here
                 f = function() return f end
-                """, LuaObject.of(123));
+                """, Singletons.EMPTY_LUA_OBJ_ARRAY);
     }
 
     @Test
