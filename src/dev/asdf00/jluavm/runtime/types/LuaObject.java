@@ -488,7 +488,19 @@ public final class LuaObject {
         if (Double.isNaN(dVal))
             return "-nan";
 
-        return doubleToStringFormat.format(dVal);
+        var dbl = doubleToStringFormat.format(Math.abs(dVal));
+        if (dbl.startsWith("0.0000")) {
+            dbl = dbl.substring(2);
+            int negExponent = 1;
+            for (int i = 0; i < dbl.length(); i++) {
+                if (dbl.charAt(i) == '0')
+                    negExponent++;
+                else
+                    break;
+            }
+            dbl = dbl.substring(negExponent - 1) + "e-%02d".formatted(negExponent); // minimum 2 exp digits, i.e e-05
+        }
+        return dVal < 0 ? ("-" + dbl) : dbl;
     }
 
     public LuaObject band(LuaObject other) {
@@ -1144,7 +1156,8 @@ public final class LuaObject {
                     type * 31 + ((int) (Double.doubleToRawLongBits(dVal) >> 32)) * 31 + ((int) Double.doubleToRawLongBits(dVal));
             case Types.LONG -> type * 31 + ((int) (lVal >> 32)) * 31 + ((int) lVal);
             case Types.STRING -> type * 31 + refVal.hashCode();
-            case Types.FUNCTION, Types.USERDATA, Types.THREAD, Types.TABLE, Types.ARRAY , Types.BOX -> type * 31 + System.identityHashCode(this);
+            case Types.FUNCTION, Types.USERDATA, Types.THREAD, Types.TABLE, Types.ARRAY, Types.BOX ->
+                    type * 31 + System.identityHashCode(this);
             default -> throw new IllegalStateException("Unexpected case value: " + type);
         };
     }
