@@ -2584,4 +2584,21 @@ public class VmTest extends BaseVmTest {
                 return table.concat({tostring(-1e-06),tostring(1e+06),tostring(1e06),tostring(-1e+06),tostring(-1e06),tostring(0.000001),tostring(0.1),tostring(1000),tostring(1000000),tostring(5.12334e12)},";")
                 """, LuaObject.of("-1e-06;1000000.0;1000000.0;-1000000.0;-1000000.0;1e-06;0.1;1000;1000000;5123340000000.0"));
     }
+
+    @Test
+    void doubleClosable() {
+        loadAssertSuccessAndRv("""
+                local rv = ""
+                local function makeObject(value)
+                    return setmetatable({value},{__close=function() rv = rv .. tostring("closing".. tostring(value)..";") end})
+                end
+                do
+                    local a<close> = makeObject(1)
+                    local a<close> = makeObject(2)
+                    rv = rv.. "123;"..tostring(a[1])
+                end
+                rv = rv .. "end;"
+                return rv
+                """, LuaObject.of("123;2closing2;closing1;end;"));
+    }
 }

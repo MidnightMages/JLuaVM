@@ -1,9 +1,11 @@
 package dev.asdf00.jluavm.parsing.container;
 
 import dev.asdf00.jluavm.exceptions.loading.LuaSemanticException;
+import dev.asdf00.jluavm.utils.Tuple;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.stream.Collectors;
 
 public class VarScope {
@@ -14,7 +16,7 @@ public class VarScope {
     public final ArrayList<VarScope> children = new ArrayList<>();
     public final int id;
 
-    private final LinkedHashMap<String, VarInfo> names = new LinkedHashMap<>();
+    private final List<Tuple<String, VarInfo>> names = new ArrayList<>();
     private final LinkedHashMap<String, LabelInfo> labels = new LinkedHashMap<>();
 
     public final boolean isFunctionBorder;
@@ -42,19 +44,23 @@ public class VarScope {
     }
 
     public SpecificVarInfo add(Token ident, boolean isConst, boolean isClosable) {
-        if (names.containsKey(ident.stVal())) {
-            return null;
-        }
         if (isClosable) {
             closableCnt++;
         }
         VarInfo info = new VarInfo(ident.pos(), ident.stVal(), baseIdx + names.size(), isConst, isClosable);
-        names.put(ident.stVal(), info);
+        names.add(new Tuple<>(ident.stVal(), info));
         return new SpecificVarInfo(info, -1);
     }
 
     public SpecificVarInfo get(String ident, boolean crossedFunctionBorder) {
-        var rVal = names.get(ident);
+        VarInfo rVal = null;
+        for (int i = names.size()-1; i >= 0; i--) {
+            var e = names.get(i);
+            if (e.x().equals(ident)) {
+                rVal = e.y();
+                break;
+            }
+        }
         if (rVal == null) {
             // not in this scope
             if (parent == null) {
@@ -135,8 +141,8 @@ public class VarScope {
         assert isFunctionBorder;
         var rv = new ArrayList<Integer>();
         int i = 0;
-        for (var n : names.values()) {
-            if (n.sitsInBox()) {
+        for (var e : names) {
+            if (e.y().sitsInBox()) {
                 rv.add(i);
             }
             i++;
