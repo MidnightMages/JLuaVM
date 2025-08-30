@@ -509,24 +509,6 @@ public class Lexer {
         return '0' <= c && c <= '9';
     }
 
-    public static double parseHexDouble(String num) {
-        double d = 0;
-        for (int i = 0; i < num.length(); i++) {
-            d *= 16;
-            char c = num.charAt(i);
-            if (isDecDigit(c)) {
-                d += c - '0';
-            } else {
-                char cl = Character.toLowerCase(c);
-                if (cl < 'a' || cl > 'f') {
-                    throw new NumberFormatException("non hex digit character '%s' in '%s'".formatted(c, num));
-                }
-                d += cl - 'a';
-            }
-        }
-        return d;
-    }
-
     private static class CharStream {
         private final char[] cs;
         private int ptr;
