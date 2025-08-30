@@ -67,6 +67,11 @@ public class LMath {
             return null;
         }
 
+        if (y.isLong() && y.asLong() == 0 || y.isDouble() && y.asDouble() == 0) {
+            vm.error(funcBadArgError("math.fmod", 1, "expected non-zero value"));
+            return null;
+        }
+
         var anyDouble = x.isDouble() || y.isDouble();
         return LuaObject.of(anyDouble ? (x.asDouble() % y.asDouble()) : (x.asLong() % y.asLong()));
     }
