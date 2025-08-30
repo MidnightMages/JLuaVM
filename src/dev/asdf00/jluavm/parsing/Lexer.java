@@ -459,7 +459,8 @@ public class Lexer {
         } else if (getCurrChar.get() == 'e') { // always double; number like 1e2
             consumeAndAdvance.run();
             // next up may be a base 10 exponent (which might start with a minus)
-            if (getCurrChar.get() == '-')
+            var signCandidate = getCurrChar.get();
+            if (signCandidate == '-' || signCandidate == '+')
                 consumeAndAdvance.run();
 
             consumeWhile.apply(Lexer::isDecDigit);
