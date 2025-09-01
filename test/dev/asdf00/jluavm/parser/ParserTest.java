@@ -237,4 +237,23 @@ public class ParserTest {
                 ... = "test"
                 """), () -> "");
     }
+
+
+
+    @Test
+    void forbiddenVararg() {
+        assertThrows(LuaSemanticException.class, () -> parse("""
+                function a(...)
+                    function b()
+                        tb = table.pack(...)
+                    end
+                end
+                """));
+
+        assertThrows(LuaSemanticException.class, () -> parse("""
+                function b()
+                    tb = table.pack(...)
+                end
+                """));
+    }
 }
