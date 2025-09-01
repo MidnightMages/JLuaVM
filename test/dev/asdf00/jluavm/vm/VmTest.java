@@ -2633,4 +2633,20 @@ public class VmTest extends BaseVmTest {
                 	[C]: in ?
                 """));
     }
+
+    @Test
+    void simpleOopCall() {
+        loadAssertSuccessAndRv("""
+                local t = {name = "test"}
+                
+                rv = ""
+                function t:get()
+                    rv = rv .. "get:"..self.name..";"
+                end
+                t:get()
+                t.name = "test2"
+                t.get(t)
+                return rv
+                """, LuaObject.of("get:test;get:test2;"));
+    }
 }
