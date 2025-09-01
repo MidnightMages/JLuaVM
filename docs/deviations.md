@@ -36,6 +36,10 @@ In the following cases JLuaVM behaves differently than LuaC, but we still fulfil
 
     JLuaVM appears to offer a couple more digits of precisions than LuaC when outputting numbers.
 
+- **stacktraces are formatted slightly differently**
+
+    Due to the lack of a `loadfile` function, the chunkname is directly fed into stacktraces, allowing for specifying filenames, etc. without being surrounded by quotes.
+
 
 ## Lua language specification deviations
 Similarly, in these cases the lua specification (spec) is not followed (meaning if LuaC follows the spec, the behaviour will also differ from LuaC):
