@@ -2601,4 +2601,36 @@ public class VmTest extends BaseVmTest {
                 return rv
                 """, LuaObject.of("123;2closing2;closing1;end;"));
     }
+
+    @Test
+    void tracebackFormat() {
+        loadAssertSuccessAndRv("""
+                local tb
+                function a(i)
+                    function b(i)
+                        tb = debug.traceback()
+                    end
+                    if i > 0 then a(i-1) else b() end
+                end
+                
+                a(10)
+                return tb
+                """, LuaObject.of("""
+                stack traceback:
+                	main.lua:4: in function 'b'
+                	main.lua:6: in function 'a'
+                	main.lua:6: in function 'a'
+                	main.lua:6: in function 'a'
+                	main.lua:6: in function 'a'
+                	main.lua:6: in function 'a'
+                	main.lua:6: in function 'a'
+                	main.lua:6: in function 'a'
+                	main.lua:6: in function 'a'
+                	main.lua:6: in function 'a'
+                	main.lua:6: in function 'a'
+                	main.lua:6: in function 'a'
+                	main.lua:9: in main chunk
+                	[C]: in ?
+                """));
+    }
 }
