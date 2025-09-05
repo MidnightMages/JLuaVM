@@ -230,4 +230,11 @@ public class ParserTest {
                 table.pack(...)
                 """);
     }
+
+    @Test
+    void varargAssignment() {
+        assertThrowsLexerOrParserException(() -> parse("""
+                ... = "test"
+                """), () -> "");
+    }
 }
