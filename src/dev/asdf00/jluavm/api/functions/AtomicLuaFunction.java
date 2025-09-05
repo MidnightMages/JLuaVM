@@ -3,6 +3,7 @@ package dev.asdf00.jluavm.api.functions;
 import dev.asdf00.jluavm.api.lambdas.*;
 import dev.asdf00.jluavm.internals.Coroutine;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
+import dev.asdf00.jluavm.runtime.types.LuaJavaApiFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 

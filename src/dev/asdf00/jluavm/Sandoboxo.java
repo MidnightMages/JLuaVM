@@ -4,6 +4,7 @@ import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
+import dev.asdf00.jluavm.runtime.types.AbstractGeneratedLuaFunction;
 import dev.asdf00.jluavm.runtime.utils.RTUtils;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 
@@ -28,11 +29,11 @@ import java.lang.reflect.Constructor;
  * </pre>
  */
 @SuppressWarnings({"IfStatementWithIdenticalBranches", "ConstantValue", "ParameterCanBeLocal", "SwitchStatementWithTooFewBranches", "UnnecessaryLocalVariable", "DataFlowIssue", "UnusedAssignment"})
-public class Sandoboxo extends LuaFunction {
+public class Sandoboxo extends AbstractGeneratedLuaFunction {
     public static Constructor<? extends LuaFunction>[] innerFunctions; // populated on class load
 
-    public Sandoboxo(LuaObject _ENV, LuaObject[] closures) {
-        super(_ENV, closures);
+    public Sandoboxo(int lineNum, LuaObject _ENV, LuaObject[] closures) {
+        super("sandoboxo.lua", lineNum, _ENV, closures);
     }
 
     @Override
@@ -138,7 +139,7 @@ public class Sandoboxo extends LuaFunction {
                 // load t
                 t0 = stackFrame[2];
                 // declare inner function with closure
-                t0 = LuaObject.of(newInnerFunction(innerFunctions[0], _ENV, t0));
+                t0 = LuaObject.of(newInnerFunction(-1, innerFunctions[0], t0));
                 // assign to local variable f
                 stackFrame[3] = t0;
                 t0 = null;
@@ -297,11 +298,11 @@ public class Sandoboxo extends LuaFunction {
 
     // in reality, this class would live in its own space and not be a mere inner member class
     @SuppressWarnings("UnusedAssignment")
-    public static class InnerFunction extends LuaFunction {
+    public static class InnerFunction extends AbstractGeneratedLuaFunction {
         public static Constructor<? extends LuaFunction>[] innerFunctions; // populated on class load
 
         public InnerFunction(LuaObject _ENV, LuaObject... closures) {
-            super(_ENV, closures);
+            super("sandoboxo.lua", -1, _ENV, closures);
         }
 
         @Override

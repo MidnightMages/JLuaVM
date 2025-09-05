@@ -2,7 +2,9 @@ package dev.asdf00.jluavm.internals;
 
 import dev.asdf00.jluavm.LuaVM;
 import dev.asdf00.jluavm.api.functions.ApiFunctionRegistry;
+import dev.asdf00.jluavm.runtime.types.AbstractGeneratedLuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
+import dev.asdf00.jluavm.runtime.types.LuaJavaApiFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.LFunc;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
@@ -150,6 +152,47 @@ public class LuaVM_RT extends LuaVM {
     }
 
     // =================================================================================================================
+    // access helper methods
+    // =================================================================================================================
+
+    public String printStacktrace(int skip) {
+        var sb = new StringBuilder();
+        sb.append("stack traceback:");
+        for (int i = luaCallStack.size() - 1 - skip; i >= 0; i--) {
+            sb.append("\n\t");
+            var frame = luaCallStack.get(i);
+            if (frame.lFunc instanceof AbstractGeneratedLuaFunction glf) {
+                sb.append(glf.compilationUnit).append(':').append(frame.lastLine);
+            } else {
+                sb.append(frame.lFunc.getCompilationUnit());
+            }
+            sb.append(": in ");
+            if (i > 0) {
+                // get message from upper layer in callstack
+                String msg = luaCallStack.get(i - 1).lastName;
+                if (msg == null || msg.isEmpty()) {
+                    msg = "function ";
+                }
+                sb.append(msg);
+                // if the upper layer message calls for a function name, we append the current one
+                if (msg.equals("function ")) {
+                    // append the current function name
+                    if (frame.lFunc instanceof AbstractGeneratedLuaFunction glf) {
+                        sb.append("<").append(glf.compilationUnit).append(":").append(glf.lineNum).append(">");
+                    } else {
+                        // this case works, because LuaFunction is sealed
+                        var jlf = (LuaJavaApiFunction) frame.lFunc;
+                        sb.append("'").append(jlf.registry.getSerialName(jlf)).append("'");
+                    }
+                }
+            } else {
+                sb.append("main chunk");
+            }
+        }
+        return sb.toString();
+    }
+
+    // =================================================================================================================
     // setup methods
     // =================================================================================================================
 
@@ -216,6 +259,19 @@ public class LuaVM_RT extends LuaVM {
     // =================================================================================================================
     // lua vm call magic setup methods (MUST be followed by return, and return must be preceded by exactly one of these, or throw internal lua error)
     // =================================================================================================================
+
+    public void setLastTrace(int line) {
+        curFuncFrame.lastLine = line;
+    }
+
+    public void setLastTrace(String name) {
+        curFuncFrame.lastName = name;
+    }
+
+    public void setLastTrace(String name, int line) {
+        curFuncFrame.lastName = name;
+        curFuncFrame.lastLine = line;
+    }
 
     public void error(LuaObject errMsg) {
         // setup vm for error

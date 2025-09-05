@@ -15,10 +15,8 @@ import java.util.List;
 import java.util.Map;
 
 @SuppressWarnings("unused")
-public abstract class LuaFunction {
-    /**
-     * _ENV should only ever
-     */
+public abstract sealed class LuaFunction permits AbstractGeneratedLuaFunction, LuaJavaApiFunction {
+
     public final LuaObject _ENV;
     public final LuaObject[] closures;
     public LuaObject selfLuaObj; // should only be accessed by LuaObject#of(LuaFunction) and the StateDeserializer
@@ -34,13 +32,7 @@ public abstract class LuaFunction {
 
     public abstract void invoke(LuaVM_RT vm, LuaObject[] stackFrame, int resume, LuaObject[] expressionStack, LuaObject[] returned);
 
-    protected static <T extends LuaFunction> T newInnerFunction(Constructor<T> ctor, LuaObject _ENV, LuaObject... closures) {
-        try {
-            return ctor.newInstance(_ENV, closures);
-        } catch (ReflectiveOperationException e) {
-            throw new InternalLuaRuntimeError("error on generating inner function reference (%s)".formatted(e));
-        }
-    }
+    public abstract String getCompilationUnit();
 
     // =================================================================================================================
     // overridable constants for stack frame setup
@@ -194,7 +186,6 @@ public abstract class LuaFunction {
                 try {
                     Coroutine cco = vm.getCurrentCoroutine();
                     boolean prevYieldable = cco.isYieldable;
-                    ;
                     cco.isYieldable = false;
                     obj.set(idx, val);
                     cco.isYieldable = prevYieldable;

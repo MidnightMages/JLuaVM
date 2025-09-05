@@ -8,7 +8,7 @@ import dev.asdf00.jluavm.parsing.Parser;
 import dev.asdf00.jluavm.parsing.ir.IRFunction;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
-import dev.asdf00.jluavm.runtime.utils.AbstractGeneratedLuaFunction;
+import dev.asdf00.jluavm.runtime.types.AbstractGeneratedLuaFunction;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 
 import java.io.IOException;
@@ -96,7 +96,7 @@ public abstract class LuaVM {
         }
         var unit = compile(code);
         try {
-            return unit[unit.length - 1].newInstance(LuaObject.box(_ENV), Singletons.EMPTY_LUA_OBJ_ARRAY);
+            return unit[unit.length - 1].newInstance("main.lua", 0, LuaObject.box(_ENV), Singletons.EMPTY_LUA_OBJ_ARRAY);
         } catch (ReflectiveOperationException e) {
             throw new InternalLuaLoadingError(e);
         }

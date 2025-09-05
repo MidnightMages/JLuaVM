@@ -20,6 +20,10 @@ public final class FunctionCallFrame extends AbstractCallStackFrame {
     public boolean isProtected;
     public LuaFunction msgHandler;
 
+    // TODO: serialization
+    public int lastLine = 1;
+    public String lastName= "?";
+
     private FunctionCallFrame(AbstractCallStackFrame.DataContainer container, LuaFunction lFunc, Stack<InternalCallFrame> scopes,
                               int failCnt, boolean isResumable, boolean isProtected, LuaFunction msgHandler) {
         super(container);

@@ -2635,4 +2635,18 @@ public class VmTest extends BaseVmTest {
                 return rv
                 """, LuaObject.of("123;2closing2;closing1;end;"));
     }
+
+    @Test
+    void simpleTraceback() {
+        loadAssertSuccessAndRv("""
+                local function f()
+                    return debug.traceback()
+                end
+                local a
+                if true then
+                    a = f()
+                end
+                return a
+                """, LuaObject.of("stack traceback:\n\tmain.lua:2: in local 'f'\n\tmain.lua:6: in main chunk"));
+    }
 }

@@ -45,12 +45,14 @@ public class TailCallNode extends Node {
         assert cState.clearEStack() == 0 : "we expect the expression stack to be empty here";
         String stringOfArgs = argSpots.length > 0 ? ", " + String.join(", ", argSpots) : "";
         String result = """
+                vm.setLastTrace("%s", %d);
                 if (%s.isFunction()) vm.tailCall(%s.getFunc()%s);
                 else vm.callInternal(%d, LuaFunction::callWithMeta, "::callWithMeta", %s%s);
                 return;
                 case %d:
                 vm.returnValue(%s);
                 if (true) return;""".formatted(
+                call.getTraceName(), sourcePos.line(),
                 funcSpot, funcSpot, stringOfArgs,
                 callInfo.resumeLabel(), funcSpot, stringOfArgs,
                 callInfo.resumeLabel(),
