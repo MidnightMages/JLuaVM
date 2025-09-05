@@ -2654,4 +2654,19 @@ public class VmTest extends BaseVmTest {
                 return rv
                 """, LuaObject.of(";5;5;4;0;0"));
     }
+
+    @Test
+    void adjustToOneResOnPar() {
+        loadAssertSuccessAndRv("""
+                local function f()
+                    return "a", "b"
+                end
+                local a, b = f()
+                local rv = a..b
+                a, b = (f())
+                rv = rv..a..tostring(b)
+                return rv
+                """, LuaObject.of("abanil"));
+    }
+
 }

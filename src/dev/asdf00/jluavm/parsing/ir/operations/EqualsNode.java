@@ -27,7 +27,7 @@ public class EqualsNode extends Node {
         // for numbers and strings we do a deep equals, for tables and userdata we attempt a meta table lookup if the
         // reference compare fails
         String block = """
-                %s = areEqual(vm, %d, %s, %s);
+                %s = areEqual(%d, vm, %d, %s, %s);
                 if (%s == null) {
                     %s
                     return;
@@ -36,7 +36,7 @@ public class EqualsNode extends Node {
                 if (resume == %d && !%s.isBoolean()) {
                     %s = LuaObject.of(RTUtils.isTruthy(%s));
                 }""".formatted(
-                rSpot, callInfo.resumeLabel(), xSpot, ySpot,
+                rSpot, sourcePos.line(), callInfo.resumeLabel(), xSpot, ySpot,
                 rSpot,
                 callInfo.saveEStack(),
                 callInfo.resumeLabel(),

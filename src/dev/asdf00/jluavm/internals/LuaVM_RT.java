@@ -169,9 +169,15 @@ public class LuaVM_RT extends LuaVM {
             sb.append(": in ");
             if (i > 0) {
                 // get message from upper layer in callstack
-                String msg = luaCallStack.get(i - 1).lastName;
-                if (msg == null || msg.isEmpty()) {
+                String msg;
+                if (frame.tailcalled) {
+                    // we do not know the call site, therefore the call site msg is useless
                     msg = "function ";
+                } else {
+                    msg = luaCallStack.get(i - 1).lastName;
+                    if (msg == null || msg.isEmpty()) {
+                        msg = "function ";
+                    }
                 }
                 sb.append(msg);
                 // if the upper layer message calls for a function name, we append the current one
@@ -187,6 +193,10 @@ public class LuaVM_RT extends LuaVM {
                 }
             } else {
                 sb.append("main chunk");
+            }
+            if (frame.tailcalled) {
+                // add line to indicate that tail calls happened in this frame
+                sb.append("\n\t(...tail calls...)");
             }
         }
         return sb.toString();
@@ -446,6 +456,7 @@ public class LuaVM_RT extends LuaVM {
         }
         // do tailcall
         curFuncFrame.reset();
+        curFuncFrame.tailcalled = true;
         LuaObject[] nuStackFrame = curFuncFrame.locals;
         for (int i = 0, j = 0; i < externalTarget.getArgCount(); j++) {
             if (args[j].isArray()) {

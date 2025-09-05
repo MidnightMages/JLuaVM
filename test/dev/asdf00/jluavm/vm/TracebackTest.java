@@ -177,4 +177,48 @@ public class TracebackTest extends BaseVmTest {
                 	main.lua:23: in main chunk
                 """));
     }
+
+    @Test
+    void tailCalls() {
+        loadAssertSuccessAndRv("""
+                local function f()
+                    return debug.traceback()
+                end
+                
+                local function g(a)
+                    if a < 0 then
+                        local x = f()
+                        return x
+                    end
+                    return g(a - 1)
+                end
+                local y = g(3)
+                return y.."\\n"
+                """, LuaObject.of("""
+                stack traceback:
+                	main.lua:2: in upvalue 'f'
+                	main.lua:7: in function <main.lua:5>
+                	(...tail calls...)
+                	main.lua:12: in main chunk
+                """));
+    }
+
+    @Test
+    void doubleTailCalls() {
+        loadAssertSuccessAndRv("""
+                local b
+                local function a(x)\s
+                    if x < 0 then return debug.traceback() end
+                    return b(x-1)\s
+                end
+                b = function(x) return a(x-2) end
+                
+                return b(5)
+                """, LuaObject.of("""
+                stack traceback:
+                    main.lua:3: in function <main.lua:2>
+                    (...tail calls...)
+                    main.lua:8: in main chunk
+                """));
+    }
 }

@@ -23,6 +23,7 @@ public final class FunctionCallFrame extends AbstractCallStackFrame {
     // TODO: serialization
     public int lastLine = 1;
     public String lastName= "?";
+    public boolean tailcalled = false;
 
     private FunctionCallFrame(AbstractCallStackFrame.DataContainer container, LuaFunction lFunc, Stack<InternalCallFrame> scopes,
                               int failCnt, boolean isResumable, boolean isProtected, LuaFunction msgHandler) {

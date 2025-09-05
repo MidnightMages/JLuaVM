@@ -33,7 +33,7 @@ public class CoerceNumericForNode extends Node {
                     %s
                     %s
                 }
-                %s = areEqual(vm, %d, %s, LuaObject.of(0));
+                %s = areEqual(%d, vm, %d, %s, LuaObject.of(0));
                 if (%s == null) {
                     %s
                     return;
@@ -47,7 +47,7 @@ public class CoerceNumericForNode extends Node {
                 setLocalStatement(stepVar, "LuaObject.of(%s.asDouble())".formatted(sv)),
                 setLocalStatement(upperBoundVar, "LuaObject.of(%s.asDouble())".formatted(ub)),
                 setLocalStatement(iteratorVar, "LuaObject.of(%s.asDouble())".formatted(itr)),
-                checkSpot, call.resumeLabel(), sv,
+                checkSpot, sourcePos.line(), call.resumeLabel(), sv,
                 checkSpot,
                 call.saveEStack(),
                 call.resumeLabel(),

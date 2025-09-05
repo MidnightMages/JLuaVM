@@ -99,7 +99,6 @@ public abstract sealed class LuaFunction permits AbstractGeneratedLuaFunction, L
                 try {
                     Coroutine cco = vm.getCurrentCoroutine();
                     boolean prevYieldable = cco.isYieldable;
-                    ;
                     cco.isYieldable = false;
                     var r = obj.get(idx);
                     cco.isYieldable = prevYieldable;
@@ -141,7 +140,6 @@ public abstract sealed class LuaFunction permits AbstractGeneratedLuaFunction, L
                 try {
                     Coroutine cco = vm.getCurrentCoroutine();
                     boolean prevYieldable = cco.isYieldable;
-                    ;
                     cco.isYieldable = false;
                     var r = obj.get(idx);
                     cco.isYieldable = prevYieldable;
@@ -205,13 +203,14 @@ public abstract sealed class LuaFunction permits AbstractGeneratedLuaFunction, L
         }
     }
 
-    protected static LuaObject areEqual(LuaVM_RT vm, int resumeLabel, LuaObject x, LuaObject y) {
+    protected static LuaObject areEqual(int lineNum, LuaVM_RT vm, int resumeLabel, LuaObject x, LuaObject y) {
         if (x.isNumber() && y.isNumber() || x.isString() && y.isString()) {
             return x.eq(y);
         } else if (x.getType() == y.getType()) {
             if (x == y) {
                 return LuaObject.TRUE;
             } else if (!x.getMetaValueOrNil(Singletons.__eq).isNil() || !y.getMetaValueOrNil(Singletons.__eq).isNil()) {
+                vm.setLastTrace("metamethod 'eq'", lineNum);
                 vm.callInternal(resumeLabel, LuaFunction::binaryOpWithMeta, "::binaryOpWithMeta", Singletons.__eq, x, y);
                 return null;
             } else {
@@ -237,13 +236,14 @@ public abstract sealed class LuaFunction permits AbstractGeneratedLuaFunction, L
         return null;
     }
 
-    protected static LuaObject lengthOf(LuaVM_RT vm, int resumeLabel, LuaObject obj) {
+    protected static LuaObject lengthOf(int lineNum, LuaVM_RT vm, int resumeLabel, LuaObject obj) {
         if (obj.isString()) {
             // LUAC DEVIATION. We intentionally return the number of character instead of the length in bytes.
             return LuaObject.of(obj.asString().length());
         }
         var mv = obj.getMetaValueOrNil(Singletons.__len);
         if (!mv.isNil()) {
+            vm.setLastTrace("metamethod 'len'", lineNum);
             vm.callInternal(resumeLabel, LuaFunction::unaryOpWithMeta, "::unaryOpWithMeta", Singletons.__len, obj);
             return null;
         }

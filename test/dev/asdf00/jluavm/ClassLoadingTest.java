@@ -22,7 +22,7 @@ public class ClassLoadingTest {
             public final class %s extends AbstractGeneratedLuaFunction {
                 public static Constructor<? extends AbstractGeneratedLuaFunction>[] innerFunctions;
                 public %s(LuaObject _ENV, LuaObject[] closures) {
-                   super("classloadingtest.lua", _ENV, closures);
+                   super("classloadingtest.lua", -1, _ENV, closures);
                 }
                 @Override
                 public int getMaxLocalsSize() {

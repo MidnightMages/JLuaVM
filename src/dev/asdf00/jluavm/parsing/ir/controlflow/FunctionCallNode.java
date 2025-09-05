@@ -153,8 +153,13 @@ public class FunctionCallNode extends Node {
             // oop call causes the ident to be named the 'method'
             return "method '" + c.stackTraceName + "'";
         } else if (func instanceof LocalAccessNode l) {
-            // local variable calls are prefixed with 'local'
-            return "local '" + l.info.baseInfo().name + "'";
+            if (l.info.closureIdx() < 0) {
+                // local variable calls are prefixed with 'local'
+                return "local '" + l.info.baseInfo().name + "'";
+            } else {
+                // captured variables are prefixed with 'upvalue'
+                return "upvalue '" + l.info.baseInfo().name + "'";
+            }
         } else if (func instanceof DeRefNode d) {
             // this is a field access being called
             if (d.idx instanceof ConstantNode c) {
