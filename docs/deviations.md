@@ -32,11 +32,11 @@ In the following cases JLuaVM behaves differently than LuaC, but we still fulfil
 
     Differs slightly as the table-length operator behaves differently.
 
-- **parsing and then printing hex-float numbers**
+- **Parsing and then printing hex-float numbers**
 
     JLuaVM appears to offer a couple more digits of precisions than LuaC when outputting numbers.
 
-- **stacktraces are formatted slightly differently**
+- **Stacktraces are formatted differently**
 
     Due to the lack of a `loadfile` function, the chunkname is directly fed into stacktraces, allowing for specifying filenames, etc. without being surrounded by quotes.
 
