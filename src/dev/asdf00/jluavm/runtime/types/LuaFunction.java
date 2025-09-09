@@ -15,10 +15,8 @@ import java.util.List;
 import java.util.Map;
 
 @SuppressWarnings("unused")
-public abstract class LuaFunction {
-    /**
-     * _ENV should only ever
-     */
+public abstract sealed class LuaFunction permits AbstractGeneratedLuaFunction, LuaJavaApiFunction {
+
     public final LuaObject _ENV;
     public final LuaObject[] closures;
     public LuaObject selfLuaObj; // should only be accessed by LuaObject#of(LuaFunction) and the StateDeserializer
@@ -34,13 +32,7 @@ public abstract class LuaFunction {
 
     public abstract void invoke(LuaVM_RT vm, LuaObject[] stackFrame, int resume, LuaObject[] expressionStack, LuaObject[] returned);
 
-    protected static <T extends LuaFunction> T newInnerFunction(Constructor<T> ctor, LuaObject _ENV, LuaObject... closures) {
-        try {
-            return ctor.newInstance(_ENV, closures);
-        } catch (ReflectiveOperationException e) {
-            throw new InternalLuaRuntimeError("error on generating inner function reference (%s)".formatted(e));
-        }
-    }
+    public abstract String getCompilationUnit();
 
     // =================================================================================================================
     // overridable constants for stack frame setup
@@ -87,7 +79,7 @@ public abstract class LuaFunction {
      * Performs an indexed GET operation. If {@code null} is returned, the VM is set up and the caller is expected to
      * return to the VM.
      */
-    protected static LuaObject indexedGet(LuaVM_RT vm, int resumeLabel, LuaObject obj, LuaObject idx) {
+    protected static LuaObject indexedGet(int lineNum, LuaVM_RT vm, int resumeLabel, LuaObject obj, LuaObject idx) {
         if (obj.isTable()) {
             LuaObject key = RTUtils.tryCoerceFloatToInt(idx);
             if (obj.hasKey(key)) {
@@ -97,6 +89,11 @@ public abstract class LuaFunction {
                 if (mtbl == null || !mtbl.isTable() || !mtbl.hasKey(Singletons.__index)) {
                     return LuaObject.nil();
                 } else {
+                    if (lineNum >= 0) {
+                        // Generated code, or execution paths where the trace has been set previously, generally
+                        // enter this method with lineNum=-1. Therefore, only new values are written to the trace.
+                        vm.setLastTrace("metamethod 'index'", lineNum);
+                    }
                     vm.callInternal(resumeLabel, LuaFunction::getWithMeta, "::getWithMeta", obj, key, mtbl);
                     return null;
                 }
@@ -107,7 +104,6 @@ public abstract class LuaFunction {
                 try {
                     Coroutine cco = vm.getCurrentCoroutine();
                     boolean prevYieldable = cco.isYieldable;
-                    ;
                     cco.isYieldable = false;
                     var r = obj.get(idx);
                     cco.isYieldable = prevYieldable;
@@ -117,6 +113,11 @@ public abstract class LuaFunction {
                     return null;
                 }
             } else {
+                if (lineNum >= 0) {
+                    // Generated code, or execution paths where the trace has been set previously, generally
+                    // enter this method with lineNum=-1. Therefore, only new values are written to the trace.
+                    vm.setLastTrace("metamethod 'index'", lineNum);
+                }
                 vm.callInternal(resumeLabel, LuaFunction::getWithMeta, "::getWithMeta", obj, idx, mtbl);
                 return null;
             }
@@ -129,7 +130,7 @@ public abstract class LuaFunction {
         }
     }
 
-    protected static LuaObject tryIndexedGet(LuaVM_RT vm, int resumeLabel, LuaObject obj, LuaObject idx) {
+    protected static LuaObject tryIndexedGet(int lineNum, LuaVM_RT vm, int resumeLabel, LuaObject obj, LuaObject idx) {
         if (obj.isTable()) {
             LuaObject key = RTUtils.tryCoerceFloatToInt(idx);
             if (obj.hasKey(key)) {
@@ -139,6 +140,8 @@ public abstract class LuaFunction {
                 if (mtbl == null || !mtbl.isTable() || !mtbl.hasKey(Singletons.__index)) {
                     return LuaObject.nil();
                 } else {
+                    vm.setLastTrace("metamethod 'index'", lineNum);
+                    vm.setLastTrace(lineNum);
                     vm.callInternal(resumeLabel, LuaFunction::getWithMeta, "::getWithMeta", obj, key, mtbl);
                     return null;
                 }
@@ -149,7 +152,6 @@ public abstract class LuaFunction {
                 try {
                     Coroutine cco = vm.getCurrentCoroutine();
                     boolean prevYieldable = cco.isYieldable;
-                    ;
                     cco.isYieldable = false;
                     var r = obj.get(idx);
                     cco.isYieldable = prevYieldable;
@@ -159,6 +161,7 @@ public abstract class LuaFunction {
                     return null;
                 }
             } else {
+                vm.setLastTrace("metamethod 'index'", lineNum);
                 vm.callInternal(resumeLabel, LuaFunction::getWithMeta, "::getWithMeta", obj, idx, mtbl);
                 return null;
             }
@@ -168,7 +171,7 @@ public abstract class LuaFunction {
         }
     }
 
-    protected static boolean indexedSet(LuaVM_RT vm, int resumeLabel, LuaObject obj, LuaObject idx, LuaObject val) {
+    protected static boolean indexedSet(int lineNum, LuaVM_RT vm, int resumeLabel, LuaObject obj, LuaObject idx, LuaObject val) {
         if (obj.isTable()) {
             LuaObject key = RTUtils.tryCoerceFloatToInt(idx);
             if (key.isNil() || key.isNaN()) {
@@ -184,6 +187,11 @@ public abstract class LuaFunction {
                     obj.set(key, val);
                     return false;
                 } else {
+                    if (lineNum >= 0) {
+                        // Generated code, or execution paths where the trace has been set previously, generally
+                        // enter this method with lineNum=-1. Therefore, only new values are written to the trace.
+                        vm.setLastTrace("metamethod 'newindex'", lineNum);
+                    }
                     vm.callInternal(resumeLabel, LuaFunction::setWithMeta, "::setWithMeta", obj, key, val, mtbl);
                     return true;
                 }
@@ -194,7 +202,6 @@ public abstract class LuaFunction {
                 try {
                     Coroutine cco = vm.getCurrentCoroutine();
                     boolean prevYieldable = cco.isYieldable;
-                    ;
                     cco.isYieldable = false;
                     obj.set(idx, val);
                     cco.isYieldable = prevYieldable;
@@ -204,6 +211,11 @@ public abstract class LuaFunction {
                     return true;
                 }
             } else {
+                if (lineNum >= 0) {
+                    // Generated code, or execution paths where the trace has been set previously, generally
+                    // enter this method with lineNum=-1. Therefore, only new values are written to the trace.
+                    vm.setLastTrace("metamethod 'newindex'", lineNum);
+                }
                 vm.callInternal(resumeLabel, LuaFunction::setWithMeta, "::setWithMeta", obj, idx, val, mtbl);
                 return true;
             }
@@ -214,13 +226,14 @@ public abstract class LuaFunction {
         }
     }
 
-    protected static LuaObject areEqual(LuaVM_RT vm, int resumeLabel, LuaObject x, LuaObject y) {
+    protected static LuaObject areEqual(int lineNum, LuaVM_RT vm, int resumeLabel, LuaObject x, LuaObject y) {
         if (x.isNumber() && y.isNumber() || x.isString() && y.isString()) {
             return x.eq(y);
         } else if (x.getType() == y.getType()) {
             if (x == y) {
                 return LuaObject.TRUE;
             } else if (!x.getMetaValueOrNil(Singletons.__eq).isNil() || !y.getMetaValueOrNil(Singletons.__eq).isNil()) {
+                vm.setLastTrace("metamethod 'eq'", lineNum);
                 vm.callInternal(resumeLabel, LuaFunction::binaryOpWithMeta, "::binaryOpWithMeta", Singletons.__eq, x, y);
                 return null;
             } else {
@@ -236,6 +249,7 @@ public abstract class LuaFunction {
             return x.lt(y);
         } else if (x.isTable() || y.isTable()) {
             if (!x.getMetaValueOrNil(Singletons.__lt).isNil() || !y.getMetaValueOrNil(Singletons.__lt).isNil()) {
+                // This method is never called from generated code, therefore there is no need for setting an upmessage or line number
                 vm.callInternal(resumeLabel, LuaFunction::binaryOpWithMeta, "::binaryOpWithMeta", Singletons.__lt, x, y);
             } else {
                 vm.error(LuaObject.of("Attempted to compare %s with %s without __lt being found".formatted(x.getTypeAsString(), y.getTypeAsString())));
@@ -246,13 +260,14 @@ public abstract class LuaFunction {
         return null;
     }
 
-    protected static LuaObject lengthOf(LuaVM_RT vm, int resumeLabel, LuaObject obj) {
+    protected static LuaObject lengthOf(int lineNum, LuaVM_RT vm, int resumeLabel, LuaObject obj) {
         if (obj.isString()) {
             // LUAC DEVIATION. We intentionally return the number of character instead of the length in bytes.
             return LuaObject.of(obj.asString().length());
         }
         var mv = obj.getMetaValueOrNil(Singletons.__len);
         if (!mv.isNil()) {
+            vm.setLastTrace("metamethod 'len'", lineNum);
             vm.callInternal(resumeLabel, LuaFunction::unaryOpWithMeta, "::unaryOpWithMeta", Singletons.__len, obj);
             return null;
         }
@@ -321,7 +336,7 @@ public abstract class LuaFunction {
                     return;
                 }
                 // the table is not needed anymore, we reuse t0 for metaValue[key]
-                t0 = indexedGet(vm, 0, t2, t1);
+                t0 = indexedGet(-1, vm, 0, t2, t1);
                 if (t0 == null) {
                     return;
                 }
@@ -366,7 +381,7 @@ public abstract class LuaFunction {
                     vm.callExternal(0, t3.getFunc(), t0, t1, t2);
                     return;
                 }
-                if (indexedSet(vm, 0, t3, t1, t2)) {
+                if (indexedSet(-1, vm, 0, t3, t1, t2)) {
                     return;
                 }
             case 0:
@@ -539,7 +554,7 @@ public abstract class LuaFunction {
         switch (resume) {
             case -1:
                 // _ENV
-                t2 = indexedGet(vm, 0, t2, Singletons._EXT);
+                t2 = indexedGet(-1, vm, 0, t2, Singletons._EXT);
                 if (t2 == null) {
                     expressionStack[0] = t0;
                     expressionStack[1] = t1;
@@ -547,14 +562,14 @@ public abstract class LuaFunction {
                 }
             case 0:
                 // _ENV._EXT
-                t1 = indexedGet(vm, 1, t2, t1);
+                t1 = indexedGet(-1, vm, 1, t2, t1);
                 if (t1 == null) {
                     expressionStack[0] = t0;
                     return;
                 }
             case 1:
                 // _ENV._EXT.<type>
-                t0 = indexedGet(vm, 2, t1, t0);
+                t0 = indexedGet(-1, vm, 2, t1, t0);
                 if (t0 == null) {
                     return;
                 }

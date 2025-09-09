@@ -2481,6 +2481,40 @@ public class VmTest extends BaseVmTest {
     }
 
     @Test
+    void varargPadding() {
+        loadAssertSuccessAndRv("""
+                function f(...)
+                    local a, b = ...
+                    return a, b
+                end
+                local x, y = f("1")
+                return x..";"..tostring(y)
+                """, LuaObject.of("1;nil"));
+    }
+
+    @Test
+    void varargNonPadding() {
+        loadAssertSuccessAndRv("""
+                function f(...)
+                    local a, b = ..., "ha"
+                    return a.abc..";"..b
+                end
+                return f({abc="test"}, 2, 3)
+                """, LuaObject.of("test;ha"));
+    }
+
+    @Test
+    void varargNonPaddingEmpty() {
+        loadAssertSuccessAndRv("""
+                function f(...)
+                    local a, b = ..., "ha"
+                    return tostring(a)..";"..b
+                end
+                return f()
+                """, LuaObject.of("nil;ha"));
+    }
+
+    @Test
     void shebang() {
         loadAssertSuccessAndRv("""
                 #;return false
@@ -2603,6 +2637,25 @@ public class VmTest extends BaseVmTest {
     }
 
     @Test
+    void multilineStringNewlines() {
+        loadAssertSuccessAndRv("""
+                rv = ""
+                function logString(s) rv=rv..";"..#s end
+                logString([[
+                test
+                ]])
+                logString([[test
+                ]])
+                logString([[
+                test]])
+                logString([[
+                ]])
+                logString([[]])
+                return rv
+                """, LuaObject.of(";5;5;4;0;0"));
+    }
+
+    @Test
     void tracebackFormat() {
         loadAssertSuccessAndRv("""
                 local tb
@@ -2649,4 +2702,19 @@ public class VmTest extends BaseVmTest {
                 return rv
                 """, LuaObject.of("get:test;get:test2;"));
     }
+
+    @Test
+    void adjustToOneResOnPar() {
+        loadAssertSuccessAndRv("""
+                local function f()
+                    return "a", "b"
+                end
+                local a, b = f()
+                local rv = a..b
+                a, b = (f())
+                rv = rv..a..tostring(b)
+                return rv
+                """, LuaObject.of("abanil"));
+    }
+
 }

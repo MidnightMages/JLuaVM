@@ -40,6 +40,7 @@ public class RelationalOpNode extends Node {
                     %s = %s.%s(%s);
                 } else {
                     %s
+                    vm.setLastTrace("metamethod '%s'", %d);
                     vm.callInternal(%d, LuaFunction::binaryOpWithMeta, "::binaryOpWithMeta", Singletons.__%s, %s, %s);
                     return;
                 }
@@ -49,6 +50,7 @@ public class RelationalOpNode extends Node {
                 }""".formatted(xSpot, ySpot, xSpot, ySpot,
                 rSpot, xSpot, op, ySpot,
                 callInfo.saveEStack(),
+                op, sourcePos.line(),
                 callInfo.resumeLabel(), op, xSpot, ySpot,
                 callInfo.resumeLabel(),
                 callInfo.resumeLabel(), rSpot,

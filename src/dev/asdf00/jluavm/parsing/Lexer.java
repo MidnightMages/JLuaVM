@@ -238,7 +238,12 @@ public class Lexer {
                 sb.append(cur);
             }
             // no escape sequences in long string literal
-            return new Token(LITERAL_STRING, pos, sb.toString());
+            String longLiteral = sb.toString();
+            if (longLiteral.startsWith("\n")) {
+                // an immediate newline after the opening [[ is not contained in the literal string
+                longLiteral = longLiteral.substring(1);
+            }
+            return new Token(LITERAL_STRING, pos, longLiteral);
         }
 
         // switch case for all symbols

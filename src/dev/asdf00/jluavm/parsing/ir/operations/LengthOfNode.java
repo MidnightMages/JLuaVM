@@ -20,13 +20,13 @@ public class LengthOfNode extends Node {
         EStackCallInfo info = cState.generateEStackCallInfo(1);
         String rSpot = cState.pushEStack();
         String block = """
-                %s = lengthOf(vm, %d, %s);
+                %s = lengthOf(%d, vm, %d, %s);
                 if (%s == null) {
                     %s
                     return;
                 }
                 case %d:""".formatted(
-                rSpot, info.resumeLabel(), vSpot,
+                rSpot, sourcePos.line(), info.resumeLabel(), vSpot,
                 rSpot,
                 info.saveEStack(),
                 info.resumeLabel());

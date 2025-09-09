@@ -149,6 +149,7 @@ public class VmBuilder {
         LTable.registerStdTable(stdLibReg);
         LString.registerStdString(stdLibReg);
         LCoroutine.registerStdCoroutine(stdLibReg);
+        LDebug.registerStdDebug(stdLibReg, false);
         LVmLib.registerStdVm(stdLibReg);
         return stdLibReg;
     }
@@ -160,6 +161,7 @@ public class VmBuilder {
         env.set("table", LuaObject.table());
         env.set("string", LuaObject.table());
         env.set("coroutine", LuaObject.table());
+        env.set("debug", LuaObject.table());
         env.set("vm", LuaObject.table());
 
         // add all noninternal functions

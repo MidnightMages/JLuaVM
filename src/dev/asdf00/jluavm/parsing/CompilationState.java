@@ -3,9 +3,8 @@ package dev.asdf00.jluavm.parsing;
 import dev.asdf00.jluavm.exceptions.loading.InternalLuaLoadingError;
 import dev.asdf00.jluavm.internals.DelayedJavaCompiler;
 import dev.asdf00.jluavm.parsing.container.LabelInfo;
-import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
-import dev.asdf00.jluavm.runtime.utils.AbstractGeneratedLuaFunction;
+import dev.asdf00.jluavm.runtime.types.AbstractGeneratedLuaFunction;
 import dev.asdf00.jluavm.utils.Tuple;
 
 import java.lang.reflect.Constructor;
@@ -153,7 +152,7 @@ public final class CompilationState {
         var depts = new Field[jClasses.length];
         for (int i = 0; i < constructors.length; i++) {
             try {
-                constructors[i] = jClasses[i].getDeclaredConstructor(LuaObject.class, LuaObject[].class);
+                constructors[i] = jClasses[i].getDeclaredConstructor(String.class, int.class, LuaObject.class, LuaObject[].class);
                 depts[i] = jClasses[i].getDeclaredField("innerFunctions");
             } catch (ReflectiveOperationException e) {
                 throw new InternalLuaLoadingError(e);
@@ -397,8 +396,8 @@ public final class CompilationState {
                     %s
                     \"\"\";
                     
-                    public %s(LuaObject _ENV, LuaObject[] closures) {
-                        super(_ENV, closures);
+                    public %s(String compilationUnit, int lineNum, LuaObject _ENV, LuaObject[] closures) {
+                        super(compilationUnit, lineNum, _ENV, closures);
                     }
                     
                     @Override

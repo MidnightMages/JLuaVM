@@ -5,6 +5,7 @@ import dev.asdf00.jluavm.api.functions.ApiFunctionRegistry;
 import dev.asdf00.jluavm.exceptions.LuaLoadingException;
 import dev.asdf00.jluavm.internals.Coroutine;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
+import dev.asdf00.jluavm.runtime.types.AbstractGeneratedLuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaHashMap;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
@@ -13,8 +14,10 @@ import dev.asdf00.jluavm.utils.Quadruple;
 import dev.asdf00.jluavm.utils.Triple;
 import dev.asdf00.jluavm.utils.Tuple;
 
+import java.lang.reflect.Constructor;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -100,6 +103,7 @@ public class StateDeserializer {
             }
         }
 
+        var compilationResults = new HashMap<String, Constructor<? extends AbstractGeneratedLuaFunction>[]>();
         for (int i = 0; i < objs.length; i++) {
             if (delayed[i] == null) {
                 continue;
@@ -113,7 +117,7 @@ public class StateDeserializer {
             switch (lobj.type) {
                 case 0b10_0000 -> {
                     // function
-                    if (rdr.readByte() == 1) {
+                    if (rdr.readBool()) {
                         // API function with registry
                         var env = maybeNull(objs, rdr.readInt());
                         var closures = new LuaObject[rdr.readInt()];
@@ -128,6 +132,8 @@ public class StateDeserializer {
                         lobj.refVal = func;
                     } else {
                         // generated lua function
+                        String compilationUnit = objs[rdr.readInt()].asString();
+                        int lineNum = rdr.readInt();
                         String code = objs[rdr.readInt()].asString();
                         var env = objs[rdr.readInt()];
                         var closures = new LuaObject[rdr.readInt()];
@@ -136,7 +142,8 @@ public class StateDeserializer {
                         }
                         int unitIdx = rdr.readInt();
                         try {
-                            var func = LuaVM.compile(code)[unitIdx].newInstance(env, closures);
+                            var func = compilationResults.computeIfAbsent(code, key -> LuaVM.compile(key))[unitIdx]
+                                    .newInstance(compilationUnit, lineNum, env, closures);
                             func.selfLuaObj = lobj;
                             lobj.refVal = func;
                         } catch (LuaLoadingException | ReflectiveOperationException | ArrayIndexOutOfBoundsException e) {

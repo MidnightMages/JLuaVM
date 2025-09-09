@@ -28,10 +28,15 @@ public class UnaryOpNode extends Node {
                     %s = %s.%s();
                 } else {
                     %s
+                    vm.setLastTrace("metamethod '%s'", %d);
                     vm.callInternal(%d, LuaFunction::unaryOpWithMeta, "::unaryOpWithMeta", Singletons.__%s, %s);
                     return;
                 }
-                case %d:""".formatted(vSpot, typeRestriction, rSpot, vSpot, op, info.saveEStack(), info.resumeLabel(), op, vSpot, info.resumeLabel());
+                case %d:""".formatted(vSpot, typeRestriction,
+                rSpot, vSpot, op,
+                info.saveEStack(),
+                op, sourcePos.line(),
+                info.resumeLabel(), op, vSpot, info.resumeLabel());
         return prev + block;
     }
 

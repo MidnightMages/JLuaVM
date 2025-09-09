@@ -33,7 +33,7 @@ public class SemanticTest {
     void forbiddenStatements() {
         //noinspection unchecked
         assertThrowsForExpSnippets(new Class[]{LuaSemanticException.class}, new String[]{
-                "break§| §;", // TODO this one should failing
+                "break§| §;",
         }, ParserTest::parse);
     }
 }

@@ -1,7 +1,7 @@
 package dev.asdf00.jluavm.runtime.stdlib;
 
 import dev.asdf00.jluavm.api.functions.AtomicLuaFunction;
-import dev.asdf00.jluavm.api.functions.LuaJavaApiFunction;
+import dev.asdf00.jluavm.runtime.types.LuaJavaApiFunction;
 import dev.asdf00.jluavm.api.functions.MixedStateFunctionRegistry;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;

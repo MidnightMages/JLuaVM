@@ -53,7 +53,17 @@ public class AssignmentNode extends Node {
                 sb.append('\n');
             }
             // generate target values
-            sb.append(values[i].generate(cState));
+            if (values[i] instanceof LocalAccessNode la && la.info.baseInfo().name.equals("...")) {
+                // unpack vararg '...' at not-last position to only the first value or nil if empty
+                if (la.info.baseInfo().sitsInBox()) {
+                    throw new InternalLuaLoadingError("vararg parameter '...' should never sit in box (at %s)".formatted(la.sourcePos));
+                }
+                assert la.info.closureIdx() < 0 : "'...' is not allowed to be captured by inner functions";
+                String access = "stackFrame[%d].asArray()".formatted(la.info.baseInfo().lVarIdx);
+                sb.append("%s = %s.length > 0 ? %s[0] : LuaObject.nil();".formatted(cState.pushEStack(), access, access));
+            } else {
+                sb.append(values[i].generate(cState));
+            }
             vSpots.add(cState.peekEStack());
         }
         if (values.length > 0) {
@@ -68,6 +78,25 @@ public class AssignmentNode extends Node {
                 call.expectedResultCnt = aCnt;
                 sb.append(call.generate(cState));
                 vSpots.addAll(cState.peekEStack(aCnt));
+            } else if (lv instanceof LocalAccessNode la && la.info.baseInfo().name.equals("...")) {
+                // for varargs, spread elements to fit target count
+                if (la.info.baseInfo().sitsInBox()) {
+                    throw new InternalLuaLoadingError("vararg parameter '...' should never sit in box (at %s)".formatted(la.sourcePos));
+                }
+                assert la.info.closureIdx() < 0 : "'...' is not allowed to be captured by inner functions";
+                String access = "stackFrame[%d].asArray()".formatted(la.info.baseInfo().lVarIdx);
+
+                int aCnt = Math.max(0, targets.length - (values.length - 1));
+                for (int i = 0; i < aCnt; i++) {
+                    if (i > 0 && !sb.isEmpty()) {
+                        sb.append('\n');
+                    }
+                    String spot = cState.pushEStack();
+                    sb.append("%s = %s.length > %d ? %s[%d] : LuaObject.nil();".formatted(
+                            spot, access, i, access, i
+                    ));
+                    vSpots.add(spot);
+                }
             } else {
                 sb.append(lv.generate(cState));
                 vSpots.add(cState.peekEStack());
@@ -100,7 +129,7 @@ public class AssignmentNode extends Node {
                 sb.append("_ENV.setBox(").append(vSpots.get(i)).append(");");
             } else {
                 var spots = (Tuple<String, String>) tTars[i];
-                sb.append(genIndexedSet(cState, spots.x(), spots.y(), vSpots.get(i)));
+                sb.append(genIndexedSet(sourcePos.line(), cState, spots.x(), spots.y(), vSpots.get(i)));
                 usageOfStack += 2;
             }
         }
@@ -114,14 +143,14 @@ public class AssignmentNode extends Node {
     }
 
     @SuppressWarnings("UnnecessaryLocalVariable")
-    private static String genIndexedSet(CompilationState cState, String obj, String idx, String val) {
+    private static String genIndexedSet(int lineNum, CompilationState cState, String obj, String idx, String val) {
         EStackCallInfo sInfo = cState.generateEStackCallInfo(0);
         String assignment = """
-                if (indexedSet(vm, %d, %s, %s, %s)) {
+                if (indexedSet(%d, vm, %d, %s, %s, %s)) {
                     %s
                     return;
                 }
-                case %d:""".formatted(sInfo.resumeLabel(), obj, idx, val, sInfo.saveEStack(), sInfo.resumeLabel());
+                case %d:""".formatted(lineNum, sInfo.resumeLabel(), obj, idx, val, sInfo.saveEStack(), sInfo.resumeLabel());
         return assignment;
     }
 

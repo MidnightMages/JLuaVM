@@ -2,13 +2,14 @@ package dev.asdf00.jluavm.internals;
 
 import dev.asdf00.jluavm.LuaVM;
 import dev.asdf00.jluavm.api.functions.ApiFunctionRegistry;
+import dev.asdf00.jluavm.runtime.types.AbstractGeneratedLuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
+import dev.asdf00.jluavm.runtime.types.LuaJavaApiFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.LFunc;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 import dev.asdf00.jluavm.utils.ByteArrayBuilder;
 import dev.asdf00.jluavm.utils.Quadruple;
-import dev.asdf00.jluavm.utils.Triple;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -150,6 +151,57 @@ public class LuaVM_RT extends LuaVM {
     }
 
     // =================================================================================================================
+    // access helper methods
+    // =================================================================================================================
+
+    public static String printStacktrace(Stack<FunctionCallFrame> stack, int skip) {
+        var sb = new StringBuilder();
+        sb.append("stack traceback:");
+        for (int i = stack.size() - 1 - skip; i >= 0; i--) {
+            sb.append("\n\t");
+            var frame = stack.get(i);
+            if (frame.lFunc instanceof AbstractGeneratedLuaFunction glf) {
+                sb.append(glf.compilationUnit).append(':').append(frame.lastLine);
+            } else {
+                sb.append(frame.lFunc.getCompilationUnit());
+            }
+            sb.append(": in ");
+            if (i > 0) {
+                // get message from upper layer in callstack
+                String msg;
+                if (frame.tailCalled) {
+                    // we do not know the call site, therefore the call site msg is useless
+                    msg = "function ";
+                } else {
+                    msg = stack.get(i - 1).lastName;
+                    if (msg == null || msg.isEmpty()) {
+                        msg = "function ";
+                    }
+                }
+                sb.append(msg);
+                // if the upper layer message calls for a function name, we append the current one
+                if (msg.equals("function ")) {
+                    // append the current function name
+                    if (frame.lFunc instanceof AbstractGeneratedLuaFunction glf) {
+                        sb.append("<").append(glf.compilationUnit).append(":").append(glf.lineNum).append(">");
+                    } else {
+                        // this case works, because LuaFunction is sealed
+                        var jlf = (LuaJavaApiFunction) frame.lFunc;
+                        sb.append("'").append(jlf.registry.getSerialName(jlf)).append("'");
+                    }
+                }
+            } else {
+                sb.append("main chunk");
+            }
+            if (frame.tailCalled) {
+                // add line to indicate that tail calls happened in this frame
+                sb.append("\n\t(...tail calls...)");
+            }
+        }
+        return sb.toString();
+    }
+
+    // =================================================================================================================
     // setup methods
     // =================================================================================================================
 
@@ -216,6 +268,19 @@ public class LuaVM_RT extends LuaVM {
     // =================================================================================================================
     // lua vm call magic setup methods (MUST be followed by return, and return must be preceded by exactly one of these, or throw internal lua error)
     // =================================================================================================================
+
+    public void setLastTrace(int line) {
+        curFuncFrame.lastLine = line;
+    }
+
+    public void setLastTrace(String name) {
+        curFuncFrame.lastName = name;
+    }
+
+    public void setLastTrace(String name, int line) {
+        curFuncFrame.lastName = name;
+        curFuncFrame.lastLine = line;
+    }
 
     public void error(LuaObject errMsg) {
         // setup vm for error
@@ -390,6 +455,7 @@ public class LuaVM_RT extends LuaVM {
         }
         // do tailcall
         curFuncFrame.reset();
+        curFuncFrame.tailCalled = true;
         LuaObject[] nuStackFrame = curFuncFrame.locals;
         for (int i = 0, j = 0; i < externalTarget.getArgCount(); j++) {
             if (args[j].isArray()) {

@@ -1,7 +1,7 @@
 package dev.asdf00.jluavm.runtime.stdlib;
 
 import dev.asdf00.jluavm.api.functions.AtomicLuaFunction;
-import dev.asdf00.jluavm.api.functions.LuaJavaApiFunction;
+import dev.asdf00.jluavm.runtime.types.LuaJavaApiFunction;
 import dev.asdf00.jluavm.api.functions.MixedStateFunctionRegistry;
 import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
 import dev.asdf00.jluavm.exceptions.loading.LuaParserException;
@@ -182,7 +182,7 @@ public class LGlobal {
                                     return;
                                 }
                                 var mtbl = tbl.getMetaTable();
-                                t0 = indexedGet(vm, 0, mtbl, Singletons.__ipairs);
+                                t0 = indexedGet(-1, vm, 0, mtbl, Singletons.__ipairs);
                                 if (t0 == null) {
                                     return;
                                 }
@@ -232,7 +232,7 @@ public class LGlobal {
                                     return;
                                 }
                                 var mtbl = tbl.getMetaTable();
-                                t0 = indexedGet(vm, 0, mtbl, Singletons.__pairs);
+                                t0 = indexedGet(-1, vm, 0, mtbl, Singletons.__pairs);
                                 if (t0 == null) {
                                     return;
                                 }
@@ -312,7 +312,7 @@ public class LGlobal {
 
 
                     try {
-                        var rv2 = vm.load(chunk.getString(), env == null ? vm.getCallerEnv() : env);
+                        var rv2 = vm.load(chunkName.asString(), chunk.getString(), env == null ? vm.getCallerEnv() : env);
                         return new LuaObject[]{LuaObject.of(rv2), LuaObject.NIL};
                     } catch (LuaParserException ex) {
                         return new LuaObject[]{LuaObject.NIL, LuaObject.of("Compilation error: "+ex.getMessage())};

@@ -1,7 +1,6 @@
-package dev.asdf00.jluavm.api.functions;
+package dev.asdf00.jluavm.runtime.types;
 
-import dev.asdf00.jluavm.runtime.types.LuaFunction;
-import dev.asdf00.jluavm.runtime.types.LuaObject;
+import dev.asdf00.jluavm.api.functions.ApiFunctionRegistry;
 import dev.asdf00.jluavm.utils.ByteArrayBuilder;
 
 import java.nio.charset.StandardCharsets;
@@ -9,8 +8,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-public abstract class LuaJavaApiFunction extends LuaFunction {
-    protected final ApiFunctionRegistry registry;
+public abstract non-sealed class LuaJavaApiFunction extends LuaFunction {
+    public final ApiFunctionRegistry registry;
 
     public LuaJavaApiFunction(ApiFunctionRegistry registry) {
         super();
@@ -20,6 +19,11 @@ public abstract class LuaJavaApiFunction extends LuaFunction {
     public LuaJavaApiFunction(ApiFunctionRegistry registry, LuaObject _ENV, LuaObject[] closures) {
         super(_ENV, closures);
         this.registry = registry;
+    }
+
+    @Override
+    public String getCompilationUnit() {
+        return "[Java]";
     }
 
     @Override

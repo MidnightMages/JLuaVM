@@ -8,7 +8,7 @@ import dev.asdf00.jluavm.parsing.Parser;
 import dev.asdf00.jluavm.parsing.ir.IRFunction;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
-import dev.asdf00.jluavm.runtime.utils.AbstractGeneratedLuaFunction;
+import dev.asdf00.jluavm.runtime.types.AbstractGeneratedLuaFunction;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 
 import java.io.IOException;
@@ -91,12 +91,16 @@ public abstract class LuaVM {
     }
 
     public static LuaFunction load(String code, LuaObject _ENV) throws LuaLoadingException, InternalLuaLoadingError {
+        return load("main.lua", code, _ENV);
+    }
+
+    public static LuaFunction load(String chunkName, String code, LuaObject _ENV) throws LuaLoadingException, InternalLuaLoadingError {
         if (_ENV == null) {
             throw new InternalLuaLoadingError("got invalid _ENV");
         }
         var unit = compile(code);
         try {
-            return unit[unit.length - 1].newInstance(LuaObject.box(_ENV), Singletons.EMPTY_LUA_OBJ_ARRAY);
+            return unit[unit.length - 1].newInstance(chunkName, 0, LuaObject.box(_ENV), Singletons.EMPTY_LUA_OBJ_ARRAY);
         } catch (ReflectiveOperationException e) {
             throw new InternalLuaLoadingError(e);
         }

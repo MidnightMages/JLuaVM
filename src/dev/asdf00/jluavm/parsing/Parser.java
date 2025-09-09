@@ -472,6 +472,10 @@ public final class Parser {
         if (ltok == LPAR) {
             scan();
             result = Exp();
+            if (result instanceof FunctionCallNode fc) {
+                // function calls inside parentheses have their return values pruned to 1
+                result = new PruneToOneNode(fc);
+            }
             check(RPAR);
             info = null;
             onlyIdent = false;
@@ -562,6 +566,10 @@ public final class Parser {
         if (ltok == LPAR) {
             scan();
             result = Exp();
+            if (result instanceof FunctionCallNode fc) {
+                // function calls inside parentheses have their return values pruned to 1
+                result = new PruneToOneNode(fc);
+            }
             check(RPAR);
             info = null;
             onlyIdent = false;

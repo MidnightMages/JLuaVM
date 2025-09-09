@@ -41,12 +41,14 @@ public class BinaryOpNode extends Node {
                 %s = %s.%s(%s);
             } else {
                 %s
+                vm.setLastTrace("metamethod '%s'", %d);
                 vm.callInternal(%d, LuaFunction::binaryOpWithMeta, "::binaryOpWithMeta", Singletons.__%s, %s, %s);
                 return;
             }
             case %d:""".formatted(sx, typeRestriction, sy, typeRestriction,
             sx, sx, op, sy,
             callInfo.saveEStack(),
+            op, sourcePos.line(),
             callInfo.resumeLabel(), op, sx, sy,
             callInfo.resumeLabel());
         if ("concat".equals(op)) {

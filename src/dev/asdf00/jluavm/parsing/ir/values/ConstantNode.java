@@ -10,10 +10,16 @@ import java.util.Base64;
 
 public final class ConstantNode extends Node {
     private final String codeRepr;
+    public final String stackTraceName;
 
     private ConstantNode(Position sourcePos, String codeRepr) {
+        this(sourcePos, codeRepr, "?");
+    }
+
+    private ConstantNode(Position sourcePos, String codeRepr, String stackTraceName) {
         super(sourcePos);
         this.codeRepr = codeRepr;
+        this.stackTraceName = stackTraceName;
     }
 
     @Override
@@ -27,7 +33,7 @@ public final class ConstantNode extends Node {
     }
 
     public static ConstantNode ofLong(Position sourcePos, long lVal) {
-        return new ConstantNode(sourcePos, "LuaObject.of(%dL)".formatted(lVal));
+        return new ConstantNode(sourcePos, "LuaObject.of(%dL)".formatted(lVal), "integer index");
     }
 
     public static ConstantNode ofDouble(Token tk) {
@@ -64,7 +70,7 @@ public final class ConstantNode extends Node {
         // idents can only be lower-, upper- and title-case characters (as well as digits and underscores) and can
         // therefore not escape the string context and do not need any weird escape sequences. therefore, we can just
         // embed the string as is.
-        return new ConstantNode(sourcePos, "LuaObject.of(\"%s\")".formatted(ident));
+        return new ConstantNode(sourcePos, "LuaObject.of(\"%s\")".formatted(ident), ident);
     }
 
     public static ConstantNode ofB64(Token tk) {
@@ -74,10 +80,21 @@ public final class ConstantNode extends Node {
     public static ConstantNode ofB64(Position sourcePos, String literalString) {
         // literal strings can contain any number of weird characters like backslash, double quote or null characters.
         // therefore we effectively treat it as a list of raw UTF8 bytes and encode it with base 64 to be sure.
-        return new ConstantNode(sourcePos, "LuaObject.ofB64(\"%s\")".formatted(Base64.getEncoder().encodeToString(literalString.getBytes(StandardCharsets.UTF_8))));
+        return new ConstantNode(sourcePos, "LuaObject.ofB64(\"%s\")".formatted(
+                Base64.getEncoder().encodeToString(literalString.getBytes(StandardCharsets.UTF_8))),makeStackTraceName(literalString));
     }
 
     public static ConstantNode ofNull(Position sourcePos) {
         return new ConstantNode(sourcePos, "null");
+    }
+
+    private static String makeStackTraceName(String name) {
+        return name.replace("\\", "\\\\")
+                .replace("\t", "\\t")
+                .replace("\b", "\\b")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\f", "\\f")
+                .replace("\"", "\\\"");
     }
 }
