@@ -102,6 +102,45 @@ public class TracebackTest extends BaseVmTest {
     }
 
     @Test
+    void metaEmptyTableTracebacks() {
+        loadAssertSuccessAndRv("""
+                local rv = ""
+                local function myPrint(toAdd)
+                    rv = rv..tostring(toAdd).."\\n"
+                end
+                local function f()
+                    return myPrint(debug.traceback())
+                end
+                
+                local g = setmetatable({}, {
+                    __index=function(tbl,k)
+                        myPrint("getIndex: "..k)
+                        f()
+                    end,
+                    __newindex=function(tbl,k,v)
+                        myPrint("setIndex: "..k.."-"..v)
+                        f()
+                    end
+                })
+                local x = g["test"]
+                g["test"] = "asdf"
+                
+                return rv
+                """, LuaObject.of("""
+                getIndex: test
+                stack traceback:
+                	main.lua:6: in upvalue 'f'
+                	main.lua:12: in metamethod 'index'
+                	main.lua:19: in main chunk
+                setIndex: test-asdf
+                stack traceback:
+                	main.lua:6: in upvalue 'f'
+                	main.lua:16: in metamethod 'newindex'
+                	main.lua:20: in main chunk
+                """));
+    }
+
+    @Test
     void functionBasedTracebacks() {
         loadAssertSuccessAndRv("""
                 local rv = ""

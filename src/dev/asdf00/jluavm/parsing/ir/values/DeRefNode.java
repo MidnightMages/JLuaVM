@@ -19,23 +19,23 @@ public class DeRefNode extends Node {
     public String generate(CompilationState cState) {
         String prev = value.generate(cState) + "\n";
         prev += idx.generate(cState) + "\n";
-        return prev + dereference(cState);
+        return prev + dereference(sourcePos.line(), cState);
     }
 
     @SuppressWarnings("UnnecessaryLocalVariable")
-    public static String dereference(CompilationState cState) {
+    public static String dereference(int lineNum, CompilationState cState) {
         String i = cState.popEStack();
         String v = cState.popEStack();
         EStackCallInfo callInfo = cState.generateEStackCallInfo(1);
         String r = cState.pushEStack();
 
         String result = """
-                %s = indexedGet(vm, %d, %s, %s);
+                %s = indexedGet(%d, vm, %d, %s, %s);
                 if (%s == null) {
                     %s
                     return;
                 }
-                case %d:""".formatted(r, callInfo.resumeLabel(), v, i, r, callInfo.saveEStack(), callInfo.resumeLabel());
+                case %d:""".formatted(r, lineNum, callInfo.resumeLabel(), v, i, r, callInfo.saveEStack(), callInfo.resumeLabel());
         return result;
     }
 }

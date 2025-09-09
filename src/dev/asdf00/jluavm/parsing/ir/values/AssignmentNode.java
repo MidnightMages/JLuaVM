@@ -129,7 +129,7 @@ public class AssignmentNode extends Node {
                 sb.append("_ENV.setBox(").append(vSpots.get(i)).append(");");
             } else {
                 var spots = (Tuple<String, String>) tTars[i];
-                sb.append(genIndexedSet(cState, spots.x(), spots.y(), vSpots.get(i)));
+                sb.append(genIndexedSet(sourcePos.line(), cState, spots.x(), spots.y(), vSpots.get(i)));
                 usageOfStack += 2;
             }
         }
@@ -143,14 +143,14 @@ public class AssignmentNode extends Node {
     }
 
     @SuppressWarnings("UnnecessaryLocalVariable")
-    private static String genIndexedSet(CompilationState cState, String obj, String idx, String val) {
+    private static String genIndexedSet(int lineNum, CompilationState cState, String obj, String idx, String val) {
         EStackCallInfo sInfo = cState.generateEStackCallInfo(0);
         String assignment = """
-                if (indexedSet(vm, %d, %s, %s, %s)) {
+                if (indexedSet(%d, vm, %d, %s, %s, %s)) {
                     %s
                     return;
                 }
-                case %d:""".formatted(sInfo.resumeLabel(), obj, idx, val, sInfo.saveEStack(), sInfo.resumeLabel());
+                case %d:""".formatted(lineNum, sInfo.resumeLabel(), obj, idx, val, sInfo.saveEStack(), sInfo.resumeLabel());
         return assignment;
     }
 

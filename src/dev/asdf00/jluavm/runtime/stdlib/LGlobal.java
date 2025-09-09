@@ -182,7 +182,7 @@ public class LGlobal {
                                     return;
                                 }
                                 var mtbl = tbl.getMetaTable();
-                                t0 = indexedGet(vm, 0, mtbl, Singletons.__ipairs);
+                                t0 = indexedGet(-1, vm, 0, mtbl, Singletons.__ipairs);
                                 if (t0 == null) {
                                     return;
                                 }
@@ -232,7 +232,7 @@ public class LGlobal {
                                     return;
                                 }
                                 var mtbl = tbl.getMetaTable();
-                                t0 = indexedGet(vm, 0, mtbl, Singletons.__pairs);
+                                t0 = indexedGet(-1, vm, 0, mtbl, Singletons.__pairs);
                                 if (t0 == null) {
                                     return;
                                 }

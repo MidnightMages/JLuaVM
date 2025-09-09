@@ -42,7 +42,7 @@ public class FunctionCallNode extends Node {
 
         boolean isOopCall = object != null;
         if (isOopCall) {
-            prepOopCall(sb, cState, object, env, func);
+            prepOopCall(sourcePos.line(), sb, cState, object, env, func);
         } else {
             sb.append(func.generate(cState)).append('\n');
         }
@@ -84,7 +84,7 @@ public class FunctionCallNode extends Node {
         return sb.append(result).toString();
     }
 
-    public static void prepOopCall(StringBuilder sb, CompilationState cState, Node object, Node env, Node func) {
+    public static void prepOopCall(int lineNum, StringBuilder sb, CompilationState cState, Node object, Node env, Node func) {
         assert func instanceof ConstantNode : "got %s as OOP call func???".formatted(func.getClass().getName());
         // generate object
         sb.append(object.generate(cState)).append('\n');
@@ -96,7 +96,7 @@ public class FunctionCallNode extends Node {
         // dereference object with index
         // here, if the dereference fails due to a type error, we do not want to eat the error immediately, we want
         // to perform a type extension function lookup instead
-        sb.append(extendableDereference(cState)).append('\n');
+        sb.append(extendableDereference(lineNum, cState)).append('\n');
         // swap dereferenced callable and object to pass object as first argument
         String callableRes = cState.peekEStack();
         // here we rely on the fact that func can only be an IDENT in the EBNF
@@ -130,18 +130,18 @@ public class FunctionCallNode extends Node {
         cState.popEStack();
     }
 
-    private static String extendableDereference(CompilationState cState) {
+    private static String extendableDereference(int lineNum, CompilationState cState) {
         String i = cState.popEStack();
         String v = cState.popEStack();
         EStackCallInfo callInfo = cState.generateEStackCallInfo(1);
         String r = cState.pushEStack();
         String result = """
-                %s = %s.isExtendable() ? tryIndexedGet(vm, %d, %s, %s) : indexedGet(vm, %d, %s, %s);
+                %s = %s.isExtendable() ? tryIndexedGet(%d, vm, %d, %s, %s) : indexedGet(%d, vm, %d, %s, %s);
                 if (%s == null) {
                     %s
                     return;
                 }
-                case %d:""".formatted(r, v, callInfo.resumeLabel(), v, i, callInfo.resumeLabel(), v, i,
+                case %d:""".formatted(r, v, lineNum, callInfo.resumeLabel(), v, i, lineNum, callInfo.resumeLabel(), v, i,
                 r,
                 callInfo.saveEStack(),
                 callInfo.resumeLabel());

@@ -22,7 +22,7 @@ public class TailCallNode extends Node {
 
         boolean isOopCall = call.object != null;
         if (isOopCall) {
-            FunctionCallNode.prepOopCall(sb, cState, call.object, call.env, call.func);
+            FunctionCallNode.prepOopCall(sourcePos.line(), sb, cState, call.object, call.env, call.func);
         } else {
             sb.append(call.func.generate(cState)).append('\n');
         }
