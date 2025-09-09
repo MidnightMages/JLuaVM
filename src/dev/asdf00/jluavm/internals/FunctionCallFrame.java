@@ -20,12 +20,11 @@ public final class FunctionCallFrame extends AbstractCallStackFrame {
     public boolean isProtected;
     public LuaFunction msgHandler;
 
-    // TODO: serialization
-    public int lastLine = 1;
+    public int lastLine = -1;
     public String lastName= "?";
-    public boolean tailcalled = false;
+    public boolean tailCalled = false;
 
-    private FunctionCallFrame(AbstractCallStackFrame.DataContainer container, LuaFunction lFunc, Stack<InternalCallFrame> scopes,
+    private FunctionCallFrame(DataContainer container, LuaFunction lFunc, Stack<InternalCallFrame> scopes,
                               int failCnt, boolean isResumable, boolean isProtected, LuaFunction msgHandler) {
         super(container);
         this.lFunc = lFunc;
@@ -118,6 +117,10 @@ public final class FunctionCallFrame extends AbstractCallStackFrame {
             bb.append(LuaObject.of(msgHandler).serialize(serialData, mappedObjs));
         }
 
+        bb.append(lastLine)
+                .append(LuaObject.of(lastName).serialize(serialData, mappedObjs))
+                .append(tailCalled);
+
         // serialize inner scopes
         for (int i = 0; i < scopes.size(); i++) {
             var innerBytes = scopes.get(i).serialize(serialData, mappedObjs);
@@ -137,12 +140,20 @@ public final class FunctionCallFrame extends AbstractCallStackFrame {
         int msghIdx = rdr.readInt();
         LuaFunction msgHandler = msghIdx >= 0 ? objs[msghIdx].getFunc() : null;
 
+        int lastLine = rdr.readInt();
+        String lastName = objs[rdr.readInt()].getString();
+        boolean tailCalled = rdr.readBool();
+
         Stack<InternalCallFrame> scopes = new Stack<>();
         while (rdr.remaining() > 0) {
             // still internal scopes to deserialize
             scopes.push(InternalCallFrame.deserialize(func, objs, rdr.slice(rdr.readInt())));
         }
 
-        return new FunctionCallFrame(superData, func, scopes, failCnt, isResumable, isProtected, msgHandler);
+        var nu = new FunctionCallFrame(superData, func, scopes, failCnt, isResumable, isProtected, msgHandler);
+        nu.lastLine = lastLine;
+        nu.lastName = lastName;
+        nu.tailCalled = tailCalled;
+        return nu;
     }
 }

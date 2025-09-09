@@ -41,6 +41,8 @@ public abstract non-sealed class AbstractGeneratedLuaFunction extends LuaFunctio
             int dpt = cudField.getInt(null);
             bb.append(false) // not serialized with registry
                     // TODO insert compilationUnit
+                    .append(LuaObject.of(compilationUnit).serialize(serialData, mappedObjs))
+                    .append(lineNum)
                     .append(LuaObject.of((String) codeField.get(null)).serialize(serialData, mappedObjs))
                     .append(_ENV.serialize(serialData, mappedObjs))
                     .append(closures.length);

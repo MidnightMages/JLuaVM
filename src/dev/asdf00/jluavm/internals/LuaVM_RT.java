@@ -10,7 +10,6 @@ import dev.asdf00.jluavm.runtime.utils.LFunc;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 import dev.asdf00.jluavm.utils.ByteArrayBuilder;
 import dev.asdf00.jluavm.utils.Quadruple;
-import dev.asdf00.jluavm.utils.Triple;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -170,7 +169,7 @@ public class LuaVM_RT extends LuaVM {
             if (i > 0) {
                 // get message from upper layer in callstack
                 String msg;
-                if (frame.tailcalled) {
+                if (frame.tailCalled) {
                     // we do not know the call site, therefore the call site msg is useless
                     msg = "function ";
                 } else {
@@ -194,7 +193,7 @@ public class LuaVM_RT extends LuaVM {
             } else {
                 sb.append("main chunk");
             }
-            if (frame.tailcalled) {
+            if (frame.tailCalled) {
                 // add line to indicate that tail calls happened in this frame
                 sb.append("\n\t(...tail calls...)");
             }
@@ -456,7 +455,7 @@ public class LuaVM_RT extends LuaVM {
         }
         // do tailcall
         curFuncFrame.reset();
-        curFuncFrame.tailcalled = true;
+        curFuncFrame.tailCalled = true;
         LuaObject[] nuStackFrame = curFuncFrame.locals;
         for (int i = 0, j = 0; i < externalTarget.getArgCount(); j++) {
             if (args[j].isArray()) {
