@@ -82,7 +82,7 @@ public class SerializationTest extends BaseVmTest {
                              a_c2 = {678}
                              a_c3 = {} -- new table, should affect closured var
                              y = y + k
-                                
+                
                              root_c1 = 9786
                              root_c2 = {5464}
                              root_c3 = {} -- new table, should affect closured var
@@ -99,13 +99,13 @@ public class SerializationTest extends BaseVmTest {
                          assert(a_c1 == 789)
                          assert(a_c2[1] == 678)
                          assert(a_c3 ~= a_3)
-                         
+                
                          assert(root_c1 == 9786)
                          assert(root_c2[1] == 5464)
                          assert(root_c3 ~= root_3)
                          return x + y + co2Rv
                      end)
-                     
+                
                      coRvT, coRv = coroutine.resume(a, 7, 47)
                      log("r",coRv)
                      return rv 
@@ -152,5 +152,57 @@ public class SerializationTest extends BaseVmTest {
             result = assertDoesNotThrow(() -> box[0].runContinue());
         }
         assertEquals(VmResult.of(VmRunState.SUCCESS, LuaObject.of("1,1;1,1;2,1;2,2;2,1;2,2;")), result);
+    }
+
+    @Test
+    void traceSerialization() {
+        var vm1 = LuaVM.builder().rootFunc("""
+                local rv = ""
+                local function myPrint(toAdd)
+                    rv = rv..tostring(toAdd).."\\n"
+                end
+                local function f()
+                    vm.pause()
+                    myPrint(debug.traceback())
+                end
+                
+                local g = setmetatable({asdf=f,[2]=f,[2.5]=f,[true]=f}, {
+                    __newindex=function(tbl,k,v)
+                        myPrint("setIndex: "..k.."-"..v)
+                        f()
+                    end
+                })
+                
+                local chunk = load([[
+                        local tbl = ...
+                        local function f(a)
+                            if a < 0 then
+                                tbl["test"] = "no"
+                                return
+                            end
+                            return f(a - 1)
+                        end
+                        f(3)
+                        ]], "innerChunk")
+                chunk(g)
+                
+                return rv
+                """).build();
+        VmResult result = assertDoesNotThrow(() -> vm1.run());
+        assertEquals(VmResult.of(VmRunState.PAUSED), result);
+        var state = assertDoesNotThrow(() -> vm1.serialize());
+        var vm2 = assertDoesNotThrow(() -> LuaVM.builder().fromState(state).build());
+        result = assertDoesNotThrow(() -> vm2.runContinue());
+        assertEquals(VmResult.of(VmRunState.SUCCESS, LuaObject.of("""
+                setIndex: test-no
+                stack traceback:
+                	main.lua:7: in upvalue 'f'
+                	main.lua:13: in metamethod 'newindex'
+                	innerChunk:4: in function <innerChunk:2>
+                	(...tail calls...)
+                	innerChunk:9: in local 'chunk'
+                	main.lua:28: in main chunk
+                """)), result);
+
     }
 }

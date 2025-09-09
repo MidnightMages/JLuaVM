@@ -3,8 +3,8 @@ package dev.asdf00.jluavm.parsing;
 import dev.asdf00.jluavm.exceptions.loading.InternalLuaLoadingError;
 import dev.asdf00.jluavm.internals.DelayedJavaCompiler;
 import dev.asdf00.jluavm.parsing.container.LabelInfo;
-import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.types.AbstractGeneratedLuaFunction;
+import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.utils.Tuple;
 
 import java.lang.reflect.Constructor;
@@ -36,7 +36,8 @@ public final class CompilationState {
 
     public CompilationState(Supplier<String> jClassNameGenerator, String luaCode) {
         this.jClassNameGenerator = jClassNameGenerator;
-        this.luaCode = luaCode;
+        // we need to re-escape the backslashes when saving the code for state serialization
+        this.luaCode = luaCode.replace("\\", "\\\\");
     }
 
     // =================================================================================================================
