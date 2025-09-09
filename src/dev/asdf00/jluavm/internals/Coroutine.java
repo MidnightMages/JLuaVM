@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Stack;
-import java.util.function.Function;
 
 import static dev.asdf00.jluavm.runtime.utils.StateDeserializer.maybeNull;
 

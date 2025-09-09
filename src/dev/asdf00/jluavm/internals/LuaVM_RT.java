@@ -154,12 +154,12 @@ public class LuaVM_RT extends LuaVM {
     // access helper methods
     // =================================================================================================================
 
-    public String printStacktrace(int skip) {
+    public static String printStacktrace(Stack<FunctionCallFrame> stack, int skip) {
         var sb = new StringBuilder();
         sb.append("stack traceback:");
-        for (int i = luaCallStack.size() - 1 - skip; i >= 0; i--) {
+        for (int i = stack.size() - 1 - skip; i >= 0; i--) {
             sb.append("\n\t");
-            var frame = luaCallStack.get(i);
+            var frame = stack.get(i);
             if (frame.lFunc instanceof AbstractGeneratedLuaFunction glf) {
                 sb.append(glf.compilationUnit).append(':').append(frame.lastLine);
             } else {
@@ -173,7 +173,7 @@ public class LuaVM_RT extends LuaVM {
                     // we do not know the call site, therefore the call site msg is useless
                     msg = "function ";
                 } else {
-                    msg = luaCallStack.get(i - 1).lastName;
+                    msg = stack.get(i - 1).lastName;
                     if (msg == null || msg.isEmpty()) {
                         msg = "function ";
                     }

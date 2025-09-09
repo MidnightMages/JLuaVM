@@ -12,7 +12,7 @@ public class LDebug {
 
         // we skip the function frame of the traceback function
         registry.register(MATH_PREFIX + "traceback",
-                AtomicLuaFunction.forOneResult(registry, (vm) -> LuaObject.of(vm.printStacktrace(1))));
+                AtomicLuaFunction.forOneResult(registry, (vm) -> LuaObject.of(vm.printStacktrace(vm.getCurrentCoroutine().luaCallStack, 1))));
 
         if (!includeUnconstrainedFunctions) {
             return;
