@@ -337,7 +337,7 @@ public class LGlobal {
 
 
                     try {
-                        var rv2 = LuaVM.load(chunkName == null ? "nil" : chunkName.asString(), chunk.getString(), env == null ? vm.getCallerEnv() : env);
+                        var rv2 = LuaVM.load(chunkName == null ? "=(load)" : chunkName.asString(), chunk.getString(), env == null ? vm.getCallerEnv() : env);
                         return new LuaObject[]{LuaObject.of(rv2), LuaObject.NIL};
                     } catch (LuaParserException ex) {
                         return new LuaObject[]{LuaObject.NIL, LuaObject.of("Compilation error: " + ex.getMessage())};
