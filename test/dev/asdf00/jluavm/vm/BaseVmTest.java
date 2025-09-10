@@ -69,4 +69,8 @@ public abstract class BaseVmTest {
             Assertions.assertEquals(LuaVM.VmRunState.SUCCESS, res.state(), () -> Arrays.stream(res.returnVars()).map(LuaObject::toString).collect(Collectors.joining()));
         }
     }
+
+    protected static LuaVM loadWithoutExecute(String s) {
+        return assertDoesNotThrow(() -> LuaVM.builder().rootFunc(s).build());
+    }
 }
