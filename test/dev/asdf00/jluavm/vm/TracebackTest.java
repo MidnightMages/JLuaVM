@@ -257,12 +257,33 @@ public class TracebackTest extends BaseVmTest {
                 end
                 b = function(x) return a(x-2) end
                 
-                return b(5)
+                return b(5).."\\n"
                 """, LuaObject.of("""
                 stack traceback:
-                    main.lua:3: in function <main.lua:2>
-                    (...tail calls...)
-                    main.lua:8: in main chunk
+                	main.lua:3: in function <main.lua:2>
+                	(...tail calls...)
+                	main.lua:8: in main chunk
+                """));
+    }
+
+    @Test
+    void metaTailCall() {
+        loadAssertSuccessAndRv("""
+                local callable = setmetatable({}, {
+                    __call = function()
+                        return debug.traceback()
+                    end
+                })
+                local function f()
+                    return callable()
+                end
+                                
+                return f().."\\n"                            
+                """, LuaObject.of("""
+                stack traceback:
+                	main.lua:3: in function <main.lua:2>
+                	(...tail calls...)
+                	main.lua:10: in main chunk
                 """));
     }
 

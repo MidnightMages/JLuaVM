@@ -47,7 +47,7 @@ public class TailCallNode extends Node {
         String result = """
                 vm.setLastTrace("%s", %d);
                 if (%s.isFunction()) vm.tailCall(%s.getFunc()%s);
-                else vm.callInternal(%d, LuaFunction::callWithMeta, "::callWithMeta", %s%s);
+                else vm.callInternal(%d, LuaFunction::tailCallWithMeta, "::tailCallWithMeta", %s%s);
                 return;
                 case %d:
                 vm.returnValue(%s);

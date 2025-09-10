@@ -38,8 +38,6 @@ public class LuaVM_RT extends LuaVM {
 
     /**
      * Create LuaVM from serialized state
-     * @param registries
-     * @param state
      */
     public LuaVM_RT(Map<String, ApiFunctionRegistry> registries, Quadruple<Coroutine, Coroutine, Boolean, Boolean> state) {
         this(registries, state.w().rootFunc);
@@ -312,7 +310,7 @@ public class LuaVM_RT extends LuaVM {
                 // failed too often in XPCALL message handler, we break the loop by not calling the handler again
                 returnValue(LuaObject.of("error in error handling"));
             } else if (frame.msgHandler != null) {
-                /**
+                /*
                  * By setting all frames between the current frame and the XPCALL to not be resumable, the return values
                  * produced by the message handler that is called here are implicitly passed all the way through to the
                  * XPCALL thereby allowing the XPCALL to access the error message.
@@ -447,13 +445,24 @@ public class LuaVM_RT extends LuaVM {
     }
 
     public void tailCall(LuaFunction externalTarget, LuaObject... args) {
-        if (curFuncFrame.lFunc != externalTarget) {
-            // this is sadly not a tail call
+        if (luaCallStack.size() < 2 ||
+                curFuncFrame.lFunc instanceof AbstractGeneratedLuaFunction && externalTarget instanceof LuaJavaApiFunction ||
+                curFuncFrame.lFunc instanceof LuaJavaApiFunction && externalTarget instanceof AbstractGeneratedLuaFunction) {
+            // no tail calls from root functions of coroutines
+            // we can not tailcall across Lua<->API boundaries
             curFuncFrame.isResumable = false;
             setupCall(externalTarget, args);
             return;
         }
-        // do tailcall
+        if (curFuncFrame.lFunc != externalTarget) {
+            // unfortunately we can not reuse the current frame, instead we pop and push a new one
+            luaCallStack.pop();
+            curFuncFrame = null;
+            setupCall(externalTarget, args);
+            curFuncFrame.tailCalled = true;
+            return;
+        }
+        // we reuse the frame for the tailcall, yay
         curFuncFrame.reset();
         curFuncFrame.tailCalled = true;
         LuaObject[] nuStackFrame = curFuncFrame.locals;

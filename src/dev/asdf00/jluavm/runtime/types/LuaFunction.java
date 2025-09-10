@@ -9,7 +9,6 @@ import dev.asdf00.jluavm.runtime.utils.RTUtils;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 import dev.asdf00.jluavm.utils.ByteArrayBuilder;
 
-import java.lang.reflect.Constructor;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -61,7 +60,7 @@ public abstract sealed class LuaFunction permits AbstractGeneratedLuaFunction, L
     }
 
     protected void debugPoint(Object... params) {
-        /**
+        /*
          * To set a break point to a line in lua, enable DEBUG_MODE in CompilationState and set a conditional break
          * point to the statement below using
          * {@code params.length > 0 && params[0] instanceof String st && st.startsWith("at lua l___:")}
@@ -415,6 +414,7 @@ public abstract sealed class LuaFunction permits AbstractGeneratedLuaFunction, L
                     vm.error(LuaObject.of("Trying to call a nil value"));
                     return;
                 }
+                // if we found something at __call we perform a standard call on that object (including meta shenanigans)
                 if (t1.isFunction()) {
                     vm.callExternal(0, t1.getFunc(), t0, LuaObject.of(Arrays.copyOfRange(args, 1, args.length)));
                 } else {
@@ -422,6 +422,47 @@ public abstract sealed class LuaFunction permits AbstractGeneratedLuaFunction, L
                     nuArgs[0] = t1;
                     System.arraycopy(args, 0, nuArgs, 1, nuArgs.length);
                     vm.callInternal(0, LuaFunction::callWithMeta, "::callWithMeta", nuArgs);
+                }
+                return;
+            case 0:
+                vm.internalReturn(returned);
+                return;
+            default:
+                throw new InternalLuaRuntimeError("should not reach end of fall-through switch");
+        }
+    }
+
+    /**
+     * This method is meant to be called when the given argument is meant to be called without being a function
+     */
+    protected static void tailCallWithMeta(LuaVM_RT vm, LuaObject[] stackFrame, LuaObject[] args, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
+        //noinspection UnusedAssignment
+        LuaObject t0 = null, t1 = null;
+        if (resume == -1) {
+            vm.registerLocals(0);
+            if (args.length < 1) {
+                throw new InternalLuaRuntimeError("expected 1 or more arguments, got " + args.length);
+            }
+            t0 = args[0]; // x
+        } else if (resume != 0) {
+            throw new InternalLuaRuntimeError("unknown resume point " + resume);
+        }
+        switch (resume) {
+            case -1:
+                t1 = t0.getMetaValueOrNil(Singletons.__call);
+                if (t1.isNil()) {
+                    // non-callable value
+                    vm.error(LuaObject.of("Trying to call a nil value"));
+                    return;
+                }
+                // if we found something at __call we perform a standard call on that object (including meta shenanigans)
+                if (t1.isFunction()) {
+                    vm.tailCall(t1.getFunc(), t0, LuaObject.of(Arrays.copyOfRange(args, 1, args.length)));
+                } else {
+                    var nuArgs = new LuaObject[args.length + 1];
+                    nuArgs[0] = t1;
+                    System.arraycopy(args, 0, nuArgs, 1, nuArgs.length);
+                    vm.callInternal(0, LuaFunction::tailCallWithMeta, "::tailCallWithMeta", nuArgs);
                 }
                 return;
             case 0:
@@ -586,6 +627,7 @@ public abstract sealed class LuaFunction permits AbstractGeneratedLuaFunction, L
             "::getWithMeta", LuaFunction::getWithMeta,
             "::setWithMeta", LuaFunction::setWithMeta,
             "::callWithMeta", LuaFunction::callWithMeta,
+            "::tailCallWithMeta", LuaFunction::tailCallWithMeta,
             "::binaryOpWithMeta", LuaFunction::binaryOpWithMeta,
             "::unaryOpWithMeta", LuaFunction::unaryOpWithMeta,
             "::lookupExtension", LuaFunction::lookupExtension
