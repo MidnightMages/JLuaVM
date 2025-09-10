@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
 import java.util.ArrayList;
+import java.util.stream.Collectors;
 
 import static dev.asdf00.jluavm.Util.expandOptions;
 import static org.junit.jupiter.api.Assertions.*;
@@ -2665,7 +2666,7 @@ public class VmTest extends BaseVmTest {
                     end
                     if i > 0 then a(i-1) else b() end
                 end
-                
+                                
                 a(10)
                 return tb
                 """, LuaObject.of("""
@@ -2691,7 +2692,7 @@ public class VmTest extends BaseVmTest {
     void simpleOopCall() {
         loadAssertSuccessAndRv("""
                 local t = {name = "test"}
-                
+                                
                 rv = ""
                 function t:get()
                     rv = rv .. "get:"..self.name..";"
@@ -2717,4 +2718,20 @@ public class VmTest extends BaseVmTest {
                 """, LuaObject.of("abanil"));
     }
 
+    @Test
+    void stringEscapeTests() {
+        var escapeSequences = "\t\b\n\r\f'\"\\".chars().mapToObj(i -> String.valueOf((char) i)).collect(Collectors.toCollection(ArrayList::new));
+        escapeSequences.add("\"\"\"");
+        escapeSequences.add("\\\"\\\"\\\"");
+
+        for (var seq : escapeSequences) {
+            var rv = "the symbol of the day is%s".formatted(seq);
+            var vm = loadWithoutExecute("vm.pause();vm.pause();vm.pause();vm.pause();return [[" + rv + "]]");
+            assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.PAUSED, Singletons.EMPTY_LUA_OBJ_ARRAY), vm.run());
+            assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.PAUSED, Singletons.EMPTY_LUA_OBJ_ARRAY), vm.runContinue());
+            assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.PAUSED, Singletons.EMPTY_LUA_OBJ_ARRAY), vm.runContinue());
+            assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.PAUSED, Singletons.EMPTY_LUA_OBJ_ARRAY), vm.runContinue());
+            assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS, new LuaObject[]{LuaObject.of(rv)}), vm.runContinue());
+        }
+    }
 }

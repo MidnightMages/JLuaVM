@@ -37,7 +37,7 @@ public final class CompilationState {
     public CompilationState(Supplier<String> jClassNameGenerator, String luaCode) {
         this.jClassNameGenerator = jClassNameGenerator;
         // we need to re-escape the backslashes when saving the code for state serialization
-        this.luaCode = luaCode.replace("\\", "\\\\");
+        this.luaCode = luaCode.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     // =================================================================================================================
