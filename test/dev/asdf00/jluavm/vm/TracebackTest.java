@@ -3,6 +3,11 @@ package dev.asdf00.jluavm.vm;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import org.junit.jupiter.api.Test;
 
+import java.util.function.BiConsumer;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 public class TracebackTest extends BaseVmTest {
 
     @Test
@@ -259,5 +264,34 @@ public class TracebackTest extends BaseVmTest {
                     (...tail calls...)
                     main.lua:8: in main chunk
                 """));
+    }
+
+    @Test
+    void passthroughTest() {
+        BiConsumer<String,String> testExpectMessage = (String arg, String output) -> {
+            loadAssertSuccessAndRv("""
+                return debug.traceback(%s)
+                """.formatted(arg), LuaObject.of("""
+                %sstack traceback:
+                \tmain.lua:1: in main chunk""".formatted(output != null ? output +"\n":"")));
+        };
+        testExpectMessage.accept("nil", null);
+
+        loadAssertSuccessAndRv("return debug.traceback(true)", LuaObject.TRUE);
+        loadAssertSuccessAndRv("return debug.traceback(false)", LuaObject.FALSE);
+        testExpectMessage.accept("1.2345", "1.2345");
+        testExpectMessage.accept("5.", "5.0");
+        testExpectMessage.accept("-541", "-541");
+        var rv1 = loadAssertSuccessGetRv("return debug.traceback({})");
+        assertEquals(1,rv1.length);
+        assertTrue(rv1[0].isTable());
+
+        var rv2 = loadAssertSuccessGetRv("return debug.traceback(function() end)");
+        assertEquals(1,rv2.length);
+        assertTrue(rv2[0].isFunction());
+
+        var rv3 = loadAssertSuccessGetRv("return debug.traceback(coroutine.running(),coroutine.running())");
+        assertEquals(1,rv3.length);
+        assertTrue(rv3[0].isThread());
     }
 }

@@ -154,7 +154,7 @@ public class LuaVM_RT extends LuaVM {
     // access helper methods
     // =================================================================================================================
 
-    public static String printStacktrace(Stack<FunctionCallFrame> stack, int skip) {
+    public static String getStacktrace(Stack<FunctionCallFrame> stack, int skip) {
         var sb = new StringBuilder();
         sb.append("stack traceback:");
         for (int i = stack.size() - 1 - skip; i >= 0; i--) {
