@@ -1,12 +1,13 @@
 package dev.asdf00.jluavm.runtime.stdlib;
 
+import dev.asdf00.jluavm.LuaVM;
 import dev.asdf00.jluavm.api.functions.AtomicLuaFunction;
-import dev.asdf00.jluavm.runtime.types.LuaJavaApiFunction;
 import dev.asdf00.jluavm.api.functions.MixedStateFunctionRegistry;
 import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
 import dev.asdf00.jluavm.exceptions.loading.LuaParserException;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
+import dev.asdf00.jluavm.runtime.types.LuaJavaApiFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.types.LuaObject.Types;
 import dev.asdf00.jluavm.runtime.utils.RTUtils;
@@ -134,7 +135,31 @@ public class LGlobal {
                     }
                 });
 
-        registry.register("error", AtomicLuaFunction.forZeroResults(registry, LuaVM_RT::error));
+        registry.register("error", AtomicLuaFunction.forZeroResults(registry, (vm, msg, level) -> {
+            if (!level.isNil() && !level.isIntCoercible()) {
+                vm.error(RTUtils.funcArgTypeError("error", 1, level, "integer or nil"));
+                return;
+            }
+
+            // level is only relevant for processing if msg is LITERALLY a string, not just coercible to one
+            if (msg.isString()) {
+                String stringObject = msg.asString();
+                var traceLevel = (int) (level.isNil() ? 1 : level.asLong());
+                if (traceLevel > 0) {
+                    var trace = LuaVM_RT.getStacktrace(vm.getCurrentCoroutine().luaCallStack, traceLevel);
+                    var traceLine = trace.split("\n", 3)[1];
+                    var lastIdx = traceLine.lastIndexOf(": in ");
+                    if (lastIdx != -1) {
+                        traceLine = traceLine.substring(0, lastIdx).strip();
+                    }
+                    if (!traceLine.isEmpty())
+                        traceLine += ": ";
+
+                    msg = LuaObject.of(traceLine + stringObject);
+                }
+            }
+            vm.error(msg);
+        }));
 
         registry.register("tonumber", AtomicLuaFunction.forOneResult(registry, (vm, x) -> {
             if (x.isNumber())
@@ -295,7 +320,7 @@ public class LGlobal {
                         return null;
                     }
                     if (chunkName != null && !chunkName.isType(Types.ARITHMETIC | Types.NIL)) {
-                        vm.error(funcArgAnyTypeError("load", 1, chunkName,"string", "number", "nil", "nothing"));
+                        vm.error(funcArgAnyTypeError("load", 1, chunkName, "string", "number", "nil", "nothing"));
                         return null;
                     }
                     if (mode != null && !(mode.isString() && (mode.asString().equals("t"))) && !mode.isNil()) {
@@ -312,10 +337,10 @@ public class LGlobal {
 
 
                     try {
-                        var rv2 = vm.load(chunkName.asString(), chunk.getString(), env == null ? vm.getCallerEnv() : env);
+                        var rv2 = LuaVM.load(chunkName.asString(), chunk.getString(), env == null ? vm.getCallerEnv() : env);
                         return new LuaObject[]{LuaObject.of(rv2), LuaObject.NIL};
                     } catch (LuaParserException ex) {
-                        return new LuaObject[]{LuaObject.NIL, LuaObject.of("Compilation error: "+ex.getMessage())};
+                        return new LuaObject[]{LuaObject.NIL, LuaObject.of("Compilation error: " + ex.getMessage())};
                     }
                 }));
 

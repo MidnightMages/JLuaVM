@@ -8,13 +8,13 @@ import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.RTUtils;
 
 public class LDebug {
-    private static final String MATH_PREFIX = "debug.";
+    private static final String DEBUG_PREFIX = "debug.";
 
 
     public static void registerStdDebug(MixedStateFunctionRegistry registry, boolean includeUnconstrainedFunctions) {
 
         // we skip the function frame of the traceback function
-        registry.register(MATH_PREFIX + "traceback",
+        registry.register(DEBUG_PREFIX + "traceback",
                 AtomicLuaFunction.vaForOneResult(registry, (vm, args) -> {
                     Coroutine thread = null;
                     LuaObject message = LuaObject.NIL;

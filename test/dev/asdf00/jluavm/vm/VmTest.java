@@ -708,11 +708,11 @@ public class VmTest extends BaseVmTest {
         var vm = assertDoesNotThrow(() -> LuaVM.builder().rootFunc("""
                 local function test(t)
                     error("catch me")
-                end 
+                end
                 return pcall(test)
                 """)).build();
         var res = vm.run();
-        assertEquals(LuaVM.VmResult.of(LuaVM.VmRunState.SUCCESS, LuaObject.of(false), LuaObject.of("catch me")), res);
+        assertEquals(LuaVM.VmResult.of(LuaVM.VmRunState.SUCCESS, LuaObject.of(false), LuaObject.of("main.lua:2: catch me")), res);
     }
 
     @Test
@@ -774,7 +774,7 @@ public class VmTest extends BaseVmTest {
                                 """),
                         LuaObject.of(1),
                         LuaObject.of(false),
-                        LuaObject.of("i am an error")),
+                        LuaObject.of("main.lua:10: i am an error")),
                 res);
     }
 
@@ -2733,5 +2733,15 @@ public class VmTest extends BaseVmTest {
             assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.PAUSED, Singletons.EMPTY_LUA_OBJ_ARRAY), vm.runContinue());
             assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS, new LuaObject[]{LuaObject.of(rv)}), vm.runContinue());
         }
+    }
+    @Test
+    void errorObjectTest() {
+        var rv = loadAssertSuccessGetRv("return select(2, pcall(function()error(123,\"testLevel\")end))")[0];
+        assertTrue(rv.isString() && rv.asString().contains("Expected argument #2 to be of type"));
+
+        loadAssertSuccessAndRv("return select(2, pcall(function()error(123)end))", LuaObject.of(123));
+        assertEquals("[Java]: 123",loadAssertSuccessGetRv("return select(2, pcall(function()error(\"123\",2)end))")[0].asString());
+        assertEquals("main.lua:1: 123", loadAssertSuccessGetRv("return select(2, pcall(function()error(\"123\",1)end))")[0].asString());
+        loadAssertSuccessAndRv("return select(2, pcall(function()error(\"123\",0)end))", LuaObject.of("123"));
     }
 }
