@@ -39,6 +39,8 @@ In the following cases JLuaVM behaves differently than LuaC, but we still fulfil
 - **Stacktraces are formatted differently**
 
     Due to the lack of a `loadfile` function, the chunkname is directly fed into stacktraces, allowing for specifying filenames, etc. without being surrounded by quotes.
+    Also some things are named slightly different within the stacktrace. 
+    This indirectly also affects the `error(msg [, level])` function when `msg` is directly a `string` and `level == nil or level > 0`, and thus, part of the stacktrace is appended.
 
 
 ## Lua language specification deviations
