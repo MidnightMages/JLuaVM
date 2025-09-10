@@ -311,7 +311,7 @@ public class LGlobal {
                     // https://www.lua.org/manual/5.4/manual.html#pdf-load
                     // TODO support function for args[0];
                     var chunk = args.length > 0 ? args[0] : null;
-                    var chunkName = args.length > 1 ? args[1] : null; // TODO make use of chunkname
+                    var chunkName = args.length > 1 ? args[1] : null;
                     var mode = args.length > 2 ? args[2] : null;
                     var env = args.length > 3 ? args[3] : null;
 
@@ -337,7 +337,7 @@ public class LGlobal {
 
 
                     try {
-                        var rv2 = LuaVM.load(chunkName.asString(), chunk.getString(), env == null ? vm.getCallerEnv() : env);
+                        var rv2 = LuaVM.load(chunkName == null ? "nil" : chunkName.asString(), chunk.getString(), env == null ? vm.getCallerEnv() : env);
                         return new LuaObject[]{LuaObject.of(rv2), LuaObject.NIL};
                     } catch (LuaParserException ex) {
                         return new LuaObject[]{LuaObject.NIL, LuaObject.of("Compilation error: " + ex.getMessage())};
