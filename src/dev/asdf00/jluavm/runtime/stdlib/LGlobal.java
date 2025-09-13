@@ -332,12 +332,20 @@ public class LGlobal {
                         return null;
                     }
 
-                    //noinspection all
-                    assert chunk.isString();
-
-
+                    var chunkStr = chunk.getString();
                     try {
-                        var rv2 = LuaVM.load(chunkName == null ? "=(load)" : chunkName.asString(), chunk.getString(), env == null ? vm.getCallerEnv() : env);
+                        String processedChunkname;
+                        if (chunkName == null) {
+                            if (chunk.isString()) {
+                                var truncated = chunkStr.length() > 45 ? (chunkStr.substring(0, 45) + "...") : chunkStr;
+                                processedChunkname = "[string \"%s\"]".formatted(truncated);
+                            } else {
+                                processedChunkname = "=(load)";
+                            }
+                        } else {
+                            processedChunkname = chunkName.asString();
+                        }
+                        var rv2 = LuaVM.load(processedChunkname, chunkStr, env == null ? vm.getCallerEnv() : env);
                         return new LuaObject[]{LuaObject.of(rv2), LuaObject.NIL};
                     } catch (LuaParserException ex) {
                         return new LuaObject[]{LuaObject.NIL, LuaObject.of("Compilation error: " + ex.getMessage())};
