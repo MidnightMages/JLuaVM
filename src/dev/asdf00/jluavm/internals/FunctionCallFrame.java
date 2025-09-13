@@ -53,9 +53,8 @@ public final class FunctionCallFrame extends AbstractCallStackFrame {
         return scopes;
     }
 
-    public void enterScope(LFunc localTarget, String targetName, LuaObject[] args) {
-        var cTop = getTopFrame();
-        scopes.push(new InternalCallFrame(locals, cTop.startLocals + cTop.localCnt + cTop.curInlinedLocalCnt, localTarget, targetName, args));
+    public void enterScope(int localsStart, LFunc localTarget, String targetName, LuaObject[] args) {
+        scopes.push(new InternalCallFrame(locals, localsStart, localTarget, targetName, args));
     }
 
     public void exitScope(LuaObject[] rvals) {
@@ -64,7 +63,9 @@ public final class FunctionCallFrame extends AbstractCallStackFrame {
         if (!scp.closables.isEmpty()) {
             throw new InternalLuaRuntimeError("not all closable values were closed");
         }
-        Arrays.fill(locals, scp.startLocals, scp.startLocals + scp.localCnt, null);
+        if (scp.startLocals >= 0) {
+            Arrays.fill(locals, scp.startLocals, scp.startLocals + scp.localCnt, null);
+        }
         getTopFrame().rvals = rvals;
     }
 

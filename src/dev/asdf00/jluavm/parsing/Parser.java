@@ -196,7 +196,7 @@ public final class Parser {
                 var innerStats = Block();
                 check(END);
                 VarScope scp = symTab.exitScope();
-                statement = new IfNode(_pos, entryCond, new IRBlock(_pos, innerStats.toArray(Node[]::new), entryCond, true,
+                statement = new IfNode(_pos, entryCond, new IRBlock(_pos, innerStats.toArray(Node[]::new), entryCond, scp.baseIdx, true,
                         scp.getLocalsCount(), scp.getClosableCount()));
             }
             case REPEAT -> {
@@ -207,7 +207,7 @@ public final class Parser {
                 check(UNTIL);
                 Node exitCond = Exp();
                 VarScope scp = symTab.exitScope();
-                statement = new PlainInnerBlockNode(_pos, new IRBlock(_pos, innerStats.toArray(Node[]::new), exitCond, false,
+                statement = new PlainInnerBlockNode(_pos, new IRBlock(_pos, innerStats.toArray(Node[]::new), exitCond, scp.baseIdx, false,
                         scp.getLocalsCount(), scp.getClosableCount()));
             }
             case IF -> {
@@ -247,11 +247,11 @@ public final class Parser {
                 check(END);
                 IRBlock[] elifs = new IRBlock[elifBlocks.size()];
                 for (int i = 0; i < elifs.length; i++) {
-                    elifs[i] = new IRBlock(elifPoses.get(i), elifBlocks.get(i).toArray(Node[]::new), elifScps.get(i).getLocalsCount(), elifScps.get(i).getClosableCount());
+                    elifs[i] = new IRBlock(elifPoses.get(i), elifBlocks.get(i).toArray(Node[]::new), elifScps.get(i).baseIdx, elifScps.get(i).getLocalsCount(), elifScps.get(i).getClosableCount());
                 }
-                statement = new IfNode(_pos, condition, new IRBlock(thenBPos, thenBlock.toArray(Node[]::new), thenScp.getLocalsCount(), thenScp.getClosableCount()),
+                statement = new IfNode(_pos, condition, new IRBlock(thenBPos, thenBlock.toArray(Node[]::new), thenScp.baseIdx, thenScp.getLocalsCount(), thenScp.getClosableCount()),
                         elifConds.toArray(Node[]::new), elifs,
-                        elseBlock == null ? null : new IRBlock(elsePos, elseBlock.toArray(Node[]::new), elseScp.getLocalsCount(), elseScp.getClosableCount()));
+                        elseBlock == null ? null : new IRBlock(elsePos, elseBlock.toArray(Node[]::new), thenScp.baseIdx, elseScp.getLocalsCount(), elseScp.getClosableCount()));
             }
             case FOR -> {
                 scan();
@@ -295,7 +295,7 @@ public final class Parser {
                     check(END);
 
                     // we need to move the value of the internal iterator to the actual local iterator variable
-                    innerStats.add(0, new AssignmentNode(bpos, new Node[]{new LocalAccessNode(cvarPos, controlVar)},
+                    innerStats.add(0, new AssignmentNode(bpos, true, new Node[]{new LocalAccessNode(cvarPos, controlVar)},
                             new Node[]{new LocalAccessNode(setupPos, internalControlVar)}));
                     // we add the for-step to the end of the internal statements
                     // the step might break the loop if an integer addition over/under-flows and must therefore close stuff in that case
@@ -318,12 +318,16 @@ public final class Parser {
                             ));
 
                     // build for-loop
+                    /*
+                     * Wrap the entire loop into a do-end, declare 3 hidden local variables, do the first for-step,
+                     * check first entry condition, then add loop-block with the same continue-condition.
+                     */
                     statement = new DoEndNode(_pos, new Node[]{
-                            new AssignmentNode(setupPos, new Node[]{new LocalAccessNode(setupPos, internalControlVar),
+                            new AssignmentNode(setupPos, true, new Node[]{new LocalAccessNode(setupPos, internalControlVar),
                                     new LocalAccessNode(setupPos, ubVar), new LocalAccessNode(setupPos, stepVar)},
                                     new Node[]{initialValue, upperBound, step}),
                             new CoerceNumericForNode(cur.pos(), internalControlVar, ubVar, stepVar),
-                            new IfNode(_pos, entryCondition, new IRBlock(bpos, innerStats.toArray(Node[]::new), entryCondition, true,
+                            new IfNode(_pos, entryCondition, new IRBlock(bpos, innerStats.toArray(Node[]::new), entryCondition, innerLoopScp.baseIdx, true,
                                     innerLoopScp.getLocalsCount(), innerLoopScp.getClosableCount()))},
                             outerLoopScp.getPrevFunctionLocalsCount(), outerLoopScp.getLocalsCount(), outerLoopScp.getClosableCount());
                 } else {
@@ -343,7 +347,7 @@ public final class Parser {
                     SpecificVarInfo state = defineInternal("$state$");
                     SpecificVarInfo closing = defineInternal("$closingVariable$", 3);
                     Node[] initials = ExpList();
-                    Node setup = new AssignmentNode(setupPos, new Node[]{new LocalAccessNode(setupPos, itrFunc), new LocalAccessNode(setupPos, state),
+                    Node setup = new AssignmentNode(setupPos, true, new Node[]{new LocalAccessNode(setupPos, itrFunc), new LocalAccessNode(setupPos, state),
                             new LocalAccessNode(setupPos, internalControlVar), new LocalAccessNode(setupPos, closing)}, initials);
                     check(DO);
                     final Position innerSetup = cur.pos();
@@ -351,12 +355,12 @@ public final class Parser {
                     // the first one of these is the control variable accessible to lua
                     SpecificVarInfo[] forVals = ltkList.stream().map(t -> define(t, 0)).toArray(SpecificVarInfo[]::new);
                     Node step = new SequenceNode(innerSetup,
-                            new AssignmentNode(innerSetup,
+                            new AssignmentNode(innerSetup, true,
                                     Arrays.stream(forVals).map(v -> new LocalAccessNode(innerSetup, v)).toArray(LocalAccessNode[]::new),
                                     new Node[]{new FunctionCallNode(innerSetup,
                                             null, null, new LocalAccessNode(innerSetup, itrFunc), new Node[]{new LocalAccessNode(innerSetup, state),
                                             new LocalAccessNode(innerSetup, internalControlVar)})}),
-                            new AssignmentNode(innerSetup,
+                            new AssignmentNode(innerSetup, false,
                                     new Node[]{new LocalAccessNode(innerSetup, internalControlVar)},
                                     new Node[]{new LocalAccessNode(innerSetup, forVals[0])}));
                     Node entryCondition = new EqualsNode(innerSetup, new LocalAccessNode(innerSetup, internalControlVar), ConstantNode.ofNil(innerSetup));
@@ -364,7 +368,8 @@ public final class Parser {
                     ArrayList<Node> inners = Block();
                     inners.add(step);
                     VarScope innerLoopScope = symTab.exitScope();
-                    IRBlock block = new IRBlock(bpos, inners.toArray(Node[]::new), entryCondition, false, innerLoopScope.getLocalsCount(), innerLoopScope.getClosableCount());
+                    IRBlock block = new IRBlock(bpos, inners.toArray(Node[]::new), entryCondition, innerLoopScope.baseIdx, false,
+                            innerLoopScope.getLocalsCount(), innerLoopScope.getClosableCount());
                     VarScope outerClosableCnt = symTab.exitScope();
                     statement = new DoEndNode(_pos, new Node[]{setup, step, new IfNode(_pos, new LogicNotNode(innerSetup, entryCondition), block)},
                             outerClosableCnt.getPrevFunctionLocalsCount(), outerClosableCnt.getLocalsCount(), outerClosableCnt.getClosableCount());
@@ -397,7 +402,7 @@ public final class Parser {
                     acInfo.setWritten();
                 }
                 var func = FuncBody(hasSelf);
-                statement = new AssignmentNode(apos, new Node[]{access}, new Node[]{func});
+                statement = new AssignmentNode(apos, false, new Node[]{access}, new Node[]{func});
             }
             case LOCAL -> {
                 scan();
@@ -407,10 +412,10 @@ public final class Parser {
                     check(IDENT);
                     Position tpos = cur.pos();
                     SpecificVarInfo target = define(cur, 0);
-                    var definition = new AssignmentNode(tpos, new Node[]{new LocalAccessNode(tpos, target)}, new Node[]{ConstantNode.ofNil(tpos)});
+                    var definition = new AssignmentNode(tpos, true, new Node[]{new LocalAccessNode(tpos, target)}, new Node[]{ConstantNode.ofNil(tpos)});
                     target.baseInfo().setWritten();
                     var func = FuncBody(false);
-                    statement = new SequenceNode(tpos, definition, new AssignmentNode(tpos, new Node[]{new LocalAccessNode(tpos, target)}, new Node[]{func}));
+                    statement = new SequenceNode(tpos, definition, new AssignmentNode(tpos, false, new Node[]{new LocalAccessNode(tpos, target)}, new Node[]{func}));
                 } else {
                     check(IDENT);
                     var localList = new ArrayList<Tuple<Token, Integer>>();
@@ -433,7 +438,7 @@ public final class Parser {
                     } else {
                         expressions = new Node[0];
                     }
-                    statement = new AssignmentNode(apos, localList.stream().map(t -> new LocalAccessNode(t.x().pos(), define(t.x(), t.y()))).toArray(Node[]::new), expressions);
+                    statement = new AssignmentNode(apos, true, localList.stream().map(t -> new LocalAccessNode(t.x().pos(), define(t.x(), t.y()))).toArray(Node[]::new), expressions);
                 }
             }
             case IDENT, LPAR -> {
@@ -526,7 +531,7 @@ public final class Parser {
                 }
             });
             Node[] expressions = ExpList();
-            result = new AssignmentNode(apos, assignTargets.toArray(Node[]::new), expressions);
+            result = new AssignmentNode(apos, false, assignTargets.toArray(Node[]::new), expressions);
         } else {
             if (result instanceof FunctionCallNode f) {
                 result = new FunctionStatementNode(f.sourcePos, f);

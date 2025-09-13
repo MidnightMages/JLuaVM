@@ -50,16 +50,16 @@ public class IfNode extends Node {
             sb.append("""
                     %s
                     if (RTUtils.isTruthy(%s)) {
-                        vm.callInternal(%d, this::%s, "%s");
+                        vm.callInternal(%d, %d, this::%s, "%s");
                         return;
                     }
-                    """.formatted(cc.x(), cc.y(), callInfo.resumeLabel(), cc.z(), cc.z()));
+                    """.formatted(cc.x(), cc.y(), callInfo.resumeLabel(), then.localsStart, cc.z(), cc.z()));
         }
         if (elseBlockName != null) {
             sb.append("""
-                    vm.callInternal(%d, this::%s, "%s");
+                    vm.callInternal(%d, %d, this::%s, "%s");
                     return;
-                    """.formatted(callInfo.resumeLabel(), elseBlockName, elseBlockName));
+                    """.formatted(callInfo.resumeLabel(), _else.localsStart, elseBlockName, elseBlockName));
         }
         sb.append("case ").append(callInfo.resumeLabel()).append(':');
         return sb.toString();

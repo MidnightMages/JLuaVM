@@ -17,8 +17,8 @@ public class PlainInnerBlockNode extends Node {
         var info = cState.generateEStackCallInfo(0);
         String bName = innerBlock.generate(cState);
         return """
-                vm.callInternal(%d, this::%s, "%s");
+                vm.callInternal(%d, %d, this::%s, "%s");
                 return;
-                case %d:""".formatted(info.resumeLabel(), bName, bName, info.resumeLabel());
+                case %d:""".formatted(info.resumeLabel(), innerBlock.localsStart, bName, bName, info.resumeLabel());
     }
 }

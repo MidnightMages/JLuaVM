@@ -507,6 +507,14 @@ public class LuaVM_RT extends LuaVM {
         }
     }
 
+    /**
+     * This is only called when a generated inner scope is called, for which the localsStart is known at compile time.
+     */
+    public void callInternal(int resume, int localsStart, LFunc localTarget, String targetName) {
+        curFuncFrame.getTopFrame().resume = resume;
+        curFuncFrame.enterScope(localsStart, localTarget, targetName, Singletons.EMPTY_LUA_OBJ_ARRAY);
+    }
+
     public void callInternal(int resume, LFunc localTarget, String targetName) {
         callInternal(resume, localTarget, targetName, Singletons.EMPTY_LUA_OBJ_ARRAY);
     }
@@ -514,7 +522,7 @@ public class LuaVM_RT extends LuaVM {
     public void callInternal(int resume, LFunc localTarget, String targetName, LuaObject... args) {
         // we trust that the caller knows what they are doing and that the args are already in the correct format
         curFuncFrame.getTopFrame().resume = resume;
-        curFuncFrame.enterScope(localTarget, targetName, args);
+        curFuncFrame.enterScope(-1, localTarget, targetName, args);
     }
 
     public void internalReturn() {

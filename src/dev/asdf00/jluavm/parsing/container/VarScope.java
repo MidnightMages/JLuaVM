@@ -12,7 +12,7 @@ public class VarScope {
     public static final VarScope EMPTY_DUMMY = new VarScope(null, -1, false, false, false, false);
 
     public final VarScope parent;
-    private final int baseIdx;
+    public final int baseIdx;
     public final ArrayList<VarScope> children = new ArrayList<>();
     public final int id;
 

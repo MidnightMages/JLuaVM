@@ -12,11 +12,13 @@ import dev.asdf00.jluavm.utils.Tuple;
 import java.util.ArrayList;
 
 public class AssignmentNode extends Node {
+    public final boolean isLocalDeclaration;
     public final Node[] targets;
     public final Node[] values;
 
-    public AssignmentNode(Position sourcePos, Node[] targets, Node[] values) {
+    public AssignmentNode(Position sourcePos, boolean isLocalDeclaration, Node[] targets, Node[] values) {
         super(sourcePos);
+        this.isLocalDeclaration = isLocalDeclaration;
         this.targets = targets;
         this.values = values;
     }
@@ -124,7 +126,7 @@ public class AssignmentNode extends Node {
             sb.append('\n');
             if (tTars[i] instanceof SpecificVarInfo info) {
                 // local assignment
-                sb.append(genLocalSet(cState, info, vSpots.get(i)));
+                sb.append(genLocalSet(cState, info, vSpots.get(i), isLocalDeclaration));
             } else if (tTars[i] instanceof EnvAccessNode) {
                 sb.append("_ENV.setBox(").append(vSpots.get(i)).append(");");
             } else {
@@ -154,15 +156,15 @@ public class AssignmentNode extends Node {
         return assignment;
     }
 
-    private static String genLocalSet(CompilationState cState, SpecificVarInfo info, String val) {
+    private static String genLocalSet(CompilationState cState, SpecificVarInfo info, String val, boolean isLocalDeclaration) {
         String assignment;
         if (info.closureIdx() < 0) {
             if (info.baseInfo().sitsInBox()) {
-                assignment = """
-                        if (stackFrame[%d] == null) stackFrame[%d] = LuaObject.box(%s);
-                        else stackFrame[%d].setBox(%s);""".formatted(
-                        info.baseInfo().lVarIdx, info.baseInfo().lVarIdx, val,
-                        info.baseInfo().lVarIdx, val);
+                if (isLocalDeclaration) {
+                    assignment = "stackFrame[%d] = LuaObject.box(%s);".formatted(info.baseInfo().lVarIdx, val);
+                } else {
+                    assignment = "stackFrame[%d].setBox(%s);".formatted(info.baseInfo().lVarIdx, val);
+                }
             } else {
                 // this could be a local definition, therefore we need to insert a closability check for all closable variables
                 if (info.baseInfo().isClosable()) {

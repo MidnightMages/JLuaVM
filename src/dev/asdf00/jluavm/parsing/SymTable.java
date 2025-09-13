@@ -145,13 +145,13 @@ public class SymTable {
     }
 
     private static int getMaxFuncLocalsRecursive(VarScope scope) {
-        int innerMax = 0;
+        int curMax = scope.baseIdx + scope.getLocalsCount();
         for (var s : scope.children) {
             if (!s.isFunctionBorder) {
-                innerMax = Math.max(innerMax, getMaxFuncLocalsRecursive(s));
+                curMax = Math.max(curMax, getMaxFuncLocalsRecursive(s));
             }
         }
-        return innerMax + scope.getLocalsCount();
+        return curMax;
     }
 
     public SpecificVarInfo add(Token ident, boolean isConst, boolean isClosable) {
