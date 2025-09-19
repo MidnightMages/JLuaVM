@@ -1,6 +1,7 @@
 package dev.asdf00.jluavm.runtime.types;
 
 import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
+import dev.asdf00.jluavm.exceptions.loading.LuaLexerException;
 import dev.asdf00.jluavm.exceptions.loading.LuaParserException;
 import dev.asdf00.jluavm.internals.Coroutine;
 import dev.asdf00.jluavm.parsing.Lexer;
@@ -929,9 +930,13 @@ public final class LuaObject {
     }
 
     public boolean isNumberCoercible() {
-        if (isNumber()) {
-            return true;
-        } else return isString() && coerceToNumber() != null;
+        try {
+            if (isNumber()) {
+                return true;
+            } else return isString() && coerceToNumber() != null;
+        } catch (LuaLexerException ignored) {
+            return false;
+        }
     }
 
     // =================================================================================================================
