@@ -2722,4 +2722,18 @@ public class VmTest extends BaseVmTest {
                 return a+b
                 """);
     }
+
+    @Test
+    void indexNil() {
+        loadAssertRuntimeError("""
+                return thisOneIsNil[123]
+                """);
+    }
+
+    @Test
+    void indexNilPcall() {
+        loadAssertSuccess("""
+                pcall(function() return thisOneIsNil[123] end)
+                """);
+    }
 }
