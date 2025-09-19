@@ -2702,6 +2702,7 @@ public class VmTest extends BaseVmTest {
             assertEquals(new LuaVM.VmResult(LuaVM.VmRunState.SUCCESS, new LuaObject[]{LuaObject.of(rv)}), vm.runContinue());
         }
     }
+
     @Test
     void errorObjectTest() {
         var rv = loadAssertSuccessGetRv("return select(2, pcall(function()error(123,\"testLevel\")end))")[0];
@@ -2711,5 +2712,14 @@ public class VmTest extends BaseVmTest {
         assertEquals("[Java]: 123",loadAssertSuccessGetRv("return select(2, pcall(function()error(\"123\",2)end))")[0].asString());
         assertEquals("main.lua:1: 123", loadAssertSuccessGetRv("return select(2, pcall(function()error(\"123\",1)end))")[0].asString());
         loadAssertSuccessAndRv("return select(2, pcall(function()error(\"123\",0)end))", LuaObject.of("123"));
+    }
+
+    @Test
+    void stringAddition() {
+        loadAssertRuntimeError("""
+                local a = "test"
+                local b = "testing"
+                return a+b
+                """);
     }
 }
