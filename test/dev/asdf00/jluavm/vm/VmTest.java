@@ -2736,4 +2736,18 @@ public class VmTest extends BaseVmTest {
                 pcall(function() return thisOneIsNil[123] end)
                 """);
     }
+
+    @Test
+    void pcallSuccess() {
+        loadAssertSuccessAndRv("""
+                return pcall(function() end)
+                """, new LuaObject[]{LuaObject.TRUE});
+    }
+
+    @Test
+    void xpcallSuccess() {
+        loadAssertSuccessAndRv("""
+                return xpcall(function() end, function() return 123 end)
+                """, new LuaObject[]{LuaObject.TRUE});
+    }
 }
