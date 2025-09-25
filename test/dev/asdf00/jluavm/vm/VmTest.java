@@ -2752,6 +2752,23 @@ public class VmTest extends BaseVmTest {
     }
 
     @Test
+    void protectedCalls() {
+        loadAssertSuccessAndRv("""
+                return pcall(function() error("123") end)
+                """, new LuaObject[]{LuaObject.FALSE, LuaObject.of("main.lua:1: 123")});
+        loadAssertSuccessAndRv("""
+                return xpcall(function() error("123") end, function(a) return "testttttt"..tostring(a) end)
+                """, new LuaObject[]{LuaObject.FALSE, LuaObject.of("testtttttmain.lua:1: 123")});
+        var rv = loadAssertSuccessGetRv("""
+                return xpcall(function() error({}) end, function(a) return "testttttt"..tostring(a) end)
+                """);
+        assertEquals(2, rv.length);
+        assertEquals(LuaObject.FALSE, rv[0]);
+        assertTrue( rv[1].isString());
+        assertTrue( rv[1].asString().startsWith("testttttttable: 0x"));
+    }
+
+    @Test
     void anonymousCallSideEffects() {
         loadAssertSuccessAndRv("""
                 local a = function() end
