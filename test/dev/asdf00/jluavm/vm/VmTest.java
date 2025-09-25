@@ -2752,7 +2752,7 @@ public class VmTest extends BaseVmTest {
     }
 
     @Test
-    void anonymousCallSideeffects() {
+    void anonymousCallSideEffects() {
         loadAssertSuccessAndRv("""
                 local a = function() end
                 a()
