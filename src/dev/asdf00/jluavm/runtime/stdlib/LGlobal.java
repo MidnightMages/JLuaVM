@@ -126,7 +126,10 @@ public class LGlobal {
                                     vm.returnValue(LuaObject.of(false), returned.length > 0 ? returned[0] : LuaObject.nil());
                                     return;
                                 } else {
-                                    vm.returnValue(LuaObject.of(true), LuaObject.of(returned));
+                                    var flattened = new LuaObject[returned.length + 1];
+                                    flattened[0] = LuaObject.of(true);
+                                    System.arraycopy(returned, 0, flattened, 1, returned.length);
+                                    vm.returnValue(flattened);
                                     return;
                                 }
                             default:
