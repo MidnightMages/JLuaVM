@@ -2750,4 +2750,14 @@ public class VmTest extends BaseVmTest {
                 return xpcall(function() end, function() return 123 end)
                 """, new LuaObject[]{LuaObject.TRUE});
     }
+
+    @Test
+    void anonymousCallSideeffects() {
+        loadAssertSuccessAndRv("""
+                local a = function() end
+                a()
+                (function() end)()
+                a()
+                """, new LuaObject[]{});
+    }
 }
