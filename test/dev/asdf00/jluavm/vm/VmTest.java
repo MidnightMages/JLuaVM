@@ -2772,7 +2772,7 @@ public class VmTest extends BaseVmTest {
     void anonymousCallSideEffects() {
         loadAssertSuccessAndRv("""
                 local a = function() end
-                a()
+                a();
                 (function() end)()
                 a()
                 """, new LuaObject[]{});
