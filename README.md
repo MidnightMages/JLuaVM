@@ -8,10 +8,14 @@ Differences in behaviour compared to the Lua specification itself and LuaC can b
 
 TODO explain what is missing
 
+## Usage
+Despite the fact that this Lua VM is primarily developed for the Minecraft mod Advanced Computers<!-- todo add link -->, we aim to also provide support and bugfixes for features that other projects (including other computer mods) are making use of, though adding completely new features may be slow.
+
+Thus, feel free to use this and open up an issue ticket if something does not work.
+
 ## Acknowledgement
 The DelayedJavaCompiler class, in the package `dev.asdf00.jluavm.internals`, is largely taken from Java Object Oriented Reflection library (jOOR) which, itself, 
 is distributed under the Apache License Version 2.0 with the source code available [on Github](https://github.com/jOOQ/jOOR).
-
 
 ## Contributing
 
