@@ -2777,4 +2777,27 @@ public class VmTest extends BaseVmTest {
                 a()
                 """, new LuaObject[]{});
     }
+
+    @Test
+    void envReplacement() {
+        loadAssertRuntimeError("""                
+                local rv = ""
+                _ENV["test"] = function(a) rv = rv .. a end
+                local function bla()
+                    local _ENV = {}
+                    test("test2")
+                end
+                return bla()
+                """);
+        
+        loadAssertSuccessAndRv("""                
+                local rv = ""
+                local function bla()
+                    local _ENV = {["test"] = function(a) rv = rv .. a end}
+                    test("test2")
+                end
+                bla()
+                return rv
+                """, LuaObject.of("test2"));
+    }
 }
