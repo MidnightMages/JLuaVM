@@ -271,9 +271,6 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
         if (CONVERTIBLE_TYPES.containsKey(type)) {
             return;
         }
-        if (CONVERTIBLE_TYPES.containsKey(CompanionClassBuilder.boxThatType(type))) {
-            return;
-        }
         if (LuaUserData.class.isAssignableFrom(type)) {
             return;
         }
@@ -321,6 +318,8 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
                 return Boolean.class;
             } else if (char.class.equals(type)) {
                 return Character.class;
+            } else if (void.class.equals(type)) {
+                return type;
             }
             throw new IllegalArgumentException("Failed to box possibly primitive " + type.getName());
         }
@@ -334,7 +333,7 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
 
             // verify we can actually generate the call
             try {
-                verifyAsLuaConvertible(true, false, rType);
+                verifyAsLuaConvertible(true, false, boxThatType(rType));
                 for (int i = 0; i < pTypes.length - 1; i++) {
                     pTypes[i] = boxThatType(pTypes[i]);
                     verifyAsLuaConvertible(false, false, pTypes[i]);
