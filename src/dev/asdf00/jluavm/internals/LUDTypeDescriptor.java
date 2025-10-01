@@ -275,7 +275,7 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
             return;
         }
         if (LuaObject[].class.equals(type)) {
-            if (isLastP) {
+            if (isLastP || isRet) {
                 return;
             } else {
                 throw new IllegalArgumentException("A LuaObject[] parameter is only valid as a vararg at the end of the parameter list");
