@@ -54,6 +54,12 @@ public class ByteArrayReader {
         return end - cursor;
     }
 
+    public byte[] toArray() {
+        byte[] array = new byte[end - start];
+        System.arraycopy(data, start, array, 0, array.length);
+        return array;
+    }
+
     public ByteArrayReader slice(int len) {
         rangeAssert(len);
         var res = new ByteArrayReader(data, cursor, cursor + len);

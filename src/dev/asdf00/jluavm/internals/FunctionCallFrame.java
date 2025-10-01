@@ -1,6 +1,7 @@
 package dev.asdf00.jluavm.internals;
 
 import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
+import dev.asdf00.jluavm.exceptions.LuaJavaError;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.LFunc;
@@ -21,7 +22,7 @@ public final class FunctionCallFrame extends AbstractCallStackFrame {
     public LuaFunction msgHandler;
 
     public int lastLine = -1;
-    public String lastName= "?";
+    public String lastName = "?";
     public boolean tailCalled = false;
 
     private FunctionCallFrame(DataContainer container, LuaFunction lFunc, Stack<InternalCallFrame> scopes,
@@ -76,7 +77,16 @@ public final class FunctionCallFrame extends AbstractCallStackFrame {
 
     @Override
     public void execute(LuaVM_RT vm) {
-        lFunc.invoke(vm, locals, resume, expressionStack, rvals);
+        try {
+            lFunc.invoke(vm, locals, resume, expressionStack, rvals);
+        } catch (LuaJavaError e) {
+            vm.error(LuaObject.of(e.getMessage() + "\nJava Stacktrace:\n  " +
+                    String.join("\n  ", Arrays.stream(e.getStackTrace())
+                            .limit(e.getStackTrace().length - new Exception().getStackTrace().length)
+                            .map(ste -> "at %s.%s(%s:%d)".formatted(
+                                    ste.getClassName(), ste.getMethodName(), ste.getFileName(), ste.getLineNumber()))
+                            .toList())));
+        }
         rvals = null;
     }
 

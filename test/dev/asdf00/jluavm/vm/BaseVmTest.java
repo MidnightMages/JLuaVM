@@ -31,6 +31,14 @@ public abstract class BaseVmTest {
         }
     }
 
+    protected static void loadAssertSuccessAndRv(String code, LuaObject[] inputs, LuaObject[] expectedRets) {
+        for (var expanded : expandOptions(code)) {
+            var vm = LuaVM.builder().rootFunc(expanded).build();
+            var res = vm.runWithArgs(inputs);
+            assertEquals(LuaVM.VmResult.of(LuaVM.VmRunState.SUCCESS, expectedRets), res);
+        }
+    }
+
     protected static void loadAssertException(String s, Class<? extends LuaLoadingException> exc) {
         for (var expanded : expandOptions(s)) {
             assertThrows(exc, () -> LuaVM.builder().rootFunc(expanded).build());

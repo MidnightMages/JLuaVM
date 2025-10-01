@@ -17,7 +17,7 @@ import java.util.function.Function;
  * During operation of the LuaVM, no API function should ever be instanciated by simply calling its constructor, but
  * rather by calling {@link ApiFunctionRegistry#getFunction} and, by proxy, calling the instanciator function.
  */
-public class MixedStateFunctionRegistry extends ApiFunctionRegistry {
+public class MixedStateFunctionRegistry implements ApiFunctionRegistry {
     protected final String id;
     protected final HashMap<LuaJavaApiFunction, String> lessReverseMap = new HashMap<>();
     protected final HashMap<String, LuaJavaApiFunction> lessFuncMap = new HashMap<>();

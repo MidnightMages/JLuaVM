@@ -1,4 +1,4 @@
-package dev.asdf00.jluavm.internals;
+package dev.asdf00.jluavm.internals.javac;
 
 import dev.asdf00.jluavm.exceptions.DelayedJavaCompilationException;
 
@@ -17,7 +17,7 @@ import java.util.*;
  * License Version 2.0 with the source code available at <a href="https://github.com/jOOQ/jOOR">jOOR on Github</a>.
  */
 public class DelayedJavaCompiler {
-    public static Class<?> compileAndLoad(ClassLoader parentLdr, String className, String content) {
+    public static Class<?> compileAndLoad(ByteArrayClassLoader target, String className, String content) throws DelayedJavaCompilationException {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         if (compiler == null)
             throw new DelayedJavaCompilationException("No compiler was provided by ToolProvider.getSystemJavaCompiler(). Make sure the jdk.compiler module is available.");
@@ -44,27 +44,12 @@ public class DelayedJavaCompiler {
                 throw new DelayedJavaCompilationException("JIC Compilation error: " + out);
             }
 
-            ByteArrayClassLoader c = new ByteArrayClassLoader(parentLdr, fileManager.classes());
-            return fileManager.loadAndReturnMainClass(className, c);
+            target.addClassData(fileManager.classes());
+            return fileManager.loadAndReturnMainClass(className, target);
         } catch (DelayedJavaCompilationException e) {
             throw e;
         } catch (Exception e) {
             throw new DelayedJavaCompilationException("Error while compiling " + className, e);
-        }
-    }
-
-    private static final class ByteArrayClassLoader extends ClassLoader {
-        private final LinkedHashMap<String, byte[]> classes;
-
-        public ByteArrayClassLoader(ClassLoader parentLdr, LinkedHashMap<String, byte[]> classes) {
-            super(parentLdr);
-            this.classes = classes;
-        }
-
-        @Override
-        protected Class<?> findClass(String name) throws ClassNotFoundException {
-            byte[] bytes = classes.get(name);
-            return bytes == null ? super.findClass(name) : defineClass(name, bytes, 0, bytes.length);
         }
     }
 
