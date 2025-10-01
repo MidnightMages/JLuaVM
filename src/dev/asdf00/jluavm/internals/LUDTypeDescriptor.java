@@ -271,6 +271,9 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
         if (CONVERTIBLE_TYPES.containsKey(type)) {
             return;
         }
+        if (CONVERTIBLE_TYPES.containsKey(CompanionClassBuilder.boxThatType(type))) {
+            return;
+        }
         if (LuaUserData.class.isAssignableFrom(type)) {
             return;
         }
