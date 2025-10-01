@@ -342,7 +342,7 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
                     verifyAsLuaConvertible(false, true, pTypes[last]);
                 }
             } catch (IllegalArgumentException e) {
-                throw new LuaUserDataApiBuildingException("Error building userdata '" + typeName + "': " + e.getMessage());
+                throw new LuaUserDataApiBuildingException("Error building userdata '" + typeName + "#" + name + "': " + e.getMessage());
             }
             var sb = new StringBuilder();
             sb.append('"').append(name).append("\", (vm, params) -> {\n");
