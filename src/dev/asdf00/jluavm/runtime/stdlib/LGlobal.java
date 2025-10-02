@@ -538,5 +538,8 @@ public class LGlobal {
 
         registry.register("type",
                 AtomicLuaFunction.forOneResult(registry, (vm, x) -> LuaObject.of(x.getTypeAsString())));
+
+        registry.register("typeof", AtomicLuaFunction.forOneResult(registry, (vm, x) ->
+                LuaObject.of(x.isUserData() ? x.refVal.getClass().getSimpleName() : x.getTypeAsString())));
     }
 }
