@@ -21,6 +21,7 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public final class LUDTypeDescriptor<T extends LuaUserData> {
     private static final LUDCompanionClassLoader descLdr = new LUDCompanionClassLoader(LUDTypeDescriptor.class.getClassLoader());
@@ -99,6 +100,14 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
     public LuaObject getTypeMeta(String metaKey) {
         assert Arrays.stream(META_KEYS).filter(k -> k.equals(metaKey)).findAny().isPresent() : metaKey + " is not a valid meta table key!";
         return metaFunctions[hashMetaKey(metaKey)];
+    }
+
+    public String[] getReadableKeys() {
+        return Stream.concat(getters.keySet().stream(), methods.keySet().stream()).toArray(String[]::new);
+    }
+
+    public String[] getWritableKeys() {
+        return setters.keySet().toArray(String[]::new);
     }
 
     public static final String[] META_KEYS = new String[]{
