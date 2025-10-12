@@ -185,8 +185,7 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
         }
 
         // collect methods
-        // TODO find better way to distinguish inner classes
-        var builder = new CompanionClassBuilder(resolveTrueClassName(type));
+        var builder = new CompanionClassBuilder(type);
         for (Method m : type.getMethods()) {
             if (m.getAnnotation(LuaDeserializer.class) != null) {
                 // we found the DESERIALIZER, now we do sanity checks
@@ -250,7 +249,7 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
 
         var jic = builder.build();
         try {
-            return DelayedJavaCompiler.compileAndLoad(descLdr, "dev.asdf00.jluavm.udcompanions." + jic.x(), jic.y());
+            return DelayedJavaCompiler.compileAndLoad(descLdr, jic.x(), jic.y());
         } catch (DelayedJavaCompilationException e) {
             throw new InternalLuaRuntimeError("error compiling userdata companion for " + type.getName(), e);
         }
@@ -303,7 +302,8 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
     }
 
     private static class CompanionClassBuilder {
-        public final String typeName;
+        private final String typeName;
+        private final Class<? extends LuaUserData> clazz;
 
         public String deserializer = null;
         private final List<String> functionLambdas = new ArrayList<>();
@@ -313,8 +313,9 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
         private final Set<String> readable = new HashSet<>();
         private final Set<String> writable = new HashSet<>();
 
-        public CompanionClassBuilder(String typeName) {
-            this.typeName = typeName;
+        public CompanionClassBuilder(Class<? extends LuaUserData> clazz) {
+            this.typeName = resolveTrueClassName(clazz);
+            this.clazz = clazz;
         }
 
         public static Class<?> boxThatType(Class<?> type) {
@@ -510,8 +511,8 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
 
             String nuClName = "LUDCompanion$" + typeName.replace("$", "$$").replace(".", "$_");
 
-            return new Tuple<>(nuClName, """
-                    package dev.asdf00.jluavm.udcompanions;
+            return new Tuple<>(clazz.getPackageName() + "." + nuClName, """
+                    package %s;
                     
                     import dev.asdf00.jluavm.api.lambdas.*;
                     import dev.asdf00.jluavm.api.userdata.LuaUserData;
@@ -546,6 +547,7 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
                     // TODO add meta fallbacks
                     }
                     """.formatted(
+                    clazz.getPackageName(),
                     nuClName,
                     typeName, deserializer,
                     String.join(",\n", functionLambdas),
