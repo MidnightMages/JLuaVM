@@ -186,7 +186,7 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
 
         // collect methods
         // TODO find better way to distinguish inner classes
-        var builder = new CompanionClassBuilder(type.getName().replace("$", "."));
+        var builder = new CompanionClassBuilder(resolveTrueClassName(type));
         for (Method m : type.getMethods()) {
             if (m.getAnnotation(LuaDeserializer.class) != null) {
                 // we found the DESERIALIZER, now we do sanity checks
@@ -254,6 +254,15 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
         } catch (DelayedJavaCompilationException e) {
             throw new InternalLuaRuntimeError("error compiling userdata companion for " + type.getName(), e);
         }
+    }
+
+    private static String resolveTrueClassName(Class<?> clazz) {
+        var name = clazz.getSimpleName();
+        Class<?> outer = clazz;
+        while ((outer = outer.getEnclosingClass()) != null) {
+            name = outer.getSimpleName() + "." + name;
+        }
+        return clazz.getPackageName() + "." + name;
     }
 
     private static final Map<Class<?>, String> CONVERTIBLE_TYPES = Map.of(
