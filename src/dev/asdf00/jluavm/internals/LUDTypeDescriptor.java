@@ -53,6 +53,10 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
         metaFunctions = new LuaObject[27];
     }
 
+    public T deserialize(LuaObject[] objs, ByteArrayReader reader) {
+        return deserializer.apply(objs, reader);
+    }
+
     public LuaObject get(LuaUserData obj, LuaObject key) throws LuaJavaError {
         if (key.isString()) {
             String sKey = key.asString();
@@ -208,7 +212,12 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
 
             if (m.getAnnotation(LuaCallable.class) != null) {
                 // we found a CALLABLE, now we do sanity checks and build stuff
-                builder.addFunLambda(m.getName(), Modifier.isStatic(m.getModifiers()), m.getReturnType(), m.getParameterTypes());
+                if (Modifier.isStatic(m.getModifiers())) {
+                    throw new LuaUserDataApiBuildingException(
+                            "only dynamically bound methods are supported for LuaUserData, static methods like '%s' should be wrapped manually using the Function API"
+                                    .formatted(type.getName()));
+                }
+                builder.addFunLambda(m.getName(), m.getReturnType(), m.getParameterTypes());
                 continue;
             }
 
@@ -233,9 +242,15 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
                     // this is a non-final property, throw an error
                     throw new LuaUserDataApiBuildingException("LuaProperty '%s' in '%s' has to be final!".formatted(f.getName(), type.getName()));
                 }
+                if (Modifier.isStatic(f.getModifiers())) {
+                    throw new LuaUserDataApiBuildingException("LuaProperty '%s' in '%s' must not be static!".formatted(f.getName(), type.getName()));
+                }
             }
 
             if (ann != null) {
+                if (Modifier.isStatic(f.getModifiers())) {
+                    throw new LuaUserDataApiBuildingException("LuaExposed field '%s' in '%s' must not be static!".formatted(f.getName(), type.getName()));
+                }
                 switch (ann.value()) {
                     case READ -> builder.addGetter(f.getName(), f.getType());
                     case WRITE -> builder.addSetter(f.getName(), f.getType());
@@ -345,7 +360,7 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
 
         // =============================================================================================================
         // function addition
-        public void addFunLambda(String name, boolean isStatic, Class<?> rType, Class<?>... pTypes) {
+        public void addFunLambda(String name, Class<?> rType, Class<?>... pTypes) {
             if (!readable.add(name)) {
                 throw new LuaUserDataApiBuildingException("Duplicate LUA readable element '%s' in %s".formatted(name, typeName));
             }
@@ -368,38 +383,40 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
             var sb = new StringBuilder();
             sb.append('"').append(name).append("\", (vm, params) -> {\n");
 
-            // do required args check
+            // do required args check (the object instance is also required)
             int requiredArgs = pTypes.length;
-            if (!isStatic) {
-                // the object instance is also required
-                requiredArgs++;
-            }
             if (isVarargs(pTypes)) {
                 // the last argument type is the params arg which is allowed to be empty
                 requiredArgs--;
+                assert requiredArgs >= 0;
                 sb.append("""
-                        if (params.length < %d) throw new LuaJavaError("expected at least %d arguments, got " + params.length);
-                        """.formatted(requiredArgs, requiredArgs));
+                        if (params.length < %d) throw new LuaJavaError("expected userdata instance + at least %d argument%s (you may use the LUA method syntax), got " + params.length);
+                        """.formatted(requiredArgs + 1, requiredArgs, requiredArgs != 1 ? "s" : ""));
             } else {
-                sb.append("""
-                        if (params.length != %d) throw new LuaJavaError("expected %d arguments, got " + params.length);
-                        """.formatted(requiredArgs, requiredArgs));
+                assert requiredArgs >= 0;
+                if (requiredArgs == 0) {
+                    sb.append("""
+                            if (params.length != %d) throw new LuaJavaError("expected userdata instance as the only argument (you may use the LUA method syntax), got " + params.length);
+                            """.formatted(requiredArgs + 1, requiredArgs));
+                } else {
+                    sb.append("""
+                            if (params.length != %d) throw new LuaJavaError("expected userdata instance + %d argument%s (you may use the LUA method syntax), got " + params.length);
+                            """.formatted(requiredArgs + 1, requiredArgs, requiredArgs > 1 ? "s" : ""));
+                }
             }
 
             // do the call
-            if (!isStatic) {
-                sb.append("""
-                        %s dyn = lo2ud(%s.class, params[0]);
-                        if (dyn == null) throw new LuaJavaError("userdata object required as first parameter");
-                        """.formatted(typeName, typeName));
-            }
+            sb.append("""
+                    %s dyn = lo2ud(%s.class, params[0]);
+                    if (dyn == null) throw new LuaJavaError("userdata object required as first argument (you may use the LUA method syntax)");
+                    """.formatted(typeName, typeName));
             if (void.class.equals(rType)) {
                 // void return just returns an empty array
-                makeCall(sb, name, isStatic, pTypes).append(";\nreturn Singletons.EMPTY_LUA_OBJ_ARRAY;\n");
+                makeCall(sb, name, pTypes).append(";\nreturn Singletons.EMPTY_LUA_OBJ_ARRAY;\n");
             } else if (LuaObject[].class.equals(rType)) {
                 // multi-return is handled by the target
                 sb.append("return ");
-                makeCall(sb, name, isStatic, pTypes).append(";\n");
+                makeCall(sb, name, pTypes).append(";\n");
             } else {
                 // single returns are wrapped accordingly
                 sb.append("return new LuaObject[]{");
@@ -407,7 +424,7 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
                     sb.append("LuaObject.of");
                 }
                 sb.append('(');
-                makeCall(sb, name, isStatic, pTypes).append(")};\n");
+                makeCall(sb, name, pTypes).append(")};\n");
             }
 
             // closing brace for lambda
@@ -416,15 +433,11 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
             functionLambdas.add(sb.toString());
         }
 
-        private StringBuilder makeCall(StringBuilder sb, String name, boolean isStatic, Class<?>... pTypes) {
-            if (isStatic) {
-                sb.append(typeName);
-            } else {
-                sb.append("dyn");
-            }
+        private StringBuilder makeCall(StringBuilder sb, String name, Class<?>... pTypes) {
+            sb.append("dyn");
             sb.append('.').append(name).append('(');
             int limit = isVarargs(pTypes) ? pTypes.length - 1 : pTypes.length;
-            int dynOffset = isStatic ? 0 : 1;
+            int dynOffset = 1;
             for (int i = 0; i < limit; i++) {
                 if (i > 0) {
                     sb.append(", ");
@@ -440,7 +453,7 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
                 if (limit > 0) {
                     sb.append(", ");
                 }
-                int varargsStart = isStatic ? pTypes.length - 1 : pTypes.length;
+                int varargsStart = pTypes.length;
                 sb.append("Arrays.copyOfRange(params, ").append(varargsStart).append(", params.length)");
             }
             sb.append(')');
@@ -523,9 +536,7 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
                     
                     import java.util.Arrays;
                     import java.util.Map;
-                    import java.util.function.BiConsumer;
-                    import java.util.function.BiFunction;
-                    import java.util.function.Function;
+                    import java.util.function.*;
                     
                     import static dev.asdf00.jluavm.runtime.utils.UDTranslators.*;
                     
@@ -552,8 +563,8 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
                     typeName, deserializer,
                     String.join(",\n", functionLambdas),
                     typeName, String.join(",\n", getterLambdas),
-                    typeName, String.join(",\n", setterLambdas)
-            ));
+                    typeName, String.join(",\n", setterLambdas))
+            );
         }
     }
 }

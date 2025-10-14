@@ -14,13 +14,13 @@ public class UserDataTest extends BaseVmTest {
     @Test
     void anonymousCallSideEffects() {
         loadAssertSuccessAndRv("""
-                local ud = ...
-                ud.wrt = 2.5
-                ud:init()
-                ud[0] = 6
-                ud.myIntRW = ud.adder
-                return ud.myIntRW + ud[0], ud.testCall("hi", "a", "b", "c")
-                """,
+                        local ud = ...
+                        ud.wrt = 2.5
+                        ud:init()
+                        ud[0] = 6
+                        ud.myIntRW = ud.adder
+                        return ud.myIntRW + ud[0], ud:testCall("hi", "a", "b", "c")
+                        """,
                 new LuaObject[]{LuaObject.of(new HotMess())},
                 new LuaObject[]{LuaObject.of(10), LuaObject.of("hi: string: a,string: b,string: c")});
     }
@@ -50,7 +50,7 @@ public class UserDataTest extends BaseVmTest {
         }
 
         @LuaCallable
-        public static String testCall(String a, LuaObject[] varargs) {
+        public String testCall(String a, LuaObject[] varargs) {
             return a + ": " + String.join(",", Arrays.stream(varargs).map(lo -> lo.toString()).toList());
         }
 
