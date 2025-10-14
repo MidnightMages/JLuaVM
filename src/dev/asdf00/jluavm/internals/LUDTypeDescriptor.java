@@ -184,8 +184,7 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
             throw new InternalLuaRuntimeError(type.getName() + " is not a LuaUserData type");
         }
         if (!Modifier.isPublic(type.getModifiers())) {
-            // we kill the VM and it is our fault for somehow allowing a non-userdata type to leak into the Lua state
-            throw new InternalLuaRuntimeError(type.getName() + " must be public");
+            throw new LuaUserDataApiBuildingException(type.getName() + " must be public");
         }
 
         // collect methods
