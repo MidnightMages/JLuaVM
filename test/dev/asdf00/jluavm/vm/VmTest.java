@@ -2800,4 +2800,12 @@ public class VmTest extends BaseVmTest {
                 return rv
                 """, LuaObject.of("test2"));
     }
+
+    @Test
+    void xpcallArray() {
+        loadAssertSuccess("""
+                local ok, x = xpcall(function() return {} end, debug.traceback)
+                local a = x.y
+                """);
+    }
 }
