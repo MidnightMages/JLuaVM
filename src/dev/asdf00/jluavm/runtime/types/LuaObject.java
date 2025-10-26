@@ -65,7 +65,7 @@ public final class LuaObject {
     }
 
     public void setMetatable(LuaObject mt) {
-        assert mt.get(LuaObject.of("__metatable")).isNil();
+        assert metaTable == null || metaTable.get(LuaObject.of("__metatable")).isNil();
         metaTable = mt;
     }
 
