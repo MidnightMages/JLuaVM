@@ -15,6 +15,7 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
+import static dev.asdf00.jluavm.runtime.utils.UDTranslators.lo2i;
 import static dev.asdf00.jluavm.runtime.utils.UDTranslators.lo2ud;
 
 public class Sandbox implements LuaUserData {
@@ -31,6 +32,16 @@ public class Sandbox implements LuaUserData {
 
     @LuaCallable
     public void method(LuaObject a) {
+
+    }
+
+    @LuaCallable
+    public void method(LuaObject a, int b) {
+
+    }
+
+    @LuaCallable
+    public void method(LuaObject a, int b, LuaObject... c) {
 
     }
 
@@ -69,17 +80,23 @@ class GlueFunc$_dev$_asdf00$_jluavm$_Sandbox {
 
     public static final Map<String, LLVaMultiFunction> functions = Map.of(
             "method", (vm, params) -> {
-                if (params.length != 2) {
-                    throw new LuaJavaError("expected userdata instance + 1 argument (you may use the LUA method syntax), got " + params.length);
+                if (params.length < 1) {
+                    throw new LuaJavaError("expected a method call to a userdata object (you may use the LUA method syntax)");
                 }
                 Sandbox dyn = lo2ud(Sandbox.class, params[0]);
-                if (dyn == null) {
-                    throw new LuaJavaError("userdata object required as first argument (you may use the LUA method syntax)");
+                LuaObject[] res = Singletons.EMPTY_LUA_OBJ_ARRAY;
+                if (params.length == 2) {
+                    dyn.method(params[1]);
+                } else if (params.length == 3) {
+                    dyn.method(params[1], lo2i(params[2]));
+                } else if (params.length >= 3) {
+                    dyn.method(params[1], lo2i(params[2]), Arrays.copyOfRange(params, 3, params.length));
+                } else {
+                    throw new LuaJavaError("no overload found for %d arguments (available: Sandbox#method(LuaObject), Sandbox#method(LuaObject, int), Sandbox#method(LuaObject, int, LuaObject...))".formatted(params.length - 1));
                 }
-                // call and return empty because void
-                dyn.method(params[0]);
-                return Singletons.EMPTY_LUA_OBJ_ARRAY;
+                return res;
             },
+            // deprecated format
             "myVarargsMultiReturn", (vm, params) -> {
                 if (params.length < 3) {
                     throw new LuaJavaError("expected userdata instance + at least 1 argument (you may use the LUA method syntax), got " + params.length);

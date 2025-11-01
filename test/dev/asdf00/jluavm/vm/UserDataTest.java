@@ -25,6 +25,16 @@ public class UserDataTest extends BaseVmTest {
                 new LuaObject[]{LuaObject.of(10), LuaObject.of("hi: string: a,string: b,string: c")});
     }
 
+    @Test
+    void overloadTest() {
+        loadAssertSuccessAndRv("""
+                        local ud = ...
+                        return ud:overMethod() .. tostring(ud:overMethod(1, nil)) .. tostring(ud:overMethod(1, nil, false))
+                        """,
+                new LuaObject[]{LuaObject.of(new HotMess())},
+                new LuaObject[]{LuaObject.of("empty10011")});
+    }
+
     public static class HotMess implements LuaUserData {
         private LuaObject[] array;
 
@@ -52,6 +62,22 @@ public class UserDataTest extends BaseVmTest {
         @LuaCallable
         public String testCall(String a, LuaObject[] varargs) {
             return a + ": " + String.join(",", Arrays.stream(varargs).map(lo -> lo.toString()).toList());
+        }
+
+        @LuaCallable
+        public String overMethod() {
+            return "empty";
+        }
+
+
+        @LuaCallable
+        public int overMethod(int a, LuaObject b) {
+            return 1000 + overMethod(a, b, false);
+        }
+
+        @LuaCallable
+        public int overMethod(int a, LuaObject b, boolean c, LuaObject... d) {
+            return a;
         }
 
         @Override

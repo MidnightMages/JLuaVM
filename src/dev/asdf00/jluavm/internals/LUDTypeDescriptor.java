@@ -320,7 +320,7 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
         private final Class<? extends LuaUserData> clazz;
 
         public String deserializer = null;
-        private final List<String> functionLambdas = new ArrayList<>();
+        private final Map<String, List<Tuple<Class<?>, Class<?>[]>>> functionLambdas = new HashMap<>();
         private final List<String> getterLambdas = new ArrayList<>();
         private final List<String> setterLambdas = new ArrayList<>();
         private final Map<String, Object> metas = new LinkedHashMap<>();
@@ -360,7 +360,32 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
         // =============================================================================================================
         // function addition
         public void addFunLambda(String name, Class<?> rType, Class<?>... pTypes) {
-            if (!readable.add(name)) {
+            if (functionLambdas.containsKey(name)) {
+                // check if this is a valid overload
+                var others = functionLambdas.get(name);
+                if (isVarargs(pTypes)) {
+                    for (var oTypes : others) {
+                        Class<?>[] oParams = oTypes.y();
+                        if (isVarargs(oParams)) {
+                            throw new LuaUserDataApiBuildingException("Two vararg overloads for '%s' in %s are not allowed".formatted(name, typeName));
+                        }
+                        if (oParams.length >= pTypes.length) {
+                            throw new LuaUserDataApiBuildingException("Collision in argument counts with varags for '%s' in %s".formatted(name, typeName));
+                        }
+                    }
+                } else {
+                    for (var oTypes : others) {
+                        Class<?>[] oParams = oTypes.y();
+                        if (isVarargs(oParams) && oParams.length <= pTypes.length) {
+                            throw new LuaUserDataApiBuildingException("Collision in argument counts with varags for '%s' in %s".formatted(name, typeName));
+                        }
+                        if (oParams.length == pTypes.length) {
+                            throw new LuaUserDataApiBuildingException("Collision in argument counts for '%s' in %s".formatted(name, typeName));
+                        }
+                    }
+                }
+            } else if (!readable.add(name)) {
+                // we already have a readable propery with this name
                 throw new LuaUserDataApiBuildingException("Duplicate LUA readable element '%s' in %s".formatted(name, typeName));
             }
 
@@ -379,88 +404,9 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
             } catch (IllegalArgumentException e) {
                 throw new LuaUserDataApiBuildingException("Error building userdata '" + typeName + "#" + name + "': " + e.getMessage());
             }
-            var sb = new StringBuilder();
-            sb.append('"').append(name).append("\", (vm, params) -> {\n");
 
-            // do required args check (the object instance is also required)
-            int requiredArgs = pTypes.length;
-            if (isVarargs(pTypes)) {
-                // the last argument type is the params arg which is allowed to be empty
-                requiredArgs--;
-                assert requiredArgs >= 0;
-                sb.append("""
-                        if (params.length < %d) throw new LuaJavaError("expected userdata instance + at least %d argument%s (you may use the LUA method syntax), got " + params.length);
-                        """.formatted(requiredArgs + 1, requiredArgs, requiredArgs != 1 ? "s" : ""));
-            } else {
-                assert requiredArgs >= 0;
-                if (requiredArgs == 0) {
-                    sb.append("""
-                            if (params.length != %d) throw new LuaJavaError("expected userdata instance as the only argument (you may use the LUA method syntax), got " + params.length);
-                            """.formatted(requiredArgs + 1, requiredArgs));
-                } else {
-                    sb.append("""
-                            if (params.length != %d) throw new LuaJavaError("expected userdata instance + %d argument%s (you may use the LUA method syntax), got " + params.length);
-                            """.formatted(requiredArgs + 1, requiredArgs, requiredArgs > 1 ? "s" : ""));
-                }
-            }
-
-            // do the call
-            sb.append("""
-                    %s dyn = lo2ud(%s.class, params[0]);
-                    if (dyn == null) throw new LuaJavaError("userdata object required as first argument (you may use the LUA method syntax)");
-                    """.formatted(typeName, typeName));
-            if (void.class.equals(rType)) {
-                // void return just returns an empty array
-                makeCall(sb, name, pTypes).append(";\nreturn Singletons.EMPTY_LUA_OBJ_ARRAY;\n");
-            } else if (LuaObject[].class.equals(rType)) {
-                // multi-return is handled by the target
-                sb.append("return ");
-                makeCall(sb, name, pTypes).append(";\n");
-            } else {
-                // single returns are wrapped accordingly
-                sb.append("return new LuaObject[]{");
-                if (!LuaObject.class.equals(rType)) {
-                    sb.append("LuaObject.of");
-                }
-                sb.append('(');
-                makeCall(sb, name, pTypes).append(")};\n");
-            }
-
-            // closing brace for lambda
-            sb.append('}');
-
-            functionLambdas.add(sb.toString());
-        }
-
-        private StringBuilder makeCall(StringBuilder sb, String name, Class<?>... pTypes) {
-            sb.append("dyn");
-            sb.append('.').append(name).append('(');
-            int limit = isVarargs(pTypes) ? pTypes.length - 1 : pTypes.length;
-            int dynOffset = 1;
-            for (int i = 0; i < limit; i++) {
-                if (i > 0) {
-                    sb.append(", ");
-                }
-                if (LuaUserData.class.isAssignableFrom(pTypes[i])) {
-                    sb.append("lo2ud(").append(pTypes[i].getName()).append(".class, ");
-                } else {
-                    sb.append(CONVERTIBLE_TYPES.get(pTypes[i])).append('(');
-                }
-                sb.append("params[").append(i + dynOffset).append("])");
-            }
-            if (isVarargs(pTypes)) {
-                if (limit > 0) {
-                    sb.append(", ");
-                }
-                int varargsStart = pTypes.length;
-                sb.append("Arrays.copyOfRange(params, ").append(varargsStart).append(", params.length)");
-            }
-            sb.append(')');
-            return sb;
-        }
-
-        private static boolean isVarargs(Class<?>... pTypes) {
-            return pTypes.length > 0 && LuaObject[].class.equals(pTypes[pTypes.length - 1]);
+            // passed all checks, we schedule this method for companion building
+            functionLambdas.computeIfAbsent(name, k -> new ArrayList<>()).add(new Tuple<>(rType, pTypes));
         }
 
         // =============================================================================================================
@@ -516,6 +462,9 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
             setterLambdas.add(sb.toString());
         }
 
+
+        // =============================================================================================================
+        // building
         public Tuple<String, String> build() {
             if (deserializer == null) {
                 throw new LuaUserDataApiBuildingException("missing deserializer for " + typeName);
@@ -560,10 +509,125 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
                     clazz.getPackageName(),
                     nuClName,
                     typeName, deserializer,
-                    String.join(",\n", functionLambdas),
+                    String.join(",\n", functionLambdas.entrySet().stream().map(e -> this.buildCall(e.getKey(), e.getValue())).toList()),
                     typeName, String.join(",\n", getterLambdas),
                     typeName, String.join(",\n", setterLambdas))
             );
+        }
+
+
+        // =============================================================================================================
+        // helpers
+        private String buildCall(String name, List<Tuple<Class<?>, Class<?>[]>> overloads) {
+            var sb = new StringBuilder();
+            // standard method header
+            sb.append("""
+                    "%s", (vm, params) -> {
+                    if (params.length < 1) {
+                        throw new LuaJavaError("expected a method call to a userdata object (you may use the LUA method syntax)");
+                    }
+                    var dyn = lo2ud(%s.class, params[0]);
+                    LuaObject[] res = Singletons.EMPTY_LUA_OBJ_ARRAY;
+                    """.formatted(name, typeName));
+            // sort by parameter count
+            overloads.sort(Comparator.comparingInt(a -> a.y().length));
+            var mb = new StringBuilder();
+            boolean isFirst = true;
+            for (int i = 0; i < overloads.size(); i++) {
+                if (isFirst) {
+                    isFirst = false;
+                } else {
+                    sb.append(" else ");
+                    mb.append(", ");
+                }
+                var rn = overloads.get(i).x();
+                var pn = overloads.get(i).y();
+                assert !isVarargs(pn) || overloads.size() == i + 1 : "varargs is not at last position???";
+                makeAvailMsg(mb, name, pn);
+                makeCheckAndReturn(sb, name, rn, pn);
+            }
+
+            sb.append("""
+                     else {
+                        throw new LuaJavaError("no overload found for %%d argument%%s (available: %s)".formatted(params.length - 1, params.length != 2 ? "s" : ""));
+                    }
+                    return res;
+                    }""".formatted(mb.toString()));
+            return sb.toString();
+        }
+
+        private void makeCheckAndReturn(StringBuilder sb, String name, Class<?> rType, Class<?>... pTypes) {
+            sb.append("if (params.length ");
+            if (isVarargs(pTypes)) {
+                sb.append(">= ").append(pTypes.length);
+            } else {
+                sb.append("== ").append(pTypes.length + 1);
+            }
+            sb.append(") {\n    ");
+            if (rType == LuaObject[].class) {
+                sb.append("res = ");
+                makeCall(sb, name, pTypes);
+            } else if (rType == void.class) {
+                makeCall(sb, name, pTypes);
+            } else if (rType == LuaObject.class) {
+                sb.append("res = new LuaObject[]{");
+                makeCall(sb, name, pTypes);
+                sb.append('}');
+            } else {
+                assert rType != null : "it should have been void";
+                sb.append("res = new LuaObject[]{LuaObject.of(");
+                makeCall(sb, name, pTypes);
+                sb.append(")}");
+            }
+            sb.append(";\n}");
+        }
+
+        private void makeCall(StringBuilder sb, String name, Class<?>... pTypes) {
+            sb.append("dyn");
+            sb.append('.').append(name).append('(');
+            int limit = isVarargs(pTypes) ? pTypes.length - 1 : pTypes.length;
+            int dynOffset = 1;
+            for (int i = 0; i < limit; i++) {
+                if (i > 0) {
+                    sb.append(", ");
+                }
+                if (LuaUserData.class.isAssignableFrom(pTypes[i])) {
+                    sb.append("lo2ud(").append(pTypes[i].getName()).append(".class, ");
+                } else {
+                    sb.append(CONVERTIBLE_TYPES.get(pTypes[i])).append('(');
+                }
+                sb.append("params[").append(i + dynOffset).append("])");
+            }
+            if (isVarargs(pTypes)) {
+                if (limit > 0) {
+                    sb.append(", ");
+                }
+                int varargsStart = pTypes.length;
+                sb.append("Arrays.copyOfRange(params, ").append(varargsStart).append(", params.length)");
+            }
+            sb.append(')');
+        }
+
+        private void makeAvailMsg(StringBuilder mb, String name, Class<?>... pTypes) {
+            mb.append(clazz.getSimpleName()).append('#').append(name).append('(');
+            boolean isFirst = true;
+            for (var t : pTypes) {
+                if (isFirst) {
+                    isFirst = false;
+                } else {
+                    mb.append(", ");
+                }
+                if (t == LuaObject[].class) {
+                    mb.append("LuaObject...");
+                } else {
+                    mb.append(t.getSimpleName());
+                }
+            }
+            mb.append(')');
+        }
+
+        private static boolean isVarargs(Class<?>... pTypes) {
+            return pTypes.length > 0 && LuaObject[].class.equals(pTypes[pTypes.length - 1]);
         }
     }
 }
