@@ -9,6 +9,7 @@ import dev.asdf00.jluavm.exceptions.LuaJavaError;
 import dev.asdf00.jluavm.exceptions.LuaUserDataApiBuildingException;
 import dev.asdf00.jluavm.internals.javac.DelayedJavaCompiler;
 import dev.asdf00.jluavm.internals.javac.LUDCompanionClassLoader;
+import dev.asdf00.jluavm.runtime.types.LuaJavaApiFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.utils.ByteArrayReader;
 import dev.asdf00.jluavm.utils.Tuple;
@@ -20,7 +21,6 @@ import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public final class LUDTypeDescriptor<T extends LuaUserData> {
@@ -41,7 +41,8 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
      */
     private final LuaObject[] metaFunctions;
 
-    private LUDTypeDescriptor(Class<T> type, BiFunction<LuaObject[], ByteArrayReader, T> deserializer,
+    private LUDTypeDescriptor(Class<T> type,
+                              BiFunction<LuaObject[], ByteArrayReader, T> deserializer,
                               Map<String, LuaObject> methods,
                               Map<String, Function<T, LuaObject>> getters,
                               Map<String, BiConsumer<T, LuaObject>> setters) {
@@ -55,6 +56,13 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
 
     public T deserialize(LuaObject[] objs, ByteArrayReader reader) {
         return deserializer.apply(objs, reader);
+    }
+
+    public LuaJavaApiFunction getFunc(String name) {
+        if (methods.containsKey(name)) {
+            return (LuaJavaApiFunction) methods.get(name).getFunc();
+        }
+        throw new RuntimeException("%s not found as method of %s on deserialization".formatted(name, type.getName()));
     }
 
     public LuaObject get(LuaUserData obj, LuaObject key) throws LuaJavaError {
@@ -158,15 +166,21 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
     // DESCRIPTOR BUILDING STUFF
     // =================================================================================================================
 
+    @SuppressWarnings("unchecked")
     public static <T extends LuaUserData> LUDTypeDescriptor<T> buildDescriptor(Class<T> type) {
         var companion = buildCompanion(type);
         try {
             var rawFuncs = (Map<String, LLVaMultiFunction>) companion.getField("functions").get(null);
 
-            // TODO use purpose build registry for that stuff
-            Map<String, LuaObject> funcs = rawFuncs.entrySet().stream()
-                    .map(e -> new Tuple<>(e.getKey(), AtomicLuaFunction.vaForManyResults(null, e.getValue())))
-                    .collect(Collectors.toMap(t -> t.x(), t -> LuaObject.of(t.y())));
+            Map<String, LuaObject> funcs = new HashMap<>();
+
+            for (var e : rawFuncs.entrySet()) {
+                var name = e.getKey();
+                var lambda = e.getValue();
+                var func = AtomicLuaFunction.vaForManyResults(LuaVM_RT.UD_FUNCTION_REGISTRY, lambda);
+                funcs.put(name, LuaObject.of(func));
+                UDFunctionRegistry.NAME_LOOKUP.put(func, type.getName() + "#" + name);
+            }
 
             return new LUDTypeDescriptor<>(type,
                     (BiFunction<LuaObject[], ByteArrayReader, T>) companion.getField("deserializer").get(null),

@@ -6,9 +6,9 @@ import dev.asdf00.jluavm.exceptions.loading.InternalLuaLoadingError;
 import dev.asdf00.jluavm.parsing.CompilationState;
 import dev.asdf00.jluavm.parsing.Parser;
 import dev.asdf00.jluavm.parsing.ir.IRFunction;
+import dev.asdf00.jluavm.runtime.types.AbstractGeneratedLuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
-import dev.asdf00.jluavm.runtime.types.AbstractGeneratedLuaFunction;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 
 import java.io.IOException;
@@ -28,6 +28,8 @@ import java.util.stream.Collectors;
 public abstract class LuaVM {
 
     public static final String STD_LIB_REG_ID = "jluavm.stdlib";
+    public static final String USERDATA_REG_ID = "jluavm.userdata";
+
     private static final Supplier<String> J_CLASS_NAME_GEN;
     private static final ConcurrentHashMap<String, Constructor<? extends AbstractGeneratedLuaFunction>[]> COMPILATION_CACHE = new ConcurrentHashMap<>();
     private static final Object COMPILATION_CACHE_LOCK_OBJ = new Object();
@@ -47,7 +49,7 @@ public abstract class LuaVM {
     }
 
     protected LuaVM() {
-        registries = new HashMap<>();
+        this(new HashMap<>());
     }
 
     protected LuaVM(Map<String, ApiFunctionRegistry> registries) {

@@ -10,7 +10,6 @@ import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.StateDeserializer;
 import dev.asdf00.jluavm.utils.Quadruple;
-import dev.asdf00.jluavm.utils.Triple;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -19,6 +18,10 @@ import java.util.function.Consumer;
 public class VmBuilder {
     Map<String, ApiFunctionRegistry> registries = new HashMap<>();
     boolean noStd = false;
+
+    public VmBuilder() {
+        registries.put(LuaVM.USERDATA_REG_ID, LuaVM_RT.UD_FUNCTION_REGISTRY);
+    }
 
     public static VmBuilder create() {
         return new VmBuilder();

@@ -20,6 +20,7 @@ import java.util.function.Supplier;
 @SuppressWarnings("unused")
 public class LuaVM_RT extends LuaVM {
 
+    public static final UDFunctionRegistry UD_FUNCTION_REGISTRY = new UDFunctionRegistry();
     private static final ConcurrentHashMap<Class<? extends LuaUserData>, LUDTypeDescriptor<? extends LuaUserData>> ALL_THE_DESCRIPTORS = new ConcurrentHashMap<>();
 
     @SuppressWarnings("unchecked")
