@@ -1,5 +1,6 @@
 package dev.asdf00.jluavm.runtime.types;
 
+import dev.asdf00.jluavm.api.userdata.LuaUserData;
 import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
 import dev.asdf00.jluavm.exceptions.LuaRuntimeError;
 import dev.asdf00.jluavm.internals.Coroutine;
@@ -98,20 +99,18 @@ public abstract sealed class LuaFunction permits AbstractGeneratedLuaFunction, L
                 }
             }
         } else if (obj.isUserData()) {
+            var ud = (LuaUserData) obj.refVal;
+            var descriptor = LuaVM_RT.getDescriptor(ud.getClass());
+            // first try normal read
+            var r = descriptor.get(ud, idx);
+            if (r != null) {
+                // get was successful
+                return r;
+            }
+            // do meta stuff
             LuaObject mtbl = obj.getMetaTable();
-            if (mtbl == null || !mtbl.isTable() || !mtbl.hasKey(Singletons.__index)) {
-                try {
-                    Coroutine cco = vm.getCurrentCoroutine();
-                    boolean prevYieldable = cco.isYieldable;
-                    cco.isYieldable = false;
-                    var r = obj.get(idx);
-                    cco.isYieldable = prevYieldable;
-                    return r;
-                } catch (LuaRuntimeError ex) {
-                    vm.error(LuaObject.of("Foreign call error: " + ex.getMessage()));
-                    return null;
-                }
-            } else {
+            if (mtbl != null && mtbl.isTable() && mtbl.hasKey(Singletons.__index)) {
+                // we have a normal meta table
                 if (lineNum >= 0) {
                     // Generated code, or execution paths where the trace has been set previously, generally
                     // enter this method with lineNum=-1. Therefore, only new values are written to the trace.
@@ -120,53 +119,39 @@ public abstract sealed class LuaFunction permits AbstractGeneratedLuaFunction, L
                 vm.callInternal(resumeLabel, LuaFunction::getWithMeta, "::getWithMeta", obj, idx, mtbl);
                 return null;
             }
+            // fallback userdata type based meta table
+            var metaValue = descriptor.getTypeMeta("__index");
+            if (metaValue == null) {
+                // no fallback meta -> we default to nil
+                return LuaObject.nil();
+            }
+            // set up call to meta function
+            if (lineNum >= 0) {
+                // Generated code, or execution paths where the trace has been set previously, generally
+                // enter this method with lineNum=-1. Therefore, only new values are written to the trace.
+                vm.setLastTrace("metamethod 'index'", lineNum);
+            }
+            vm.callExternal(resumeLabel, metaValue.getFunc(), obj, idx);
+            return null;
         } else {
             // invalid type for indexed get
             // LUAC DEVIATION. Indexing a string value yields nil for every index in lua c. We believe this behavior to
             // be inconsistent and error the same way we would do for the rest of the non-indexable types.
+            if (lineNum >= 0) {
+                vm.setLastTrace(lineNum);
+            }
             vm.error(LuaObject.of("Attempt to index a %s value".formatted(obj.getTypeAsString())));
             return null;
         }
     }
 
     protected static LuaObject tryIndexedGet(int lineNum, LuaVM_RT vm, int resumeLabel, LuaObject obj, LuaObject idx) {
-        if (obj.isTable()) {
-            LuaObject key = RTUtils.tryCoerceFloatToInt(idx);
-            if (obj.hasKey(key)) {
-                return obj.get(key);
-            } else {
-                LuaObject mtbl = obj.getMetaTable();
-                if (mtbl == null || !mtbl.isTable() || !mtbl.hasKey(Singletons.__index)) {
-                    return LuaObject.nil();
-                } else {
-                    vm.setLastTrace("metamethod 'index'", lineNum);
-                    vm.setLastTrace(lineNum);
-                    vm.callInternal(resumeLabel, LuaFunction::getWithMeta, "::getWithMeta", obj, key, mtbl);
-                    return null;
-                }
-            }
-        } else if (obj.isUserData()) {
-            LuaObject mtbl = obj.getMetaTable();
-            if (mtbl == null || !mtbl.isTable() || !mtbl.hasKey(Singletons.__index)) {
-                try {
-                    Coroutine cco = vm.getCurrentCoroutine();
-                    boolean prevYieldable = cco.isYieldable;
-                    cco.isYieldable = false;
-                    var r = obj.get(idx);
-                    cco.isYieldable = prevYieldable;
-                    return r;
-                } catch (LuaRuntimeError ex) {
-                    vm.error(LuaObject.of("Foreign call error: " + ex.getMessage()));
-                    return null;
-                }
-            } else {
-                vm.setLastTrace("metamethod 'index'", lineNum);
-                vm.callInternal(resumeLabel, LuaFunction::getWithMeta, "::getWithMeta", obj, idx, mtbl);
-                return null;
-            }
-        } else {
+        if (!obj.isTable() && !obj.isUserData()) {
+            // here we are protecting against the error case in indexedGet
             // instead of producing an error when this is called on an invalid type, we just return nil
             return LuaObject.nil();
+        } else {
+            return indexedGet(lineNum, vm, resumeLabel, obj, idx);
         }
     }
 
@@ -174,6 +159,9 @@ public abstract sealed class LuaFunction permits AbstractGeneratedLuaFunction, L
         if (obj.isTable()) {
             LuaObject key = RTUtils.tryCoerceFloatToInt(idx);
             if (key.isNil() || key.isNaN()) {
+                if (lineNum >= 0) {
+                    vm.setLastTrace(lineNum);
+                }
                 vm.error(LuaObject.of("Table index can not be Nil or NaN"));
                 return true;
             }
@@ -196,20 +184,18 @@ public abstract sealed class LuaFunction permits AbstractGeneratedLuaFunction, L
                 }
             }
         } else if (obj.isUserData()) {
+            var ud = (LuaUserData) obj.refVal;
+            var descriptor = LuaVM_RT.getDescriptor(ud.getClass());
+            // first we try a normal set
+            boolean success = descriptor.set(ud, idx, val);
+            if (success) {
+                // no vm return needed
+                return false;
+            }
+            // do meta stuff
             LuaObject mtbl = obj.getMetaTable();
-            if (mtbl == null || !mtbl.hasKey(Singletons.__newindex)) {
-                try {
-                    Coroutine cco = vm.getCurrentCoroutine();
-                    boolean prevYieldable = cco.isYieldable;
-                    cco.isYieldable = false;
-                    obj.set(idx, val);
-                    cco.isYieldable = prevYieldable;
-                    return false;
-                } catch (LuaRuntimeError ex) {
-                    vm.error(LuaObject.of("Foreign call error: " + ex.getMessage()));
-                    return true;
-                }
-            } else {
+            if (mtbl != null && mtbl.isTable() && mtbl.hasKey(Singletons.__newindex)) {
+                // we have a normal meta table
                 if (lineNum >= 0) {
                     // Generated code, or execution paths where the trace has been set previously, generally
                     // enter this method with lineNum=-1. Therefore, only new values are written to the trace.
@@ -218,8 +204,29 @@ public abstract sealed class LuaFunction permits AbstractGeneratedLuaFunction, L
                 vm.callInternal(resumeLabel, LuaFunction::setWithMeta, "::setWithMeta", obj, idx, val, mtbl);
                 return true;
             }
+            // fallback meta
+            var metaValue = descriptor.getTypeMeta("__newindex");
+            if (metaValue == null) {
+                // no fallback meta -> error
+                if (lineNum >= 0) {
+                    vm.setLastTrace(lineNum);
+                }
+                vm.error(LuaObject.of("index '%s' can not be set for this userdata object".formatted(idx)));
+                return true;
+            }
+            // setup call
+            if (lineNum >= 0) {
+                // Generated code, or execution paths where the trace has been set previously, generally
+                // enter this method with lineNum=-1. Therefore, only new values are written to the trace.
+                vm.setLastTrace("metamethod 'newindex'", lineNum);
+            }
+            vm.callExternal(resumeLabel, metaValue.getFunc(), obj, idx, val);
+            return true;
         } else {
             // invalid type for indexed set
+            if (lineNum >= 0) {
+                vm.setLastTrace(lineNum);
+            }
             vm.error(LuaObject.of("Attempt to set an index for a %s value".formatted(obj.getTypeAsString())));
             return true;
         }

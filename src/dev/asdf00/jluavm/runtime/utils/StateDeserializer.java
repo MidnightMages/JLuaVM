@@ -2,6 +2,7 @@ package dev.asdf00.jluavm.runtime.utils;
 
 import dev.asdf00.jluavm.LuaVM;
 import dev.asdf00.jluavm.api.functions.ApiFunctionRegistry;
+import dev.asdf00.jluavm.api.userdata.LuaUserData;
 import dev.asdf00.jluavm.exceptions.LuaLoadingException;
 import dev.asdf00.jluavm.internals.Coroutine;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
@@ -11,7 +12,6 @@ import dev.asdf00.jluavm.runtime.types.LuaHashMap;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.utils.ByteArrayReader;
 import dev.asdf00.jluavm.utils.Quadruple;
-import dev.asdf00.jluavm.utils.Triple;
 import dev.asdf00.jluavm.utils.Tuple;
 
 import java.lang.reflect.Constructor;
@@ -48,51 +48,52 @@ public class StateDeserializer {
              * lua object of the correct type and set refVal and metaTable later.
              */
             switch (type) {
-                case 1 -> {
+                case LuaObject.Types.NIL -> {
                     // nil
                     objs[i] = LuaObject.nil();
                 }
-                case 0b10 -> {
+                case LuaObject.Types.BOOLEAN -> {
                     // boolean
                     objs[i] = LuaObject.of(cur.readBool());
                 }
-                case 0b100 -> {
+                case LuaObject.Types.DOUBLE -> {
                     // double
                     objs[i] = LuaObject.of(Double.longBitsToDouble(cur.readLong()));
                 }
-                case 0b1000 -> {
+                case LuaObject.Types.LONG -> {
                     // long
                     objs[i] = LuaObject.of(cur.readLong());
                 }
-                case 0b1_0000 -> {
+                case LuaObject.Types.STRING -> {
                     // string
                     objs[i] = LuaObject.of(new String(cur.readArray(cur.remaining()), StandardCharsets.UTF_8));
                 }
-                case 0b10_0000 -> {
+                case LuaObject.Types.FUNCTION -> {
                     // function
                     objs[i] = LuaObject.of((LuaFunction) null);
                     delayed[i] = cur;
                 }
-                case 0b100_0000 -> {
+                case LuaObject.Types.USERDATA -> {
                     // userdata
-                    throw new UnsupportedOperationException("serializing userdata is not implemented");
+                    objs[i] = LuaObject.of((LuaUserData) null);
+                    delayed[i] = cur;
                 }
-                case 0b1000_0000 -> {
+                case LuaObject.Types.THREAD -> {
                     // thread
                     objs[i] = LuaObject.of((Coroutine) null);
                     delayed[i] = cur;
                 }
-                case 0b1_0000_0000 -> {
+                case LuaObject.Types.TABLE -> {
                     // table
                     objs[i] = LuaObject.wrapMap(null);
                     delayed[i] = cur;
                 }
-                case 0b10_0000_0000 -> {
+                case LuaObject.Types.ARRAY -> {
                     // array
                     objs[i] = LuaObject.of((LuaObject[]) null);
                     delayed[i] = cur;
                 }
-                case 0b100_0000_0000 -> {
+                case LuaObject.Types.BOX -> {
                     // box
                     objs[i] = LuaObject.box(null);
                     delayed[i] = cur;
@@ -109,13 +110,14 @@ public class StateDeserializer {
                 continue;
             }
             var lobj = objs[i];
-            if (lobj.type == 0b1000_0000) {
-                // threads need to be deserialized LAST (after all functions)
+            if (lobj.type == LuaObject.Types.THREAD || lobj.type == LuaObject.Types.USERDATA) {
+                // threads need to be deserialized LAST of the internal types (after all functions)
+                // userdata will be deserialized after all internal types
                 continue;
             }
             var rdr = delayed[i];
             switch (lobj.type) {
-                case 0b10_0000 -> {
+                case LuaObject.Types.FUNCTION -> {
                     // function
                     if (rdr.readBool()) {
                         // API function with registry
@@ -146,17 +148,14 @@ public class StateDeserializer {
                                     .newInstance(compilationUnit, lineNum, env, closures);
                             func.selfLuaObj = lobj;
                             lobj.refVal = func;
-                        } catch (LuaLoadingException | ReflectiveOperationException | ArrayIndexOutOfBoundsException e) {
+                        } catch (LuaLoadingException | ReflectiveOperationException |
+                                 ArrayIndexOutOfBoundsException e) {
                             throw new IllegalStateException("error deserializing generated function", e);
                         }
                     }
                 }
-                case 0b100_0000 -> {
-                    // userdata
-                    throw new UnsupportedOperationException("serializing userdata is not implemented");
-                }
                 // thread handled later
-                case 0b1_0000_0000 -> {
+                case LuaObject.Types.TABLE -> {
                     // table
                     int mtblIdx = rdr.readInt();
                     if (mtblIdx >= 0) {
@@ -170,7 +169,7 @@ public class StateDeserializer {
                     }
                     lobj.refVal = tbl;
                 }
-                case 0b10_0000_0000 -> {
+                case LuaObject.Types.ARRAY -> {
                     // array
                     var internal = new LuaObject[rdr.remaining() / 4];
                     for (int j = 0; j < internal.length; j++) {
@@ -178,7 +177,7 @@ public class StateDeserializer {
                     }
                     lobj.refVal = internal;
                 }
-                case 0b100_0000_0000 -> {
+                case LuaObject.Types.BOX -> {
                     // box
                     lobj.refVal = objs[rdr.readInt()];
                 }
@@ -192,11 +191,11 @@ public class StateDeserializer {
 
         ArrayList<Tuple<Coroutine, LuaObject>> finalResolution = new ArrayList<>();
         for (int i = 0; i < objs.length; i++) {
-            if (delayed[i] == null) {
+            if (delayed[i] == null || objs[i].type == LuaObject.Types.USERDATA) {
                 continue;
             }
             var lobj = objs[i];
-            assert lobj.type == 0b1000_0000;
+            assert lobj.type == LuaObject.Types.THREAD;
             var res = Coroutine.deserialize(objs, lobj, delayed[i]);
             lobj.refVal = res.x();
             if (res.y() != null) {
@@ -207,6 +206,29 @@ public class StateDeserializer {
         for (var fr : finalResolution) {
             fr.x().yieldTo = fr.y().asCoroutine();
         }
+
+        // resolve userdata last
+        // TODO allow post actions
+        // Queue<Runnable> postActions = new ArrayDeque<>();
+        for (int i = 0; i < delayed.length; i++) {
+            var lobj = objs[i];
+            if (lobj.type != LuaObject.Types.USERDATA) {
+                continue;
+            }
+            var rdr = delayed[i];
+            String clName = objs[rdr.readInt()].asString();
+            var clazz = LuaVM_RT.getUserdataClass(clName);
+            var instance = LuaVM_RT.getDescriptor(clazz).deserialize(objs, rdr);
+            // var instance = LuaVM_RT.getDescriptor(clazz).deserialize(objs, rdr, postActions);
+            lobj.refVal = instance;
+        }
+
+        /*-
+        // second round of userdata deserialization
+        for (var action : postActions) {
+            action.run();
+        }
+         */
 
         return new Quadruple<>(objs[rootCoIdx].asCoroutine(), objs[curCoIdx].asCoroutine(), isErroring, stopRequested);
     }

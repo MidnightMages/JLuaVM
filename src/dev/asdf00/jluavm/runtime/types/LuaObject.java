@@ -1,5 +1,6 @@
 package dev.asdf00.jluavm.runtime.types;
 
+import dev.asdf00.jluavm.api.userdata.LuaUserData;
 import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
 import dev.asdf00.jluavm.exceptions.loading.LuaLexerException;
 import dev.asdf00.jluavm.exceptions.loading.LuaParserException;
@@ -985,7 +986,7 @@ public final class LuaObject {
         }
     }
 
-    public static LuaObject of(ILuaUserData val) {
+    public static LuaObject of(LuaUserData val) {
         return new LuaObject(val, 0, 0, Types.USERDATA);
     }
 
@@ -1100,7 +1101,12 @@ public final class LuaObject {
                 serialData.set(ownIdx, bb.toArray());
             }
             case Types.USERDATA -> {
-                throw new UnsupportedOperationException("serializing userdata is not implemented");
+                serialData.add(null);
+                var ud = ((LuaUserData) refVal);
+                var bb = new ByteArrayBuilder().append(Types.USERDATA)
+                        .append(LuaObject.of(ud.getClass().getName()).serialize(serialData, mappedObjs))
+                        .appendAll(ud.luaSerialize(serialData, mappedObjs));
+                serialData.set(ownIdx, bb.toArray());
             }
             case Types.THREAD -> {
                 // reserve space in serialData

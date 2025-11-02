@@ -1,7 +1,8 @@
 package dev.asdf00.jluavm.parsing;
 
 import dev.asdf00.jluavm.exceptions.loading.InternalLuaLoadingError;
-import dev.asdf00.jluavm.internals.DelayedJavaCompiler;
+import dev.asdf00.jluavm.internals.javac.DelayedJavaCompiler;
+import dev.asdf00.jluavm.internals.javac.LuaFunctionClassLoader;
 import dev.asdf00.jluavm.parsing.container.LabelInfo;
 import dev.asdf00.jluavm.runtime.types.AbstractGeneratedLuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
@@ -142,7 +143,8 @@ public final class CompilationState {
         var jClasses = (Class<? extends AbstractGeneratedLuaFunction>[]) new Class<?>[functionJavaCode.size()];
         for (int i = 0; i < jClasses.length; i++) {
             var clsDef = functionJavaCode.get(i);
-            var clazz = DelayedJavaCompiler.compileAndLoad(AbstractGeneratedLuaFunction.class.getClassLoader(), COMPILED_CLASSES_MODULE_PREFIX + clsDef.x(), clsDef.y());
+            var clazz = DelayedJavaCompiler.compileAndLoad(new LuaFunctionClassLoader(AbstractGeneratedLuaFunction.class.getClassLoader()),
+                    COMPILED_CLASSES_MODULE_PREFIX + clsDef.x(), clsDef.y());
             if (!AbstractGeneratedLuaFunction.class.isAssignableFrom(clazz)) {
                 throw new InternalLuaLoadingError(clazz.getName() + " is not of type LuaFunction!");
             }

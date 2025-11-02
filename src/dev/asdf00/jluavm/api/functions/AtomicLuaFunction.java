@@ -1,12 +1,14 @@
 package dev.asdf00.jluavm.api.functions;
 
 import dev.asdf00.jluavm.api.lambdas.*;
+import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
 import dev.asdf00.jluavm.internals.Coroutine;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.runtime.types.LuaJavaApiFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 
+import java.util.Objects;
 import java.util.function.BiFunction;
 
 @SuppressWarnings("unused")
@@ -210,6 +212,11 @@ public final class AtomicLuaFunction extends LuaJavaApiFunction {
             // only reachable after error in a atomic consumer where the empty array singleton is always returned
             assert ires == Singletons.EMPTY_LUA_OBJ_ARRAY;
         } else {
+            for (var lo : ires) {
+                if (lo == null) {
+                    throw new InternalLuaRuntimeError("Misimplemented function '" + registry.getSerialName(this) + "' returned a NULL value! Return LuaObject.nil() instead!");
+                }
+            }
             vm.returnValue(ires);
         }
     }

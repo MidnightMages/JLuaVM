@@ -2,6 +2,7 @@ package dev.asdf00.jluavm.internals;
 
 import dev.asdf00.jluavm.LuaVM;
 import dev.asdf00.jluavm.api.functions.ApiFunctionRegistry;
+import dev.asdf00.jluavm.api.userdata.LuaUserData;
 import dev.asdf00.jluavm.runtime.types.AbstractGeneratedLuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaJavaApiFunction;
@@ -12,14 +13,40 @@ import dev.asdf00.jluavm.utils.ByteArrayBuilder;
 import dev.asdf00.jluavm.utils.Quadruple;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
 @SuppressWarnings("unused")
 public class LuaVM_RT extends LuaVM {
+    public static final UDFunctionRegistry UD_FUNCTION_REGISTRY = new UDFunctionRegistry();
+    private static final ConcurrentHashMap<Class<? extends LuaUserData>, LUDTypeDescriptor<? extends LuaUserData>> ALL_THE_DESCRIPTORS = new ConcurrentHashMap<>();
+
+    @SuppressWarnings("unchecked")
+    public static <T extends LuaUserData> LUDTypeDescriptor<T> getDescriptor(Class<T> udType) {
+        return (LUDTypeDescriptor<T>) ALL_THE_DESCRIPTORS.computeIfAbsent(udType, k -> LUDTypeDescriptor.buildDescriptor(k));
+    }
+
+    public static Class<? extends LuaUserData> getUserdataClass(String name) {
+        /*
+         * Here we could allow some class loading magic to find the correct instance of the class.
+         */
+        try {
+            Class<?> clazz = LuaVM_RT.class.getClassLoader().loadClass(name);
+            if (!LuaUserData.class.isAssignableFrom(clazz)) {
+                throw new RuntimeException("Failed to load userdata class on deserialization, %s is no userdata".formatted(clazz.getName()));
+            }
+            @SuppressWarnings("unchecked")
+            Class<? extends LuaUserData> udClass = (Class<? extends LuaUserData>) clazz;
+            return udClass;
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException("Failed to obtain LuaUserData class " + name + " from LuaVM_RT context. Please assure proper classloading infrastructure!", e);
+        }
+    }
+
     // it was brought to me in a dream that this is the optimal number, for sure
     public static final int ERROR_LOOP_GRACE_CNT = 256;
-    public static final int MAX_LUA_STACK_SIZE = 1024 * 1024 * 1024;
+    public static final int MAX_LUA_STACK_SIZE = 1024 * 1024;
 
     public static final int STATE_SERIALIZATION_VERSION = 0;
 

@@ -6,7 +6,7 @@ import dev.asdf00.jluavm.runtime.types.LuaObject;
 import java.util.HashMap;
 import java.util.Set;
 
-public class StatelessFunctionRegistry extends ApiFunctionRegistry {
+public class StatelessFunctionRegistry implements ApiFunctionRegistry {
     protected final String id;
     protected final HashMap<LuaJavaApiFunction, String> reverseMap = new HashMap<>();
     protected final HashMap<String, LuaJavaApiFunction> funcMap = new HashMap<>();
