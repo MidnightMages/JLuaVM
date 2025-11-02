@@ -19,13 +19,29 @@ import java.util.function.Supplier;
 
 @SuppressWarnings("unused")
 public class LuaVM_RT extends LuaVM {
-
     public static final UDFunctionRegistry UD_FUNCTION_REGISTRY = new UDFunctionRegistry();
     private static final ConcurrentHashMap<Class<? extends LuaUserData>, LUDTypeDescriptor<? extends LuaUserData>> ALL_THE_DESCRIPTORS = new ConcurrentHashMap<>();
 
     @SuppressWarnings("unchecked")
     public static <T extends LuaUserData> LUDTypeDescriptor<T> getDescriptor(Class<T> udType) {
         return (LUDTypeDescriptor<T>) ALL_THE_DESCRIPTORS.computeIfAbsent(udType, k -> LUDTypeDescriptor.buildDescriptor(k));
+    }
+
+    public static Class<? extends LuaUserData> getUserdataClass(String name) {
+        /*
+         * Here we could allow some class loading magic to find the correct instance of the class.
+         */
+        try {
+            Class<?> clazz = LuaVM_RT.class.getClassLoader().loadClass(name);
+            if (!LuaUserData.class.isAssignableFrom(clazz)) {
+                throw new RuntimeException("Failed to load userdata class on deserialization, %s is no userdata".formatted(clazz.getName()));
+            }
+            @SuppressWarnings("unchecked")
+            Class<? extends LuaUserData> udClass = (Class<? extends LuaUserData>) clazz;
+            return udClass;
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException("Failed to obtain LuaUserData class " + name + " from LuaVM_RT context. Please assure proper classloading infrastructure!", e);
+        }
     }
 
     // it was brought to me in a dream that this is the optimal number, for sure

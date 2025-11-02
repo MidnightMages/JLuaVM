@@ -1101,7 +1101,12 @@ public final class LuaObject {
                 serialData.set(ownIdx, bb.toArray());
             }
             case Types.USERDATA -> {
-                throw new UnsupportedOperationException("serializing userdata is not implemented");
+                serialData.add(null);
+                var ud = ((LuaUserData) refVal);
+                var bb = new ByteArrayBuilder().append(Types.USERDATA)
+                        .append(LuaObject.of(ud.getClass().getName()).serialize(serialData, mappedObjs))
+                        .appendAll(ud.luaSerialize(serialData, mappedObjs));
+                serialData.set(ownIdx, bb.toArray());
             }
             case Types.THREAD -> {
                 // reserve space in serialData
