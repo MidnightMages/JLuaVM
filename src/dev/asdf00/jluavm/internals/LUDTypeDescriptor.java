@@ -66,6 +66,9 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
     }
 
     public LuaObject get(LuaUserData obj, LuaObject key) throws LuaJavaError {
+        if (!obj.luaFieldGuard(key, null)) {
+            throw new LuaJavaError("%s of %s is not accessible".formatted(key, obj));
+        }
         if (key.isString()) {
             String sKey = key.asString();
             if (methods.containsKey(sKey)) {
@@ -84,6 +87,9 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
     }
 
     public boolean set(LuaUserData obj, LuaObject key, LuaObject value) {
+        if (!obj.luaFieldGuard(key, value)) {
+            throw new LuaJavaError("%s of %s is not accessible".formatted(key, obj));
+        }
         if (key.isString()) {
             String sKey = key.asString();
             if (setters.containsKey(sKey)) {
@@ -541,8 +547,11 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
                         throw new LuaJavaError("expected a method call to a userdata object (you may use the LUA method syntax)");
                     }
                     var dyn = lo2ud(%s.class, params[0]);
+                    if (!dyn.luaCallGuard("%s", params)) {
+                        throw new LuaJavaError("%s of %%s is not callable".formatted(dyn));
+                    }
                     LuaObject[] res = Singletons.EMPTY_LUA_OBJ_ARRAY;
-                    """.formatted(name, typeName));
+                    """.formatted(name, typeName, name, name));
             // sort by parameter count
             overloads.sort(Comparator.comparingInt(a -> a.y().length));
             var mb = new StringBuilder();

@@ -32,6 +32,35 @@ public interface LuaUserData {
     }
 
     /**
+     * This guard method is called each time a name of this object is accessed by LUA. This could be a SET operation, in
+     * which case the name of the target field/property is passed as an argument as well as the value which will be
+     * assigned. On the other hand, this could be a GET operation requesting the value of a field/property or a method
+     * wrapped into a LUA function, in which case {@code null} is passed as the second parameter.
+     *
+     * @param key   name of the affected field/property/method
+     * @param value {@code null} for GET operations, the value to be set for SET operations
+     * @return {@code true} if LUA is allowed to access this field/property/method
+     */
+    default boolean luaFieldGuard(LuaObject key, LuaObject value) {
+        return true;
+    }
+
+    /**
+     * This guard method is called each time a method wrapped into a LUA function is called. Since this might be
+     * significantly later than the GET access retrieving the LUA function, another check is done here. The function
+     * name as well as the arguments passed to the function (including {@code this} as the first argument) are passed
+     * to this guard. Changing any arguments other than the first one will change what is passed to the method invoked
+     * after this guard.
+     *
+     * @param name      name of the method to be called
+     * @param arguments arguments passed to the LUA function (including {@code this} as the first argument)
+     * @return {@code true} if LUA is allowed to call this method with these parameters
+     */
+    default boolean luaCallGuard(String name, LuaObject[] arguments) {
+        return true;
+    }
+
+    /**
      * This method is called when the LUA VM attempts to serialize its state. The input parameters are meant to be
      * <b>READ-ONLY</b>! These parameters are only passed to allow this method to serialize inner LuaObjects.
      *
