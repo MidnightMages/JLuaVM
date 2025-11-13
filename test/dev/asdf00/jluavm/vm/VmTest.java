@@ -2808,4 +2808,19 @@ public class VmTest extends BaseVmTest {
                 local a = x.y
                 """);
     }
+
+    @Test
+    void multiDoubleAssignment() {
+        loadAssertSuccessAndRv("""
+                local a = {}
+                a,a.a = 1,1
+                return a
+                """, LuaObject.of(1));
+
+        loadAssertSuccessAndRv("""
+                local a = {}
+                a.a,a = 1,1
+                return a
+                """, LuaObject.of(1));
+    }
 }
