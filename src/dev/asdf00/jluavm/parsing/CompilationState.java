@@ -140,16 +140,27 @@ public final class CompilationState {
     @SuppressWarnings("unchecked")
     public Constructor<? extends AbstractGeneratedLuaFunction>[] loadAndLinkAllClasses() throws InternalLuaLoadingError {
         // compile and load generated classes
-        var jClasses = (Class<? extends AbstractGeneratedLuaFunction>[]) new Class<?>[functionJavaCode.size()];
-        for (int i = 0; i < jClasses.length; i++) {
+        var workItems = new DelayedJavaCompiler.CompilationWorkItem[functionJavaCode.size()];
+        for (int i = 0; i < workItems.length; i++) {
             var clsDef = functionJavaCode.get(i);
-            var clazz = DelayedJavaCompiler.compileAndLoad(new LuaFunctionClassLoader(AbstractGeneratedLuaFunction.class.getClassLoader()),
+            workItems[i] = new DelayedJavaCompiler.CompilationWorkItem(new LuaFunctionClassLoader(AbstractGeneratedLuaFunction.class.getClassLoader()),
                     COMPILED_CLASSES_MODULE_PREFIX + clsDef.x(), clsDef.y());
+        }
+
+        var compiledClasses = DelayedJavaCompiler.compileAndLoad(workItems);
+        var jClasses = (Class<? extends AbstractGeneratedLuaFunction>[]) new Class<?>[functionJavaCode.size()];
+        if (jClasses.length != compiledClasses.length)
+            throw new InternalLuaLoadingError("Some compiled classes were dropped, somehow.");
+
+        for (int i = 0; i < jClasses.length; i++) {
+
+            var clazz = compiledClasses[i];
             if (!AbstractGeneratedLuaFunction.class.isAssignableFrom(clazz)) {
                 throw new InternalLuaLoadingError(clazz.getName() + " is not of type LuaFunction!");
             }
             jClasses[i] = (Class<? extends AbstractGeneratedLuaFunction>) clazz;
         }
+
         // resolve linking related stuff via reflection
         var constructors = (Constructor<? extends AbstractGeneratedLuaFunction>[]) new Constructor<?>[jClasses.length];
         var depts = new Field[jClasses.length];
