@@ -7,7 +7,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
 import java.io.StringWriter;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -59,6 +63,39 @@ public class DelayedJavaCompiler {
         if (mp != null && !"".equals(mp)) {
             classpath.append(mp);
         }
+
+        // this is needed for compilation to work in production inside a minecraft mod as otherwise some already
+        // compiled classes will not be able to be referenced when compiling java code that we emit during lua compilation
+        var virtualJarPath = DelayedJavaCompiler.class.getProtectionDomain().getCodeSource().getLocation();
+        try {
+            URI virtualJarUri = virtualJarPath.toURI();
+
+            // scheme will be 'union' in minecraft development env, but if it is an actual disk file path,
+            // we add it to the classpath to support running it in production.
+            if (virtualJarUri.getScheme().equals("union")) {
+                var jarDiskPath = virtualJarUri
+                        .getPath()
+                        .replaceAll("#\\d+!/$", "")  // remove the trailing '#NUMBER!/'
+                        .trim();
+
+                // trim leading / on windows, e.g. /C:/something/something.jar
+                Path normalizedJarDiskPath;
+                try {
+                    normalizedJarDiskPath = Paths.get(jarDiskPath);
+                } catch (InvalidPathException ignored) {
+                    normalizedJarDiskPath = Paths.get(jarDiskPath.substring(1));
+                }
+
+                // if it is a .jar path, add it to the classpath
+                String normalizedJarDiskPathString = normalizedJarDiskPath.toString().replace('\\', '/');
+                if (normalizedJarDiskPathString.endsWith(".jar")) {
+                    classpath.append(";").append(normalizedJarDiskPathString);
+                }
+            }
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
+        }
+
         options.add("-classpath");
         options.add(classpath.toString());
 
