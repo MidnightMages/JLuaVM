@@ -35,7 +35,7 @@ public abstract class LuaVM {
     private static final Object COMPILATION_CACHE_LOCK_OBJ = new Object();
 
     // =================================================================================================================
-    // po-ta-tos, mash 'em, boil 'em, stick 'em in a stew
+    // po-ta-toes, mash 'em, boil 'em, stick 'em in a stew
     // =================================================================================================================
 
     protected final Map<String, ApiFunctionRegistry> registries;
