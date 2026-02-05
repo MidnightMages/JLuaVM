@@ -172,7 +172,9 @@ public class LuaVM_RT extends LuaVM {
     }
 
     private void safepoint() {
-        // do nothing for now
+        // for now, just give the host a chance to run code at such safepoints
+        if (safepointCallback != null)
+            safepointCallback.accept(this);
     }
 
     // =================================================================================================================

@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -41,6 +42,7 @@ public abstract class LuaVM {
     protected final Map<String, ApiFunctionRegistry> registries;
     protected LuaObject _G = LuaObject.nil();
     protected LuaFunction rootFunc = null;
+    public final Consumer<LuaVM> safepointCallback = null;
 
     protected volatile boolean requestedStop = false;
 
