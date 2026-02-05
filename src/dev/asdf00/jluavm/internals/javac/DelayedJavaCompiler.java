@@ -1,6 +1,7 @@
 package dev.asdf00.jluavm.internals.javac;
 
 import dev.asdf00.jluavm.exceptions.DelayedJavaCompilationException;
+import dev.asdf00.jluavm.exceptions.loading.InternalLuaLoadingError;
 
 import javax.tools.*;
 import java.io.ByteArrayOutputStream;
@@ -64,14 +65,14 @@ public class DelayedJavaCompiler {
             classpath.append(mp);
         }
 
-        // this is needed for compilation to work in production inside a minecraft mod as otherwise some already
+        // this is needed for compilation to work in some production environments  as otherwise some already
         // compiled classes will not be able to be referenced when compiling java code that we emit during lua compilation
         var virtualJarPath = DelayedJavaCompiler.class.getProtectionDomain().getCodeSource().getLocation();
         try {
             URI virtualJarUri = virtualJarPath.toURI();
 
-            // scheme will be 'union' in minecraft development env, but if it is an actual disk file path,
-            // we add it to the classpath to support running it in production.
+            // scheme will be 'union' in some cases, so if it is an actual disk file path,
+            // we add it to the classpath to support running it in such environments.
             if (virtualJarUri.getScheme().equals("union")) {
                 var jarDiskPath = virtualJarUri
                         .getPath()
@@ -93,7 +94,7 @@ public class DelayedJavaCompiler {
                 }
             }
         } catch (URISyntaxException e) {
-            throw new RuntimeException(e);
+            throw new InternalLuaLoadingError(e);
         }
 
         options.add("-classpath");
