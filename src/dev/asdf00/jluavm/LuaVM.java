@@ -22,7 +22,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -42,7 +42,8 @@ public abstract class LuaVM {
     protected final Map<String, ApiFunctionRegistry> registries;
     protected LuaObject _G = LuaObject.nil();
     protected LuaFunction rootFunc = null;
-    public final Consumer<LuaVM> safepointCallback = null;
+    @SuppressWarnings("unused")
+    public BiConsumer<LuaVM, HookType> eventCallback = null;
 
     protected volatile boolean requestedStop = false;
 
@@ -73,7 +74,7 @@ public abstract class LuaVM {
     }
 
     // =================================================================================================================
-    // static helper methods
+    // helper methods
     // =================================================================================================================
 
     public static Constructor<? extends AbstractGeneratedLuaFunction>[] compile(String code) throws LuaLoadingException {
@@ -108,6 +109,11 @@ public abstract class LuaVM {
         } catch (ReflectiveOperationException e) {
             throw new InternalLuaLoadingError(e);
         }
+    }
+
+    public void triggerEvent(HookType hookType) {
+        if (eventCallback != null)
+            eventCallback.accept(this, hookType);
     }
 
     // =================================================================================================================
@@ -244,6 +250,14 @@ public abstract class LuaVM {
                     ", returnVars=" + Arrays.toString(returnVars).replace("\\", "\\\\").replace("\n", "\\n") +
                     ']';
         }
+    }
+
+    public enum HookType {
+        COMPILATION_STARTED,
+        COMPILATION_FINISHED,
+        SAFEPOINT_REACHED,
+        VM_STARTED,
+        VM_RESUMED,
     }
 
     // =================================================================================================================

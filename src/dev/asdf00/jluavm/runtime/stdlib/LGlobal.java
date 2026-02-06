@@ -337,6 +337,7 @@ public class LGlobal {
 
                     var chunkStr = chunk.getString();
                     try {
+                        vm.triggerEvent(LuaVM.HookType.COMPILATION_STARTED);
                         String processedChunkname;
                         if (chunkName == null) {
                             if (chunk.isString()) {
@@ -352,6 +353,8 @@ public class LGlobal {
                         return new LuaObject[]{LuaObject.of(rv2), LuaObject.NIL};
                     } catch (LuaParserException ex) {
                         return new LuaObject[]{LuaObject.NIL, LuaObject.of("Compilation error: " + ex.getMessage())};
+                    } finally {
+                        vm.triggerEvent(LuaVM.HookType.COMPILATION_FINISHED);
                     }
                 }));
 

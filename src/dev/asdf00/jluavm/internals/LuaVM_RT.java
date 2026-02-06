@@ -92,6 +92,7 @@ public class LuaVM_RT extends LuaVM {
         rootCoroutine.isYieldable = false;
         rootCoroutine.luaCallStack.peek().getTopFrame().locals[0] = LuaObject.of(rootArgs);
         setCoroutine(rootCoroutine);
+        triggerEvent(HookType.VM_STARTED);
         execLoop();
         isRunning.set(false);
         if (requestedStop) {
@@ -112,6 +113,7 @@ public class LuaVM_RT extends LuaVM {
             throw new IllegalStateException("can not continue on clear state");
         }
         requestedStop = false;
+        triggerEvent(HookType.VM_RESUMED);
         execLoop();
         isRunning.set(false);
         if (requestedStop) {
@@ -173,8 +175,7 @@ public class LuaVM_RT extends LuaVM {
 
     private void safepoint() {
         // for now, just give the host a chance to run code at such safepoints
-        if (safepointCallback != null)
-            safepointCallback.accept(this);
+        triggerEvent(HookType.SAFEPOINT_REACHED);
     }
 
     // =================================================================================================================
