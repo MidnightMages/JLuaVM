@@ -21,9 +21,9 @@ public class PatternMatchingTest extends BaseVmTest {
                 local rv = ""
                 local text = "Blabla Bee bee bumblebee banana.%123af"
                 local premadePattern = "bee"
-                local patternOptions = {"a", "b", "c", "d", "e", "f", "g", ".", "%a", "%c", "%d", "%g",\s
-                  "%l", "%p", "%s", "%u", "%w", "%x", "%%", "%.", " ", "[ ]", " [abc]",\s
-                  " [^abc]", " [%l]", " [^%l]", "%A", "%C", "%D", "%G", "%L", "%P", "%S",\s
+                local patternOptions = {"a", "b", "c", "d", "e", "f", "g", ".", "%a", "%c", "%d", "%g",
+                  "%l", "%p", "%s", "%u", "%w", "%x", "%%", "%.", " ", "[ ]", " [abc]",
+                  " [^abc]", " [%l]", " [^%l]", "%A", "%C", "%D", "%G", "%L", "%P", "%S",
                   "%U", "%W", "%X", "()"}
 
                 local function appendResult(...)
@@ -215,5 +215,420 @@ public class PatternMatchingTest extends BaseVmTest {
                 Blabla Bee bee bumblebee banana.%123>af<|1
                 1 2b3 3c4 4|3
                 """));
+    }
+
+    @Test
+    void broadGmatch() {
+        loadAssertSuccessAndRv("""
+                local rv = "_"
+                local text = "Blabla Bee bee bumblebee banana.%123af"
+                local premadePattern = "bee"
+                local patternOptions = {"a", "b", "c", "d", "e", "f", "g", ".", "%a", "%c", "%d", "%g",
+                  "%l", "%p", "%s", "%u", "%w", "%x", "%%", "%.", " ", "[ ]", " [abc]",
+                  " [^abc]", " [%l]", " [^%l]", "%A", "%C", "%D", "%G", "%L", "%P", "%S",
+                  "%U", "%W", "%X", "()"}
+                                
+                local function appendResult(it)
+                local tbl = {}
+                for match in it do table.insert(tbl, match) end
+                  local sres = ""
+                  for _,v in ipairs(tbl) do sres = sres .. tostring(v) .. "|" end
+                  rv = rv .. sres:sub(1,-2) .. "\\n"
+                end
+                                
+                for _,p in ipairs(patternOptions) do
+                  appendResult(string.gmatch(text, premadePattern..p))
+                  appendResult(string.gmatch(text, p..premadePattern))
+                  appendResult(string.gmatch(text, p))
+                  appendResult(string.gmatch(text, "("..p..")"))
+                end
+                appendResult(string.gmatch(text, "(%w*)"))
+                appendResult(string.gmatch(text, "(%w+)"))
+                appendResult(string.gmatch(text, "(%w-)"))
+                appendResult(string.gmatch(text, "(%w?)"))
+                appendResult(string.gmatch(text, "(%w?)%1"))
+                appendResult(string.gmatch(text, "(%beb)"))
+                appendResult(string.gmatch(text, "(%f[abc])"))
+                appendResult(string.gmatch(text, "^bee"))
+                appendResult(string.gmatch(text, "bee$"))
+                appendResult(string.gmatch(text, "^Bla"))
+                appendResult(string.gmatch(text, "af$"))
+                appendResult(string.gmatch("abc", "()a*()"))
+                                
+                return rv
+                """, LuaObject.of("""
+                _
+
+                a|a|a|a|a|a
+                a|a|a|a|a|a
+                                
+                                
+                b|b|b|b|b|b
+                b|b|b|b|b|b
+                                
+                                
+                                
+                                
+                                
+                                
+                                
+                                
+                                
+                ebee
+                e|e|e|e|e|e|e
+                e|e|e|e|e|e|e
+                                
+                                
+                f
+                f
+                                
+                                
+                                
+                                
+                bee |bee 
+                 bee|ebee
+                B|l|a|b|l|a| |B|e|e| |b|e|e| |b|u|m|b|l|e|b|e|e| |b|a|n|a|n|a|.|%|1|2|3|a|f
+                B|l|a|b|l|a| |B|e|e| |b|e|e| |b|u|m|b|l|e|b|e|e| |b|a|n|a|n|a|.|%|1|2|3|a|f
+                                
+                ebee
+                B|l|a|b|l|a|B|e|e|b|e|e|b|u|m|b|l|e|b|e|e|b|a|n|a|n|a|a|f
+                B|l|a|b|l|a|B|e|e|b|e|e|b|u|m|b|l|e|b|e|e|b|a|n|a|n|a|a|f
+                                
+                                
+                                
+                                
+                                
+                                
+                1|2|3
+                1|2|3
+                                
+                ebee
+                B|l|a|b|l|a|B|e|e|b|e|e|b|u|m|b|l|e|b|e|e|b|a|n|a|n|a|.|%|1|2|3|a|f
+                B|l|a|b|l|a|B|e|e|b|e|e|b|u|m|b|l|e|b|e|e|b|a|n|a|n|a|.|%|1|2|3|a|f
+                                
+                ebee
+                l|a|b|l|a|e|e|b|e|e|b|u|m|b|l|e|b|e|e|b|a|n|a|n|a|a|f
+                l|a|b|l|a|e|e|b|e|e|b|u|m|b|l|e|b|e|e|b|a|n|a|n|a|a|f
+                                
+                                
+                .|%
+                .|%
+                bee |bee 
+                 bee
+                 | | | 
+                 | | | 
+                                
+                                
+                B|B
+                B|B
+                                
+                ebee
+                B|l|a|b|l|a|B|e|e|b|e|e|b|u|m|b|l|e|b|e|e|b|a|n|a|n|a|1|2|3|a|f
+                B|l|a|b|l|a|B|e|e|b|e|e|b|u|m|b|l|e|b|e|e|b|a|n|a|n|a|1|2|3|a|f
+                                
+                ebee
+                B|a|b|a|B|e|e|b|e|e|b|b|e|b|e|e|b|a|a|a|1|2|3|a|f
+                B|a|b|a|B|e|e|b|e|e|b|b|e|b|e|e|b|a|a|a|1|2|3|a|f
+                                
+                                
+                %
+                %
+                                
+                                
+                .
+                .
+                bee |bee 
+                 bee
+                 | | | 
+                 | | | 
+                bee |bee 
+                 bee
+                 | | | 
+                 | | | 
+                bee b|bee b
+                                
+                 b| b| b
+                 b| b| b
+                                
+                                
+                 B
+                 B
+                bee b|bee b
+                                
+                 b| b| b
+                 b| b| b
+                                
+                                
+                 B
+                 B
+                bee |bee 
+                 bee
+                 | | | |.|%|1|2|3
+                 | | | |.|%|1|2|3
+                bee |bee 
+                 bee|ebee
+                B|l|a|b|l|a| |B|e|e| |b|e|e| |b|u|m|b|l|e|b|e|e| |b|a|n|a|n|a|.|%|1|2|3|a|f
+                B|l|a|b|l|a| |B|e|e| |b|e|e| |b|u|m|b|l|e|b|e|e| |b|a|n|a|n|a|.|%|1|2|3|a|f
+                bee |bee 
+                 bee|ebee
+                B|l|a|b|l|a| |B|e|e| |b|e|e| |b|u|m|b|l|e|b|e|e| |b|a|n|a|n|a|.|%|a|f
+                B|l|a|b|l|a| |B|e|e| |b|e|e| |b|u|m|b|l|e|b|e|e| |b|a|n|a|n|a|.|%|a|f
+                bee |bee 
+                 bee
+                 | | | 
+                 | | | 
+                bee |bee 
+                 bee
+                B| |B| | | |.|%|1|2|3
+                B| |B| | | |.|%|1|2|3
+                bee |bee 
+                 bee|ebee
+                B|l|a|b|l|a| |B|e|e| |b|e|e| |b|u|m|b|l|e|b|e|e| |b|a|n|a|n|a|1|2|3|a|f
+                B|l|a|b|l|a| |B|e|e| |b|e|e| |b|u|m|b|l|e|b|e|e| |b|a|n|a|n|a|1|2|3|a|f
+                                
+                ebee
+                B|l|a|b|l|a|B|e|e|b|e|e|b|u|m|b|l|e|b|e|e|b|a|n|a|n|a|.|%|1|2|3|a|f
+                B|l|a|b|l|a|B|e|e|b|e|e|b|u|m|b|l|e|b|e|e|b|a|n|a|n|a|.|%|1|2|3|a|f
+                bee |bee 
+                 bee|ebee
+                l|a|b|l|a| |e|e| |b|e|e| |b|u|m|b|l|e|b|e|e| |b|a|n|a|n|a|.|%|1|2|3|a|f
+                l|a|b|l|a| |e|e| |b|e|e| |b|u|m|b|l|e|b|e|e| |b|a|n|a|n|a|.|%|1|2|3|a|f
+                bee |bee 
+                 bee
+                 | | | |.|%
+                 | | | |.|%
+                bee |bee 
+                 bee
+                l|l| | | |u|m|l| |n|n|.|%
+                l|l| | | |u|m|l| |n|n|.|%
+                15|25
+                12|22
+                1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31|32|33|34|35|36|37|38|39
+                ||||||||||||||||||||||||||||||||||||||
+                Blabla|Bee|bee|bumblebee|banana||123af
+                Blabla|Bee|bee|bumblebee|banana|123af
+                ||||||||||||||||||||||||||||||||||||||
+                B|l|a|b|l|a|B|e|e|b|e|e|b|u|m|b|l|e|b|e|e|b|a|n|a|n|a||1|2|3|a|f
+                ||||||||e||e||||||||e||||||||||||||
+                e b|ee bumb|eb|e b
+                |||||||||
+                                
+                                
+                                
+                af
+                1|3|4
+                """));
+    }
+
+    @Test
+    void broadMatch() {
+        loadAssertSuccessAndRv("""
+                local rv = "_"
+                local text = "Blabla Bee bee bumblebee banana.%123af"
+                local premadePattern = "bee"
+                local patternOptions = {"a", "b", "c", "d", "e", "f", "g", ".", "%a", "%c", "%d", "%g",
+                  "%l", "%p", "%s", "%u", "%w", "%x", "%%", "%.", " ", "[ ]", " [abc]",
+                  " [^abc]", " [%l]", " [^%l]", "%A", "%C", "%D", "%G", "%L", "%P", "%S",
+                  "%U", "%W", "%X"--[[, "()"]]}
+
+                local function appendResult(...)
+                  local tbl = {...}
+                  local sres = ""
+                  for _,v in ipairs(tbl) do sres = sres .. tostring(v) .. "|" end
+                  rv = rv ..".".. sres:sub(1,-2) .. "\\n"
+                end
+
+                for _,p in ipairs(patternOptions) do
+                  appendResult(string.match(text, premadePattern..p))
+                  appendResult(string.match(text, p..premadePattern))
+                  appendResult(string.match(text, p))
+                  appendResult(string.match(text, "("..p..")"))
+                end
+                appendResult(string.match(text, "(%w*)"))
+                appendResult(string.match(text, "(%w+)"))
+                appendResult(string.match(text, "(%w-)"))
+                appendResult(string.match(text, "(%w?)"))
+                appendResult(string.match(text, "(%w?)%1"))
+                --appendResult(string.match(text, "(%beb)"))
+                appendResult(string.match(text, "(%f[abc])"))
+                appendResult(string.match(text, "^bee"))
+                appendResult(string.match(text, "bee$"))
+                appendResult(string.match(text, "^Bla"))
+                appendResult(string.match(text, "af$"))
+                --appendResult(string.match("abc", "()a*()"))
+                                
+                return rv
+                """, LuaObject.of("""
+                _.
+                .
+                .a
+                .a
+                .
+                .
+                .b
+                .b
+                .
+                .
+                .
+                .
+                .
+                .
+                .
+                .
+                .
+                .ebee
+                .e
+                .e
+                .
+                .
+                .f
+                .f
+                .
+                .
+                .
+                .
+                .bee\s
+                . bee
+                .B
+                .B
+                .
+                .ebee
+                .B
+                .B
+                .
+                .
+                .
+                .
+                .
+                .
+                .1
+                .1
+                .
+                .ebee
+                .B
+                .B
+                .
+                .ebee
+                .l
+                .l
+                .
+                .
+                ..
+                ..
+                .bee\s
+                . bee
+                .\s
+                .\s
+                .
+                .
+                .B
+                .B
+                .
+                .ebee
+                .B
+                .B
+                .
+                .ebee
+                .B
+                .B
+                .
+                .
+                .%
+                .%
+                .
+                .
+                ..
+                ..
+                .bee\s
+                . bee
+                .\s
+                .\s
+                .bee\s
+                . bee
+                .\s
+                .\s
+                .bee b
+                .
+                . b
+                . b
+                .
+                .
+                . B
+                . B
+                .bee b
+                .
+                . b
+                . b
+                .
+                .
+                . B
+                . B
+                .bee\s
+                . bee
+                .\s
+                .\s
+                .bee\s
+                . bee
+                .B
+                .B
+                .bee\s
+                . bee
+                .B
+                .B
+                .bee\s
+                . bee
+                .\s
+                .\s
+                .bee\s
+                . bee
+                .B
+                .B
+                .bee\s
+                . bee
+                .B
+                .B
+                .
+                .ebee
+                .B
+                .B
+                .bee\s
+                . bee
+                .l
+                .l
+                .bee\s
+                . bee
+                .\s
+                .\s
+                .bee\s
+                . bee
+                .l
+                .l
+                .Blabla
+                .Blabla
+                .
+                .B
+                .
+                .
+                .
+                .
+                .Bla
+                .af
+                """));
+    }
+
+    @Test
+    void simpleMatchCapture() {
+        loadAssertSuccessAndRv("""
+                local text = "Blabla Bee1 bee2 bumblebee banana.%123af"
+                return string.match(text, "b(ee..)")
+                """, LuaObject.of("ee2 "));
+    }
+
+    @Test
+    void simpleDoubleMatchCapture() {
+        loadAssertSuccessAndRv("""
+                local text = "Blabla Bee1 bee2 bumblebee banana.%123af"
+                return string.match(text, "b(ee..)(.)")
+                """, new LuaObject[]{LuaObject.of("ee2 "), LuaObject.of("b")});
     }
 }
