@@ -1,8 +1,10 @@
 package dev.asdf00.jluavm.runtime.stdlib;
 
-import dev.asdf00.jluavm.api.functions.MixedStateFunctionRegistry;
-import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.api.functions.AtomicLuaFunction;
+import dev.asdf00.jluavm.api.functions.MixedStateFunctionRegistry;
+import dev.asdf00.jluavm.exceptions.LuaJavaError;
+import dev.asdf00.jluavm.internals.LuaVM_RT;
+import dev.asdf00.jluavm.runtime.stdlib.patternMatching.PatternMatchingImpl;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 
 import java.util.Locale;
@@ -71,6 +73,41 @@ public class LString {
                         }
                     }
                     return LuaObject.of(r2.toString());
+                }));
+
+        registry.register(STRING_PREFIX + "match",
+                AtomicLuaFunction.vaForManyResults(registry, (vm, va) -> {
+                    var s = va.length > 0 ? va[0] : null;
+                    var pattern = va.length > 1 ? va[1] : null;
+                    var init = va.length > 2 ? va[2] : LuaObject.of(1); // startIndex
+                    if (s == null || !s.isType(NUMBER | STRING)) {
+                        vm.error(funcArgAnyTypeError("string.match", 0, s, "string", "number"));
+                        return null;
+                    }
+                    if (pattern == null || !pattern.isType(NUMBER | STRING)) {
+                        vm.error(funcArgAnyTypeError("string.match", 1, pattern, "string", "number"));
+                        return null;
+                    }
+                    if (!init.hasLongRepr()) {
+                        vm.error(funcArgTypeError("string.match", 1, pattern, "integer"));
+                        return null;
+                    }
+
+                    var inputStr = s.getString();
+                    var searchStartIndex = init.asLong();
+                    if (searchStartIndex < 0) // negatives go from the back, -1 being the last letter
+                        searchStartIndex += inputStr.length() + 1;
+                    else if (searchStartIndex == 0) { // startpos 0 is interpreted as startpos 1, aka the default value
+                        searchStartIndex++;
+                    }
+                    searchStartIndex--; // convert to java index
+                    if (searchStartIndex < 0) // if it is too small, make it start at 0
+                        searchStartIndex = 0;
+
+                    if (searchStartIndex > Integer.MAX_VALUE)
+                        throw new LuaJavaError("searchStartIndex too large");
+
+                    return PatternMatchingImpl.lua_match(inputStr, pattern.getString(), (int)searchStartIndex);
                 }));
 
         registry.register(STRING_PREFIX + "gmatch",
