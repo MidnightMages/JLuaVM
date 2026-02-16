@@ -27,6 +27,10 @@ public class LuaVM_RT extends LuaVM {
         return (LUDTypeDescriptor<T>) ALL_THE_DESCRIPTORS.computeIfAbsent(udType, k -> LUDTypeDescriptor.buildDescriptor(k));
     }
 
+    public static boolean isDescriptorAvailable(Class<? extends LuaUserData> udType) {
+        return ALL_THE_DESCRIPTORS.containsKey(udType);
+    }
+
     public static Class<? extends LuaUserData> getUserdataClass(String name) {
         /*
          * Here we could allow some class loading magic to find the correct instance of the class.
