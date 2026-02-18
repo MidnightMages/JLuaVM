@@ -474,16 +474,27 @@ public class PatternMatchingImpl {
 
     // LUA BINDINGS
     public static LuaObject[] lua_match(String s, String pattern, int startIndex) {
+        return lua_match_extended(s,pattern,startIndex).matchResult();
+    }
+
+    public record ExtendedMatchResult(LuaObject[] matchResult, FindResult res) {
+    }
+
+    public static ExtendedMatchResult lua_match_extended(String s, String pattern, int startIndex) {
         assert startIndex >= 0;
-        FindResult res = find(s, pattern, false);
+        FindResult resRaw = find(s.substring(startIndex), pattern, false);
+        FindResult res = resRaw.adjustForStartIndex(startIndex);
 
         if (!res.success())
-            return new LuaObject[]{LuaObject.NIL};
+            return new ExtendedMatchResult(new LuaObject[]{LuaObject.NIL}, res);
 
+        LuaObject[] rv;
         var caps = res.getCapturesOrEmpty();
-        if (caps.length > 0)
-            return Arrays.stream(caps).map(LuaObject::of).toArray(LuaObject[]::new); // captures
-
-        return new LuaObject[]{LuaObject.of(s.substring(res.start(), res.end()))};
+        if (caps.length > 0) {
+            rv = Arrays.stream(caps).map(LuaObject::of).toArray(LuaObject[]::new); // captures
+        } else {
+            rv = new LuaObject[]{LuaObject.of(s.substring(res.start(), res.end()))};
+        }
+        return new ExtendedMatchResult(rv, res);
     }
 }

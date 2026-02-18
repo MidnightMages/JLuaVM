@@ -5,6 +5,7 @@ import dev.asdf00.jluavm.api.functions.MixedStateFunctionRegistry;
 import dev.asdf00.jluavm.exceptions.LuaJavaError;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.runtime.stdlib.patternMatching.PatternMatchingImpl;
+import dev.asdf00.jluavm.runtime.types.LuaJavaApiFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 
 import java.util.Locale;
@@ -139,69 +140,34 @@ public class LString {
                     if (matchStartPos < 0) // if it is too small, make it start at 0
                         matchStartPos = 0;
 
-//            // all elements are technically preceded by %
-//            HashMap<Character, String> gmatchTranslationMap = (HashMap<Character, String>) Map.of(
-//                    'a', "A-Za-z",
-//                    'c', "\\x00-\\x1F\\x7F",
-//                    'd', "\\d",
-//                    'l', "a-z",
-//                    'p', "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~",
-//                    's', "\\s",
-//                    'u', "A-Z",
-//                    'w', "A-Za-z\\d",
-//                    'z', "\\x00"
-//            );
-//
-//
-//            StringBuilder regexStr = new StringBuilder();
-//            var parOpenCnt = 0;
-//            for (int i = 0; i < inputStr.length(); i++) {
-//                var c = inputStr.charAt(i);
-//                var la1 = (i + 1) < inputStr.length() ? inputStr.charAt(i + 1) : '\0';
-//                switch (c) {
-//                    case '(', ')' -> {
-//                        parOpenCnt += c == '(' ? 1 : -1;
-//                        if (parOpenCnt < 0) {
-//                            vm.error(LuaObject.of("Invalid pattern in string.gmatch. Check the parentheses."));
-//                            return null;
-//                        }
-//                        regexStr.append(c);
-//                    }
-//                    case '[', ']' -> {
-//                        parOpenCnt += c == '[' ? 1 : -1;
-//                        if (parOpenCnt < 0) {
-//                            vm.error(LuaObject.of("Invalid pattern in string.gmatch. Check the brackets."));
-//                            return null;
-//                        }
-//                        regexStr.append(c);
-//                    }
-//                    case '.' -> regexStr.append(c);
-//                    case '%' -> {
-//                        if (la1 == '%')
-//                            regexStr.append('%');
-//                        else {
-//                            var isAlphaNumeric = la1 >= '0' && la1 <= '9' || la1 >= 'A' && la1 <= 'Z' || la1 >= 'a' && la1 <= 'z';
-//                            if (isAlphaNumeric) { // dont allow a preceding % unless it is part of a group
-//                                var groupSpecifier = gmatchTranslationMap.getOrDefault(la1, null);
-//                                if (groupSpecifier == null) {
-//                                    vm.error(LuaObject.of("Invalid pattern in string.gmatch. The group '%" + la1 + "' is unknown."));
-//                                    return null;
-//                                }
-//                                regexStr.append()
-//                            }
-//                        }
-//                    }
-//                    default -> {
-//                        if (!"^$().[]*+-?)".contains(Character.toString(c))) { // if its not a magic character (minus %), simply add it, otherwise throw as we failed to handle it
-//                            regexStr.append(c);
-//                        }
-//                        throw new IllegalStateException("Unexpected value: " + c);
-//                    }
-//                }
-//            }
-//
-//            Pattern.compile("");
-                    throw new UnsupportedOperationException("not implemented");
+                    if (matchStartPos > Integer.MAX_VALUE)
+                        throw new LuaJavaError("searchStartIndex too large");
+
+
+                    // ^ is treated literally in gmatch (at the beginning)
+
+                    String patternString = pattern.getString();
+                    if (patternString.startsWith("^"))
+                            patternString = "%"+patternString;
+
+                    final String patternString_f = patternString;
+                    int[] matchStartPosClosured = new int[] {(int)matchStartPos};
+                    return AtomicLuaFunction.vaForManyResults(registry, (vm2, args) -> {
+                        if (matchStartPosClosured[0] >= inputStr.length())
+                            return new LuaObject[]{};
+
+                        var extRes = PatternMatchingImpl.lua_match_extended(inputStr, patternString_f, matchStartPosClosured[0]);
+                        if (!extRes.res().success()) {
+                            // definitely out of bounds to block future calls in a cheap manner
+                            matchStartPosClosured[0] = Integer.MAX_VALUE;
+                        } else {
+                            var res = extRes.res();
+                            matchStartPosClosured[0] = res.end();
+                            if (res.start() == res.end())
+                                matchStartPosClosured[0]++;
+                        }
+                        return extRes.matchResult();
+                    }).obj();
                 }));
 
         registry.register(STRING_PREFIX + "len",
