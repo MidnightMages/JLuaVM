@@ -4,7 +4,7 @@ import dev.asdf00.jluavm.LuaVM;
 import dev.asdf00.jluavm.api.functions.AtomicLuaFunction;
 import dev.asdf00.jluavm.api.functions.MixedStateFunctionRegistry;
 import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
-import dev.asdf00.jluavm.exceptions.loading.LuaParserException;
+import dev.asdf00.jluavm.exceptions.LuaLoadingException;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaJavaApiFunction;
@@ -351,7 +351,7 @@ public class LGlobal {
                         }
                         var rv2 = LuaVM.load(processedChunkname, chunkStr, env == null ? vm.getCallerEnv() : env);
                         return new LuaObject[]{LuaObject.of(rv2), LuaObject.NIL};
-                    } catch (LuaParserException ex) {
+                    } catch (LuaLoadingException ex) {
                         return new LuaObject[]{LuaObject.NIL, LuaObject.of("Compilation error: " + ex.getMessage())};
                     } finally {
                         vm.triggerEvent(LuaVM.HookType.COMPILATION_FINISHED);
