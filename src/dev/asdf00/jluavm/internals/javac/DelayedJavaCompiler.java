@@ -116,7 +116,7 @@ public class DelayedJavaCompiler {
         var className = res.outputClassName;
 
         try {
-            var cacheResult = PersistentJavaCompilationCache.getFromCacheOrNull(res.javaSourceCode);
+            var cacheResult = PersistentJavaCompilationCache.isCacheActive() ? PersistentJavaCompilationCache.getFromCacheOrNull(res.javaSourceCode) : null;
             if (cacheResult != null) {
                 target.addClassData(className, cacheResult);
                 return target.loadClass(className);
@@ -136,9 +136,11 @@ public class DelayedJavaCompiler {
                 if (!compilationResult.keySet().iterator().next().equals(className))
                     throw new RuntimeException("Class name to be added to cache differed unexpectedly");
 
-                // save to cache
-                var valueToCache = compilationResult.get(className);
-                PersistentJavaCompilationCache.addToCache(res.javaSourceCode, valueToCache);
+                if (PersistentJavaCompilationCache.isCacheActive()) {
+                    // save to cache
+                    var valueToCache = compilationResult.get(className);
+                    PersistentJavaCompilationCache.addToCache(res.javaSourceCode, valueToCache);
+                }
             }
             return fileManager.loadAndReturnMainClass(className, target);
         } catch (DelayedJavaCompilationException e) {
