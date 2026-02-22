@@ -11,6 +11,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.LinkedHashMap;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 public class PersistentJavaCompilationCache {
@@ -126,18 +127,42 @@ public class PersistentJavaCompilationCache {
         }
     }
 
+    private static void ensure(boolean ok) {
+        if (!ok)
+            throw new RuntimeException();
+    }
+
+//    private record CompiledRepresentation(byte[] sharedRawRepresentation, String luaSource) {
+//        public static CompiledRepresentation FromBytecode(String javaSourceCode, byte[] compiledCode) {
+//            var matcher = Pattern.compile("luaCode = \"\"\"(.*?)\"\"\"").matcher(javaSourceCode);
+//            ensure(matcher.find());
+//
+//            var luaCode = matcher.group(1);
+//            String placeholder = "$$$PLACEHOLDER1$$$";
+//            ensure(!javaSourceCode.contains(placeholder));
+//            ensure(javaSourceCode.contains(luaCode));
+//            var luaFreeJavaCode = javaSourceCode.replace(luaCode, placeholder);
+//            var luaCodeBytes = luaCode.getBytes(StandardCharsets.UTF_8);
+//        }
+//    }
+
+    private static String normalizeSource(String javaSourceCode) {
+        return Pattern.compile("luaCode = \"\"\".*?\"\"\"", Pattern.DOTALL).matcher(javaSourceCode).replaceAll("luaCode = \"\"\"REMOVED_BY_CACHE\"\"\"");
+    }
+
     public static byte[] getFromCacheOrNull(String javaSourceCode) {
-        return backing.get(javaSourceCode);
+        return backing.get(normalizeSource(javaSourceCode));
     }
 
     public static void addToCache(String javaSourceCode, byte[] valueToCache) {
-        backing.put(javaSourceCode, valueToCache);
+        var normSource = normalizeSource(javaSourceCode);
+        backing.put(normSource, valueToCache);
 
         // do not store files >1MB, that way we can guarantee a maximum cache size via compilationCacheSize
         if (valueToCache.length < 1_000_000) {
-            var serialized = new CacheEntry(javaSourceCode, valueToCache).serialize();
+            var serialized = new CacheEntry(normSource, valueToCache).serialize();
             var fileName = Base64.getEncoder()
-                                   .encodeToString(getSha().digest(javaSourceCode.getBytes(StandardCharsets.UTF_8)))
+                                   .encodeToString(getSha().digest(normSource.getBytes(StandardCharsets.UTF_8)))
                                    .substring(0, filenameLength)
                                    .replace('/', '_') + cacheFileExtension;
 

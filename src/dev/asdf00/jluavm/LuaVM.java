@@ -79,10 +79,10 @@ public abstract class LuaVM {
 
     public static Constructor<? extends AbstractGeneratedLuaFunction>[] compile(String code) throws LuaLoadingException {
         var cachedCtor = COMPILATION_CACHE.getOrDefault(code, null);
-        if (cachedCtor == null) {
+        if (cachedCtor == null ||true) {
             synchronized (COMPILATION_CACHE_LOCK_OBJ) {
                 cachedCtor = COMPILATION_CACHE.getOrDefault(code, null);
-                if (cachedCtor == null) {
+                if (cachedCtor == null ||true) {
                     IRFunction rootFunc = new Parser(code).parse();
                     var javaIntermediateCode = new CompilationState(J_CLASS_NAME_GEN, code);
                     rootFunc.generate(javaIntermediateCode);
