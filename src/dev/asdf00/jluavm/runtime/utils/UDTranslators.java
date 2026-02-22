@@ -4,6 +4,8 @@ import dev.asdf00.jluavm.api.userdata.LuaUserData;
 import dev.asdf00.jluavm.exceptions.LuaConversionException;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 
+import java.util.Arrays;
+
 public class UDTranslators {
     public static byte lo2b(LuaObject o) {
         if (!o.isNumber()) {
@@ -145,6 +147,26 @@ public class UDTranslators {
             throw new LuaConversionException(o + " is not a userdata " + clazz.getName());
         }
         return (T) o.refVal;
+    }
+
+    public static <T extends Enum<T>> T lo2en(Class<T> clazz, LuaObject o) {
+        if (o.isNil()) {
+            return null;
+        }
+        if (!o.isString()) {
+            throw new LuaConversionException("'%s' is not a valid %s (available values: %s)".formatted(
+                    o.asString(), clazz.getName(), Arrays.toString(clazz.getEnumConstants())));
+        }
+        try {
+            return Enum.valueOf(clazz, o.getString());
+        } catch (IllegalArgumentException e) {
+            throw new LuaConversionException("'%s' is not a valid %s (available values: %s)".formatted(
+                    o.getString(), clazz.getName(), Arrays.toString(clazz.getEnumConstants())));
+        }
+    }
+
+    private enum MyTest {
+        A, B, C
     }
 
     public static LuaObject lo2null(LuaObject o) {

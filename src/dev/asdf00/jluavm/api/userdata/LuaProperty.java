@@ -52,7 +52,12 @@ public abstract sealed class LuaProperty {
         return new LUserData<>(type, get, set);
     }
 
+    public static <T extends Enum<T>> LuaProperty ofEnum(Class<T> type, Supplier<T> get, Consumer<T> set) {
+        return new LEnum<>(type, get, set);
+    }
+
     public abstract LuaObject get();
+
     public abstract void set(LuaObject value);
 
     @FunctionalInterface
@@ -365,6 +370,29 @@ public abstract sealed class LuaProperty {
         @Override
         public void set(LuaObject value) {
             setter.accept(lo2ud(type, value));
+        }
+    }
+
+    private static final class LEnum<T extends Enum<T>> extends LuaProperty {
+        private final Class<T> type;
+        private final Supplier<T> getter;
+        private final Consumer<T> setter;
+
+        public LEnum(Class<T> type, Supplier<T> getter, Consumer<T> setter) {
+            this.type = type;
+            this.getter = getter;
+            this.setter = setter;
+        }
+
+        @Override
+        public LuaObject get() {
+            T obj = getter.get();
+            return obj == null ? LuaObject.nil() : LuaObject.of(obj);
+        }
+
+        @Override
+        public void set(LuaObject value) {
+            setter.accept(lo2en(type, value));
         }
     }
 }

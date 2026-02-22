@@ -71,8 +71,7 @@ public final class LuaObject {
     }
 
     public LuaObject getMetaValueOrNil(String mtKey) {
-        return getMetaValueOrNil(LuaObject.of(mtKey))
-                ;
+        return getMetaValueOrNil(LuaObject.of(mtKey));
     }
 
     public LuaObject getMetaValueOrNil(LuaObject mtKey) {
@@ -996,6 +995,10 @@ public final class LuaObject {
 
     public static LuaObject of(Coroutine coroutine) {
         return new LuaObject(coroutine, 0, 0, Types.THREAD);
+    }
+
+    public static <T extends Enum<T>> LuaObject of(T val) {
+        return LuaObject.of(val.name());
     }
 
     public static LuaObject table(LuaObject... val) {

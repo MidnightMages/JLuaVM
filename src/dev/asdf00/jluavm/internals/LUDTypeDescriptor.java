@@ -325,6 +325,9 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
         if (LuaUserData.class.isAssignableFrom(type)) {
             return;
         }
+        if (Enum.class.isAssignableFrom(type)) {
+            return;
+        }
         if (LuaObject[].class.equals(type)) {
             if (isLastP || isRet) {
                 return;
@@ -445,9 +448,7 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
             } else if (LuaObject.class.equals(fType)) {
                 sb.append("ud.").append(name);
             } else {
-                if (!LuaUserData.class.isAssignableFrom(fType)) {
-                    verifyAsLuaConvertible(false, false, fType);
-                }
+                verifyAsLuaConvertible(false, false, fType);
                 sb.append("LuaObject.of(ud.").append(name).append(')');
             }
 
@@ -472,7 +473,9 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
             } else {
                 sb.append("ud.").append(name).append(" = ");
                 if (LuaUserData.class.isAssignableFrom(fType)) {
-                    sb.append("lo2ud(").append(fType.getName()).append(".class, val)");
+                    sb.append("lo2ud(").append(resolveTrueClassName(fType)).append(".class, val)");
+                } else if(Enum.class.isAssignableFrom(fType)) {
+                    sb.append("lo2en(").append(resolveTrueClassName(fType)).append(".class, val)");
                 } else {
                     verifyAsLuaConvertible(false, false, fType);
                     sb.append(CONVERTIBLE_TYPES.get(fType)).append("(val)");
@@ -615,7 +618,9 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
                     sb.append(", ");
                 }
                 if (LuaUserData.class.isAssignableFrom(pTypes[i])) {
-                    sb.append("lo2ud(").append(pTypes[i].getName()).append(".class, ");
+                    sb.append("lo2ud(").append(resolveTrueClassName(pTypes[i])).append(".class, ");
+                } else if (Enum.class.isAssignableFrom(pTypes[i])) {
+                    sb.append("lo2en(").append(resolveTrueClassName(pTypes[i])).append(".class, ");
                 } else {
                     sb.append(CONVERTIBLE_TYPES.get(pTypes[i])).append('(');
                 }
