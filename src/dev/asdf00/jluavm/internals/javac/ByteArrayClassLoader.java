@@ -20,4 +20,8 @@ public abstract class ByteArrayClassLoader extends ClassLoader {
     public void addClassData(Map<String, byte[]> classes) {
         this.classes.putAll(classes);
     }
+
+    public void addClassData(String className, byte[] classData) {
+        this.classes.put(className, classData);
+    }
 }

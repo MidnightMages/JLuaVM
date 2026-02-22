@@ -31,7 +31,6 @@ public abstract class LuaVM {
     public static final String STD_LIB_REG_ID = "jluavm.stdlib";
     public static final String USERDATA_REG_ID = "jluavm.userdata";
 
-    private static final Supplier<String> J_CLASS_NAME_GEN;
     private static final ConcurrentHashMap<String, Constructor<? extends AbstractGeneratedLuaFunction>[]> COMPILATION_CACHE = new ConcurrentHashMap<>();
     private static final Object COMPILATION_CACHE_LOCK_OBJ = new Object();
 
@@ -84,7 +83,13 @@ public abstract class LuaVM {
                 cachedCtor = COMPILATION_CACHE.getOrDefault(code, null);
                 if (cachedCtor == null) {
                     IRFunction rootFunc = new Parser(code).parse();
-                    var javaIntermediateCode = new CompilationState(J_CLASS_NAME_GEN, code);
+                    var javaIntermediateCode = new CompilationState(new Supplier<>() {
+                        private int cnt = 0;
+                        @Override
+                        public String get() {
+                            return "GeneratedLuaFunc_" + cnt++;
+                        }
+                    }, code);
                     rootFunc.generate(javaIntermediateCode);
                     javaIntermediateCode.resolveAllPatches();
                     cachedCtor = javaIntermediateCode.loadAndLinkAllClasses();
@@ -119,6 +124,15 @@ public abstract class LuaVM {
     // =================================================================================================================
     // debug access to java intermediate code
     // =================================================================================================================
+
+    private static final Supplier<String> J_CLASS_NAME_GEN = new Supplier<>() {
+        private final AtomicInteger cnt = new AtomicInteger(0);
+
+        @Override
+        public String get() {
+            return "GeneratedLuaFunc_%d".formatted(cnt.getAndAdd(1));
+        }
+    };
 
     public void dumpJICFor(String luaCode, Path into) {
         IRFunction rootFunc = new Parser(luaCode).parse();
@@ -258,20 +272,5 @@ public abstract class LuaVM {
         SAFEPOINT_REACHED,
         VM_STARTED,
         VM_RESUMED,
-    }
-
-    // =================================================================================================================
-    // static initializer for LuaVM
-    // =================================================================================================================
-
-    static {
-        J_CLASS_NAME_GEN = new Supplier<>() {
-            private final AtomicInteger cnt = new AtomicInteger(0);
-
-            @Override
-            public String get() {
-                return "GeneratedLuaFunc_%d".formatted(cnt.getAndAdd(1));
-            }
-        };
     }
 }
