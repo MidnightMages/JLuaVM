@@ -23,6 +23,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 /**
  * This class offers support for compiling and loading Java code generated at runtime.
@@ -36,20 +37,22 @@ public class DelayedJavaCompiler {
             2, TimeUnit.MINUTES, new LinkedBlockingQueue<>());
 
     public static class AsyncCompilationResult {
-        private final JavaCompiler.CompilationTask task;
+        private final Supplier<JavaCompiler.CompilationTask> task;
         private final String outputClassName;
         private final ClassFileManager fileManager;
         private final StringWriter compilationOutput;
+        private final String javaSourceCode;
 
-        private AsyncCompilationResult(JavaCompiler.CompilationTask task, String outputClassName, ClassFileManager fileManager, StringWriter compilationOutput) {
+        private AsyncCompilationResult(Supplier<JavaCompiler.CompilationTask> task, String outputClassName, ClassFileManager fileManager, StringWriter compilationOutput, String javaSourceCode) {
             this.task = task;
             this.outputClassName = outputClassName;
             this.fileManager = fileManager;
             this.compilationOutput = compilationOutput;
+            this.javaSourceCode = javaSourceCode;
         }
     }
 
-    public static AsyncCompilationResult compileAndLoadAsync(String className, String content) throws DelayedJavaCompilationException {
+    public static AsyncCompilationResult compileAndLoadAsync(String className, String javaSourceCode) throws DelayedJavaCompilationException {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         if (compiler == null)
             throw new DelayedJavaCompilationException("No compiler was provided by ToolProvider.getSystemJavaCompiler(). Make sure the jdk.compiler module is available.");
@@ -102,21 +105,41 @@ public class DelayedJavaCompiler {
 
         ClassFileManager fileManager = new ClassFileManager(compiler.getStandardFileManager(null, null, null));
         StringWriter out = new StringWriter();
-        JavaCompiler.CompilationTask task = compiler.getTask(out, fileManager, null, options, null, List.of(new CharSequenceJavaFileObject(className, content)));
-        return new AsyncCompilationResult(task, className, fileManager, out);
+        Supplier<JavaCompiler.CompilationTask> taskProvider = () ->
+                compiler.getTask(out, fileManager, null, options, null, List.of(new CharSequenceJavaFileObject(className, javaSourceCode)));
+        return new AsyncCompilationResult(taskProvider, className, fileManager, out, javaSourceCode);
     }
 
     public static Class<?> finishCompilation(AsyncCompilationResult res, ByteArrayClassLoader target) throws DelayedJavaCompilationException {
-        var task = res.task;
         var fileManager = res.fileManager;
         var compilationOutput = res.compilationOutput;
         var className = res.outputClassName;
+
         try {
-            task.call();
-            if (fileManager.isEmpty()) {
-                throw new DelayedJavaCompilationException("JIC Compilation error: " + compilationOutput);
+            var cacheResult = PersistentJavaCompilationCache.getFromCacheOrNull(res.javaSourceCode);
+            if (cacheResult != null) {
+                target.addClassData(className, cacheResult);
+                return target.loadClass(className);
+            } else {
+                var task = res.task.get();
+                task.call();
+                if (fileManager.isEmpty()) {
+                    throw new DelayedJavaCompilationException("JIC Compilation error: " + compilationOutput);
+                }
+                var compilationResult = fileManager.classes();
+                target.addClassData(compilationResult);
+
+                // check cache assumptions
+                if (compilationResult.size() != 1)
+                    throw new RuntimeException("Expected there to be exactly one source file, but there were %s.".formatted(compilationResult.size()));
+
+                if (!compilationResult.keySet().iterator().next().equals(className))
+                    throw new RuntimeException("Class name to be added to cache differed unexpectedly");
+
+                // save to cache
+                var valueToCache = compilationResult.get(className);
+                PersistentJavaCompilationCache.addToCache(res.javaSourceCode, valueToCache);
             }
-            target.addClassData(fileManager.classes());
             return fileManager.loadAndReturnMainClass(className, target);
         } catch (DelayedJavaCompilationException e) {
             throw e;
