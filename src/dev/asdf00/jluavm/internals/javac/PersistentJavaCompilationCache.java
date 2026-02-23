@@ -8,18 +8,21 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
-import java.util.LinkedHashMap;
+import java.util.Comparator;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 public class PersistentJavaCompilationCache {
     public static final String cacheFileExtension = ".jlvmCCache";
-    public static final int compilationCacheSize = 1000; // amount of javasource->class mappings to keep
     public static final int filenameLength = 10; // length of cache filenames, without extension.
     private static Path compilationCacheFolder = null;
-    private static final LinkedHashMap<String, byte[]> backing = new LinkedHashMap<>();
+    public static int compilationCacheSize = 10; // amount of javasource->class mappings to keep
+    private static final ConcurrentHashMap<String, byte[]> backing = new ConcurrentHashMap<>();
 
     public static boolean isCacheActive() {
         return compilationCacheFolder != null;
@@ -32,10 +35,12 @@ public class PersistentJavaCompilationCache {
 
     private static final Object enableCacheLockObj = new Object();
 
-    public static void enableCache(Path compilationDirectory) {
+    public static void enableCache(Path compilationDirectory, int luaVmCache2MaxFiles) {
         synchronized (enableCacheLockObj) {
             if (isCacheActive())
                 throw new RuntimeException("Cache has already been set up!");
+
+            compilationCacheSize = luaVmCache2MaxFiles;
 
             // given path must be a directory
             if (!Files.isDirectory(compilationDirectory))
@@ -177,6 +182,71 @@ public class PersistentJavaCompilationCache {
             }
         }
 
+        pruneCacheIfNeeded();
         // TODO remove oldest files if we are running out of cache space (i.e. are storing too many files already)
+    }
+
+    private static final AtomicBoolean alreadyPruning = new AtomicBoolean(false);
+
+    private static void pruneCacheIfNeeded() {
+
+        // check if some thread is already running this method; if so, skip execution
+        // this way we do not block multiple threads for prune actions ever
+        if (alreadyPruning.compareAndExchange(false, true)) return;
+        try {
+            // prune on-disk files
+            ArrayList<Path> validCacheFiles = new ArrayList<>();
+            try (Stream<Path> stream = Files.walk(compilationCacheFolder)) {
+                stream.forEach(path -> {
+                    if (path.equals(compilationCacheFolder))
+                        return;
+
+                    if (Files.isRegularFile(path) && path.toString().endsWith(cacheFileExtension)) {
+                        validCacheFiles.add(path);
+                    }
+                });
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+
+            // sort ASCENDING by age
+            validCacheFiles.sort(Comparator.comparingLong(x -> {
+                try {
+                    return Files.getLastModifiedTime(x).toMillis();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }));
+
+            // so now just delete the oldest excess cache files
+            var filesToDelete = validCacheFiles.size() - compilationCacheSize;
+            if (filesToDelete > 0) {
+                for (int i = 0; i < filesToDelete; i++) {
+                    try {
+                        Files.delete(validCacheFiles.get(i));
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+
+            // prune backing hashmap
+            var hashmapItemsToRemove = backing.size() - compilationCacheSize;
+            if (hashmapItemsToRemove > 0) {
+                for (String backingKey : backing.keySet()) {
+                    if (backing.remove(backingKey) != null) {
+                        hashmapItemsToRemove--;
+                        if (hashmapItemsToRemove <= 0)
+                            break;
+                    }
+                }
+
+                // if true, we somehow didnt find enough removable elements in the hashmap which should never happen unless we prune concurrently
+                if (hashmapItemsToRemove > 0)
+                    throw new RuntimeException("Somehow we were unable to prune the backing hashmap of cache2");
+            }
+        } finally {
+            alreadyPruning.set(false);
+        }
     }
 }
