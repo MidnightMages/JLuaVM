@@ -2823,4 +2823,23 @@ public class VmTest extends BaseVmTest {
                 return a
                 """, LuaObject.of(1));
     }
+
+    @Test
+    void loadMeta53PlusEdgecase() {
+        loadAssertSuccessAndRv("""
+                _G = setmetatable({}, {
+                  __index = _G,
+                  __metatable = "NOPE"
+                })
+                
+                f, err = load([[
+                  return "load->mt:"..tostring(getmetatable(_G))
+                  ]],"inner", "t")
+                
+                assert(f)
+                rv="real->mt:"..getmetatable(_G)
+                rv=rv..";"..f()
+                return rv
+                """, LuaObject.of("real->mt:NOPE;load->mt:NOPE"));
+    }
 }
