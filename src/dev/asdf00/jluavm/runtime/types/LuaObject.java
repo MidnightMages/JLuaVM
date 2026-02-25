@@ -1065,7 +1065,7 @@ public final class LuaObject {
     /**
      * Serializes this object into serialData and adds a mapping into mappedObjs and returns its own index in serialData.
      */
-    public int serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs) {
+    public int serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs, Object additionalData) {
         if (mappedObjs.containsKey(this)) {
             return mappedObjs.get(this);
         }
@@ -1100,22 +1100,22 @@ public final class LuaObject {
                 // reserve space in serialData
                 serialData.add(null);
                 var bb = new ByteArrayBuilder().append(Types.FUNCTION);
-                getFunc().serialize(serialData, mappedObjs, bb);
+                getFunc().serialize(serialData, mappedObjs, bb, additionalData);
                 serialData.set(ownIdx, bb.toArray());
             }
             case Types.USERDATA -> {
                 serialData.add(null);
                 var ud = ((LuaUserData) refVal);
                 var bb = new ByteArrayBuilder().append(Types.USERDATA)
-                        .append(LuaObject.of(ud.getClass().getName()).serialize(serialData, mappedObjs))
-                        .appendAll(ud.luaSerialize(serialData, mappedObjs));
+                        .append(LuaObject.of(ud.getClass().getName()).serialize(serialData, mappedObjs, additionalData))
+                        .appendAll(ud.luaSerialize(serialData, mappedObjs, additionalData));
                 serialData.set(ownIdx, bb.toArray());
             }
             case Types.THREAD -> {
                 // reserve space in serialData
                 serialData.add(null);
                 var bb = new ByteArrayBuilder().append(Types.THREAD);
-                asCoroutine().serialize(serialData, mappedObjs, bb);
+                asCoroutine().serialize(serialData, mappedObjs, bb, additionalData);
                 serialData.set(ownIdx, bb.toArray());
             }
             case Types.TABLE -> {
@@ -1125,14 +1125,14 @@ public final class LuaObject {
                 bb.append(Types.TABLE);
                 bb.append(metaTable == null
                         ? -1 // invalid obj index to indicate null
-                        : metaTable.serialize(serialData, mappedObjs));
+                        : metaTable.serialize(serialData, mappedObjs, additionalData));
                 var map = asMap();
                 for (var k : map.keys()) {
                     assert !k.isArray();
-                    bb.append(k.serialize(serialData, mappedObjs));
+                    bb.append(k.serialize(serialData, mappedObjs, additionalData));
                     LuaObject v = map.getOrDefault(k, NIL);
                     assert !v.isArray() && !v.isNil();
-                    bb.append(v.serialize(serialData, mappedObjs));
+                    bb.append(v.serialize(serialData, mappedObjs, additionalData));
                 }
                 // fixup in serialData
                 serialData.set(ownIdx, bb.toArray());
@@ -1143,14 +1143,14 @@ public final class LuaObject {
                 var bb = new ByteArrayBuilder();
                 bb.append(Types.ARRAY);
                 for (var v : asArray()) {
-                    bb.append(v == null ? -1 : v.serialize(serialData, mappedObjs));
+                    bb.append(v == null ? -1 : v.serialize(serialData, mappedObjs, additionalData));
                 }
                 serialData.set(ownIdx, bb.toArray());
             }
             case Types.BOX -> {
                 // reserve space in serialData
                 serialData.add(null);
-                int containing = unbox().serialize(serialData, mappedObjs);
+                int containing = unbox().serialize(serialData, mappedObjs, additionalData);
                 serialData.set(ownIdx, new ByteArrayBuilder(8)
                         .append(Types.BOX)
                         .append(containing)

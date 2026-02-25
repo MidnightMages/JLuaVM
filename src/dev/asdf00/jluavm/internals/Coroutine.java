@@ -6,10 +6,7 @@ import dev.asdf00.jluavm.utils.ByteArrayBuilder;
 import dev.asdf00.jluavm.utils.ByteArrayReader;
 import dev.asdf00.jluavm.utils.Tuple;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Stack;
+import java.util.*;
 
 import static dev.asdf00.jluavm.runtime.utils.StateDeserializer.maybeNull;
 
@@ -58,20 +55,20 @@ public final class Coroutine {
         return r;
     }
 
-    public void serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs, ByteArrayBuilder bb) {
-        bb.append(LuaObject.of(rootFunc).serialize(serialData, mappedObjs))
+    public void serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs, ByteArrayBuilder bb, Object additionalData) {
+        bb.append(LuaObject.of(rootFunc).serialize(serialData, mappedObjs, additionalData))
                 .append(rootFail)
                 .append(rootReturned == null
                         ? -1 // null
-                        : LuaObject.of(rootReturned).serialize(serialData, mappedObjs))
+                        : LuaObject.of(rootReturned).serialize(serialData, mappedObjs, additionalData))
                 .append((byte) state.ordinal())
                 .append(isYieldable)
                 .append(yieldTo == null
                         ? -1 // null
-                        : yieldTo.selfLuaObject.serialize(serialData, mappedObjs));
+                        : yieldTo.selfLuaObject.serialize(serialData, mappedObjs, additionalData));
 
         for (int i = 0; i < luaCallStack.size(); i++) {
-            var functionFrameBytes = luaCallStack.get(i).serialize(serialData, mappedObjs);
+            var functionFrameBytes = luaCallStack.get(i).serialize(serialData, mappedObjs, additionalData);
             bb.append(functionFrameBytes.length).appendAll(functionFrameBytes);
         }
     }

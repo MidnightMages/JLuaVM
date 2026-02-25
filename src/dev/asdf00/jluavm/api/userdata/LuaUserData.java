@@ -5,6 +5,7 @@ import dev.asdf00.jluavm.runtime.types.LuaObject;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 
 public interface LuaUserData {
     /**
@@ -66,5 +67,5 @@ public interface LuaUserData {
      *
      * @return a non-null serial byte[] representation of this userdata object.
      */
-    byte[] luaSerialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs);
+    byte[] luaSerialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs, Object additionalData);
 }

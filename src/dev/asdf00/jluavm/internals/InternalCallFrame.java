@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Queue;
 
 public final class InternalCallFrame extends AbstractCallStackFrame {
     private final LFunc callable;
@@ -43,15 +44,15 @@ public final class InternalCallFrame extends AbstractCallStackFrame {
         init();
     }
 
-    public byte[] serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs) {
+    public byte[] serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs, Object additionalData) {
         var bb = new ByteArrayBuilder();
-        serialize(serialData, mappedObjs, bb);
+        serialize(serialData, mappedObjs, bb, additionalData);
         if (arguments == null) {
             bb.append(-1);
         } else {
             bb.append(arguments.length);
             for (var lo : arguments) {
-                bb.append(lo.serialize(serialData, mappedObjs));
+                bb.append(lo.serialize(serialData, mappedObjs, additionalData));
             }
         }
         bb.appendAll(funcName.getBytes(StandardCharsets.UTF_8));

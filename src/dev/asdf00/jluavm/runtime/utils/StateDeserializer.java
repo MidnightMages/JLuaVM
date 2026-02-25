@@ -16,9 +16,7 @@ import dev.asdf00.jluavm.utils.Tuple;
 
 import java.lang.reflect.Constructor;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 
 public class StateDeserializer {
@@ -27,7 +25,7 @@ public class StateDeserializer {
      * @return a pair of coroutines, the first one being the root coroutine, the second one being the current coroutine
      * of the given state. Additionally, the isErroring flag of the vm state is returned.
      */
-    public static Quadruple<Coroutine, Coroutine, Boolean, Boolean> deserialize(Map<String, ApiFunctionRegistry> registries, byte[] rawState) {
+    public static Quadruple<Coroutine, Coroutine, Boolean, Boolean> deserialize(Map<String, ApiFunctionRegistry> registries, byte[] rawState, Object additionalData) {
         var reader = new ByteArrayReader(rawState);
         if (reader.readInt() != LuaVM_RT.STATE_SERIALIZATION_VERSION) {
             throw new IllegalArgumentException("mismatch in serialization version");
@@ -209,7 +207,7 @@ public class StateDeserializer {
 
         // resolve userdata last
         // TODO allow post actions
-        // Queue<Runnable> postActions = new ArrayDeque<>();
+        Queue<Runnable> postActions = new ArrayDeque<>();
         for (int i = 0; i < delayed.length; i++) {
             var lobj = objs[i];
             if (lobj.type != LuaObject.Types.USERDATA) {
@@ -218,17 +216,14 @@ public class StateDeserializer {
             var rdr = delayed[i];
             String clName = objs[rdr.readInt()].asString();
             var clazz = LuaVM_RT.getUserdataClass(clName);
-            var instance = LuaVM_RT.getDescriptor(clazz).deserialize(objs, rdr);
-            // var instance = LuaVM_RT.getDescriptor(clazz).deserialize(objs, rdr, postActions);
+            var instance = LuaVM_RT.getDescriptor(clazz).deserialize(objs, rdr, postActions, additionalData);
             lobj.refVal = instance;
         }
 
-        /*-
         // second round of userdata deserialization
         for (var action : postActions) {
             action.run();
         }
-         */
 
         return new Quadruple<>(objs[rootCoIdx].asCoroutine(), objs[curCoIdx].asCoroutine(), isErroring, stopRequested);
     }

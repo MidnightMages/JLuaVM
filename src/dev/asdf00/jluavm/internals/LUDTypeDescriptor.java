@@ -12,6 +12,7 @@ import dev.asdf00.jluavm.internals.javac.LUDCompanionClassLoader;
 import dev.asdf00.jluavm.runtime.types.LuaJavaApiFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.utils.ByteArrayReader;
+import dev.asdf00.jluavm.utils.QuadFunction;
 import dev.asdf00.jluavm.utils.Tuple;
 
 import java.lang.reflect.Field;
@@ -19,7 +20,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -28,7 +28,7 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
 
     public final Class<T> type;
 
-    private final BiFunction<LuaObject[], ByteArrayReader, T> deserializer;
+    private final QuadFunction<LuaObject[], ByteArrayReader, Queue<Runnable>, Object, T> deserializer;
     private final Map<String, LuaObject> methods;
     private final Map<String, Function<T, LuaObject>> getters;
     private final Map<String, BiConsumer<T, LuaObject>> setters;
@@ -42,7 +42,7 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
     private final LuaObject[] metaFunctions;
 
     private LUDTypeDescriptor(Class<T> type,
-                              BiFunction<LuaObject[], ByteArrayReader, T> deserializer,
+                              QuadFunction<LuaObject[], ByteArrayReader, Queue<Runnable>, Object, T> deserializer,
                               Map<String, LuaObject> methods,
                               Map<String, Function<T, LuaObject>> getters,
                               Map<String, BiConsumer<T, LuaObject>> setters) {
@@ -54,8 +54,8 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
         metaFunctions = new LuaObject[27];
     }
 
-    public T deserialize(LuaObject[] objs, ByteArrayReader reader) {
-        return deserializer.apply(objs, reader);
+    public T deserialize(LuaObject[] objs, ByteArrayReader reader, Queue<Runnable> postAction, Object additionalData) {
+        return deserializer.apply(objs, reader, postAction, additionalData);
     }
 
     public LuaJavaApiFunction getFunc(String name) {
@@ -189,7 +189,7 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
             }
 
             return new LUDTypeDescriptor<>(type,
-                    (BiFunction<LuaObject[], ByteArrayReader, T>) companion.getField("deserializer").get(null),
+                    (QuadFunction<LuaObject[], ByteArrayReader, Queue<Runnable>, Object, T>) companion.getField("deserializer").get(null),
                     funcs,
                     (Map<String, Function<T, LuaObject>>) companion.getField("getters").get(null),
                     (Map<String, BiConsumer<T, LuaObject>>) companion.getField("setters").get(null));
@@ -216,8 +216,10 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
                     throw new LuaUserDataApiBuildingException("deserializer for '%s' must be static".formatted(type.getName()));
                 }
                 var params = m.getParameterTypes();
-                if (params.length != 2 || !params[0].equals(LuaObject[].class) || !params[1].isAssignableFrom(ByteArrayReader.class)) {
-                    throw new LuaUserDataApiBuildingException("deserializer for '%s' must be have parameters LuaObject[] and ByteArrayReader".formatted(type.getName()));
+                if (params.length != 4 || !params[0].equals(LuaObject[].class) || !params[1].isAssignableFrom(ByteArrayReader.class) ||
+                        !params[2].isAssignableFrom(Queue.class) || !params[3].isAssignableFrom(Object.class)) {
+                    throw new LuaUserDataApiBuildingException(
+                            "deserializer for '%s' must be have parameters LuaObject[], ByteArrayReader, Queue<Runnable> and Object".formatted(type.getName()));
                 }
                 if (!type.isAssignableFrom(m.getReturnType())) {
                     throw new LuaUserDataApiBuildingException("deserializer for '%s' must return a type compatible with itself".formatted(type.getName()));
@@ -474,7 +476,7 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
                 sb.append("ud.").append(name).append(" = ");
                 if (LuaUserData.class.isAssignableFrom(fType)) {
                     sb.append("lo2ud(").append(resolveTrueClassName(fType)).append(".class, val)");
-                } else if(Enum.class.isAssignableFrom(fType)) {
+                } else if (Enum.class.isAssignableFrom(fType)) {
                     sb.append("lo2en(").append(resolveTrueClassName(fType)).append(".class, val)");
                 } else {
                     verifyAsLuaConvertible(false, false, fType);
@@ -504,15 +506,17 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
                     import dev.asdf00.jluavm.runtime.types.LuaObject;
                     import dev.asdf00.jluavm.runtime.utils.Singletons;
                     import dev.asdf00.jluavm.utils.ByteArrayReader;
+                    import dev.asdf00.jluavm.utils.QuadFunction;
                     
                     import java.util.Arrays;
                     import java.util.Map;
+                    import java.util.Queue;
                     import java.util.function.*;
                     
                     import static dev.asdf00.jluavm.runtime.utils.UDTranslators.*;
                     
                     public class %s {
-                    public static final BiFunction<LuaObject[], ByteArrayReader, LuaUserData> deserializer = %s::%s;
+                    public static final QuadFunction<LuaObject[], ByteArrayReader, Queue<Runnable>, Object, LuaUserData> deserializer = %s::%s;
                     
                     public static final Map<String, LLVaMultiFunction> functions = Map.of(
                     %s

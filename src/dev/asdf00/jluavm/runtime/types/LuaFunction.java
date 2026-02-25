@@ -13,6 +13,7 @@ import dev.asdf00.jluavm.utils.ByteArrayBuilder;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 
 @SuppressWarnings("unused")
 public abstract sealed class LuaFunction permits AbstractGeneratedLuaFunction, LuaJavaApiFunction {
@@ -56,7 +57,7 @@ public abstract sealed class LuaFunction permits AbstractGeneratedLuaFunction, L
     /**
      * This method serializes the function into the provided byte array builder.
      */
-    public void serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs, ByteArrayBuilder bb) {
+    public void serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs, ByteArrayBuilder bb, Object additionalData) {
         throw new UnsupportedOperationException("Unimplemented parent");
     }
 

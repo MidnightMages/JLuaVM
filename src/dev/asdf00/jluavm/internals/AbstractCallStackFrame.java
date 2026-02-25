@@ -6,6 +6,7 @@ import dev.asdf00.jluavm.utils.ByteArrayReader;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Stack;
 
 import static dev.asdf00.jluavm.runtime.utils.StateDeserializer.maybeNull;
@@ -50,23 +51,23 @@ public abstract sealed class AbstractCallStackFrame permits FunctionCallFrame, I
         assert closables.isEmpty();
     }
 
-    protected void serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs, ByteArrayBuilder bb) {
-        bb.append(LuaObject.of(locals).serialize(serialData, mappedObjs))
+    protected void serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs, ByteArrayBuilder bb, Object additionalData) {
+        bb.append(LuaObject.of(locals).serialize(serialData, mappedObjs, additionalData))
                 .append(startLocals)
                 .append(localCnt)
                 .append(curInlinedLocalCnt)
                 .append(resume)
                 .append(expressionStack == null
                         ? -1
-                        : LuaObject.of(expressionStack).serialize(serialData, mappedObjs))
+                        : LuaObject.of(expressionStack).serialize(serialData, mappedObjs, additionalData))
                 .append(rvals == null
                         ? -1
-                        : LuaObject.of(rvals).serialize(serialData, mappedObjs));
+                        : LuaObject.of(rvals).serialize(serialData, mappedObjs, additionalData));
 
         int size = closables.size();
         bb.append(size);
         for (int i = 0; i < size; i++) {
-            bb.append(closables.get(i).serialize(serialData, mappedObjs));
+            bb.append(closables.get(i).serialize(serialData, mappedObjs, additionalData));
         }
     }
 

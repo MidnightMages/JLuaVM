@@ -8,10 +8,7 @@ import dev.asdf00.jluavm.runtime.utils.LFunc;
 import dev.asdf00.jluavm.utils.ByteArrayBuilder;
 import dev.asdf00.jluavm.utils.ByteArrayReader;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Stack;
+import java.util.*;
 
 public final class FunctionCallFrame extends AbstractCallStackFrame {
     public final LuaFunction lFunc;
@@ -115,26 +112,26 @@ public final class FunctionCallFrame extends AbstractCallStackFrame {
         throw new InternalLuaRuntimeError("Closable stack is empty!");
     }
 
-    public byte[] serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs) {
+    public byte[] serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs, Object additionalData) {
         var bb = new ByteArrayBuilder();
-        serialize(serialData, mappedObjs, bb);
-        bb.append(LuaObject.of(lFunc).serialize(serialData, mappedObjs))
+        serialize(serialData, mappedObjs, bb, additionalData);
+        bb.append(LuaObject.of(lFunc).serialize(serialData, mappedObjs, additionalData))
                 .append(failCnt)
                 .append(isResumable)
                 .append(isProtected);
         if (msgHandler == null) {
             bb.append(-1);
         } else {
-            bb.append(LuaObject.of(msgHandler).serialize(serialData, mappedObjs));
+            bb.append(LuaObject.of(msgHandler).serialize(serialData, mappedObjs, additionalData));
         }
 
         bb.append(lastLine)
-                .append(LuaObject.of(lastName).serialize(serialData, mappedObjs))
+                .append(LuaObject.of(lastName).serialize(serialData, mappedObjs, additionalData))
                 .append(tailCalled);
 
         // serialize inner scopes
         for (int i = 0; i < scopes.size(); i++) {
-            var innerBytes = scopes.get(i).serialize(serialData, mappedObjs);
+            var innerBytes = scopes.get(i).serialize(serialData, mappedObjs, additionalData);
             bb.append(innerBytes.length).appendAll(innerBytes);
         }
 

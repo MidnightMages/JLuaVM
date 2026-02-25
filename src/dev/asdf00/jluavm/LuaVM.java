@@ -66,7 +66,11 @@ public abstract class LuaVM {
 
     public abstract VmResult runContinue();
 
-    public abstract byte[] serialize();
+    public final byte[] serialize() {
+        return serialize(null);
+    }
+
+    public abstract byte[] serialize(Object additionalData);
 
     public void requestStop() {
         requestedStop = true;

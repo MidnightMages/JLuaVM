@@ -66,11 +66,15 @@ public class VmBuilder {
     }
 
     public DeserializedVmBuilder fromState(byte[] state) {
+        return fromState(state, null);
+    }
+
+    public DeserializedVmBuilder fromState(byte[] state, Object additionalData) {
         if (!noStd) {
             var stdReg = initStdReg();
             registries.put(stdReg.registryID(), stdReg);
         }
-        var deState = StateDeserializer.deserialize(registries, state);
+        var deState = StateDeserializer.deserialize(registries, state, additionalData);
         return new DeserializedVmBuilder(this, deState);
     }
 
