@@ -5,7 +5,6 @@ import dev.asdf00.jluavm.runtime.types.LuaObject;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 
 public interface LuaUserData {
     /**
@@ -59,6 +58,28 @@ public interface LuaUserData {
      */
     default boolean luaCallGuard(String name, LuaObject[] arguments) {
         return true;
+    }
+
+    /**
+     * To ensure equality for USERDATA objects in the LUA VM, a userdata object may provide a back reference to its own
+     * LUA object. This method is queried on {@link LuaObject#of(LuaUserData)}, to possibly provide its identity. If no
+     * LUA object is returned here, a new one is created and {@link LuaUserData#setSelfAsLuaObject(LuaObject)} is called
+     * with the newly created identity.
+     *
+     * @return itself as a LuaObject or {@code null}.
+     */
+    default LuaObject getSelfAsLuaObject() {
+        return null;
+    }
+
+    /**
+     * On creation of a new LUA object for this userdata object, the new object is passed to this method. If equality is
+     * important, please store this value to be returned on the next call to {@link LuaUserData#getSelfAsLuaObject()}.
+     *
+     * @param self its own LUA object.
+     */
+    default void setSelfAsLuaObject(LuaObject self) {
+        // empty default implementation to make this method optional
     }
 
     /**
