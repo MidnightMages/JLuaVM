@@ -4,11 +4,12 @@ import dev.asdf00.jluavm.api.functions.AtomicLuaFunction;
 import dev.asdf00.jluavm.api.functions.MixedStateFunctionRegistry;
 import dev.asdf00.jluavm.exceptions.LuaJavaError;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
+import dev.asdf00.jluavm.runtime.stdlib.patternMatching.FindResult;
 import dev.asdf00.jluavm.runtime.stdlib.patternMatching.PatternMatchingImpl;
-import dev.asdf00.jluavm.runtime.types.LuaJavaApiFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 import static dev.asdf00.jluavm.runtime.types.LuaObject.Types.*;
 import static dev.asdf00.jluavm.runtime.utils.RTUtils.funcArgAnyTypeError;
@@ -125,7 +126,7 @@ public class LString {
                         return null;
                     }
                     if (!init.hasLongRepr()) {
-                        vm.error(funcArgTypeError("string.gmatch", 1, pattern, "integer"));
+                        vm.error(funcArgTypeError("string.gmatch", 2, pattern, "integer"));
                         return null;
                     }
 
@@ -148,7 +149,7 @@ public class LString {
 
                     String patternString = pattern.getString();
                     if (patternString.startsWith("^"))
-                            patternString = "%"+patternString;
+                        patternString = "%" + patternString;
 
                     final String patternString_f = patternString;
                     int[] matchStartPosClosured = new int[] {(int)matchStartPos};
@@ -168,6 +169,91 @@ public class LString {
                         }
                         return extRes.matchResult();
                     }).obj();
+                }));
+
+        registry.register(STRING_PREFIX + "gsub",
+                AtomicLuaFunction.vaForManyResults(registry, (vm, va) -> {
+                    var s = va.length > 0 ? va[0] : null;
+                    var pattern = va.length > 1 ? va[1] : null;
+                    var repl = va.length > 2 ? va[2] : null;
+                    var nReplacements = va.length > 3 ? va[3] : LuaObject.NIL; // max number of replacements
+                    if (s == null || !s.isType(NUMBER | STRING)) {
+                        vm.error(funcArgAnyTypeError("string.gsub", 0, s, "string", "number"));
+                        return null;
+                    }
+                    if (pattern == null || !pattern.isType(NUMBER | STRING)) {
+                        vm.error(funcArgAnyTypeError("string.gsub", 1, pattern, "string", "number"));
+                        return null;
+                    }
+
+                    // TODO support tables and functions for replacements (see ref manual https://www.lua.org/manual/5.4/manual.html#pdf-string.gsub )
+                    if (repl == null || !repl.isType(NUMBER | STRING)) {
+                        vm.error(funcArgAnyTypeError("string.gsub", 2, pattern, "string", "number"));
+                        return null;
+                    }
+                    if (!nReplacements.isNil() && !nReplacements.hasLongRepr()) {
+                        vm.error(funcArgTypeError("string.gsub", 3, pattern, "integer"));
+                        return null;
+                    }
+
+                    String currentInputString = s.asString();
+                    String replacementString = repl.asString();
+                    String patternString = pattern.asString();
+//                    if (patternString.startsWith("^"))
+//                        patternString = "%"+patternString;
+
+                    StringBuilder rv = new StringBuilder();
+                    var maxReplacements = nReplacements.isNil() ? Integer.MAX_VALUE : nReplacements.asLong();
+                    int numberOfTotalMatchesThatOccurred = 0;
+                    int currentStartPos = 0;
+                    for (int i = 0; i < maxReplacements; i++) {
+                        if (currentStartPos >= currentInputString.length())
+                            break;
+
+                        var extRes = PatternMatchingImpl.lua_match_extended(currentInputString, patternString, currentStartPos);
+                        if (!extRes.res().success()) { // no more matches --> finish up and return
+                            break;
+                        }
+                        // there was a match
+                        numberOfTotalMatchesThatOccurred++;
+                        FindResult findRes = extRes.res();
+
+                        // add the original string thats before our match
+                        if (currentStartPos != findRes.start())
+                            rv.append(currentInputString, currentStartPos, findRes.start());
+
+                        // then add the replacement
+                        var p = Pattern.compile("%(\\d|%)", Pattern.DOTALL);
+                        String currentReplacement = p.matcher(replacementString)
+                                .replaceAll(mr -> {
+                                    if (mr.group().equals("%%"))
+                                        return "%";
+                                    var captureGroupId = Integer.parseInt(mr.group().substring(1));
+
+                                    // 0 is the whole match always, but so is 1 if the pattern does not contian any captures
+                                    if (captureGroupId == 0 ||
+                                        captureGroupId == 1 && findRes.captures().length == 0) {
+                                        return currentInputString.substring(findRes.start(), findRes.end());
+                                    }
+                                    return findRes.captures()[captureGroupId - 1];
+                                });
+
+                        rv.append(currentReplacement);
+
+                        // and advance the next matchpos
+                        if (findRes.end() == currentStartPos)
+                            currentStartPos = findRes.end() + 1;
+                        else
+                            currentStartPos = findRes.end();
+
+                        // TODO, here query the replacement function/table for a value to put in. For now we just use the supplied string
+
+                    }
+                    // no more matches --> finish up and return
+                    if (currentStartPos < currentInputString.length())
+                        rv.append(currentInputString.substring(currentStartPos));
+
+                    return new LuaObject[]{LuaObject.of(rv.toString()), LuaObject.of(numberOfTotalMatchesThatOccurred)};
                 }));
 
         registry.register(STRING_PREFIX + "len",
