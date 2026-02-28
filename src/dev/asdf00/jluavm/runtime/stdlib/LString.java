@@ -29,14 +29,17 @@ public class LString {
     public static void registerStdString(MixedStateFunctionRegistry registry) {
         /* TODO, add the following ones: https://www.lua.org/manual/5.4/manual.html#6.4
         string.dump(function [, strip])
-        string.find(s, pattern [, init [, plain]])
         string.format(formatstring, ···)
-        string.gmatch(s, pattern [, init])
-        string.gsub(s, pattern, repl [, n])
-        string.match(s, pattern [, init])
         string.pack(fmt, v1, v2, ···)
         string.packsize(fmt)
         string.unpack(fmt, s [, pos])
+         */
+
+        /* these ones need to be fixed as some tests still fail, or there are missing features:
+        string.find(s, pattern [, init [, plain]])
+        string.gmatch(s, pattern [, init])
+        string.gsub(s, pattern, repl [, n]) // missing feature: pattern cannot be a function or table
+        string.match(s, pattern [, init])
          */
 
         registry.register(STRING_PREFIX + "byte",
