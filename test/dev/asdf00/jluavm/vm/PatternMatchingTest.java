@@ -716,7 +716,7 @@ public class PatternMatchingTest extends BaseVmTest {
 
 
     @Test
-    void broadGsub_failingBits() {
+    void broadGsub2() {
         loadAssertSuccessAndRv("""
                 local rv = ""
                 local text = "Blabla Bee bee bumblebee banana.%123af"
@@ -736,13 +736,37 @@ public class PatternMatchingTest extends BaseVmTest {
                 appendResult(string.gsub(text, "(%w*)" , "%1 %1"))
                 appendResult(string.gsub(text, "(%w-)" , "%1 %1"))
                 appendResult(string.gsub(text, "(%w?)%1" , "%1 %1"))
-                appendResult(string.gsub(text, "(%f[abc])" , ">%1<"))
                 
                 return rv
                 """, LuaObject.of("""
                 Blabla Blabla Bee Bee bee bee bumblebee bumblebee banana banana. %123af 123af|7
                  B l a b l a   B e e   b e e   b u m b l e b e e   b a n a n a . % 1 2 3 a f |39
                  B l a b l a   Be e  be e  b u m b l e be e  b a n a n a . % 1 2 3 a f |33
+                """));
+    }
+
+    @Test
+    void broadGsub2_failingBits() {
+        loadAssertSuccessAndRv("""
+                local rv = ""
+                local text = "Blabla Bee bee bumblebee banana.%123af"
+                local premadePattern = "bee"
+                local patternOptions = {"a", "b", "c", "d", "e", "f", "g", ".", "%a", "%c", "%d", "%g",
+                  "%l", "%p", "%s", "%u", "%w", "%x", "%%", "%.", " ", "[ ]", " [abc]",
+                  " [^abc]", " [%l]", " [^%l]", "%A", "%C", "%D", "%G", "%L", "%P", "%S",
+                  "%U", "%W", "%X" --[[, "()"]]}
+
+                local function appendResult(...)
+                  local tbl = {...}
+                  local sres = ""
+                  for _,v in ipairs(tbl) do sres = sres .. tostring(v) .. "|" end
+                  rv = rv .. sres:sub(1,-2) .. "\\n"
+                end
+                
+                appendResult(string.gsub(text, "(%f[abc])" , ">%1<"))
+                
+                return rv
+                """, LuaObject.of("""
                 Bl><abl><a Bee ><bee ><bum><ble><bee ><ban><an><a.%123><af|10
                 """));
     }
