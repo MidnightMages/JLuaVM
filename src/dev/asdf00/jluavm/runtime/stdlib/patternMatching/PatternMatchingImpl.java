@@ -481,15 +481,19 @@ public class PatternMatchingImpl {
 
     // LUA BINDINGS
     public static LuaObject[] lua_match(String s, String pattern, int startIndex) {
-        return lua_match_extended(s,pattern,startIndex).matchResult();
+        return lua_match_extended(s, pattern, startIndex, false).matchResult();
     }
 
     public record ExtendedMatchResult(LuaObject[] matchResult, FindResult res) {
     }
 
     public static ExtendedMatchResult lua_match_extended(String s, String pattern, int startIndex) {
+        return lua_match_extended(s, pattern, startIndex, false);
+    }
+
+    public static ExtendedMatchResult lua_match_extended(String s, String pattern, int startIndex, boolean isPlainSearch) {
         assert startIndex >= 0;
-        FindResult resRaw = find(s.substring(startIndex), pattern, false);
+        FindResult resRaw = find(s.substring(startIndex), pattern, isPlainSearch);
         FindResult res = resRaw.adjustForStartIndex(startIndex);
 
         if (!res.success())

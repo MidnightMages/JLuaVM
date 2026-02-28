@@ -7,6 +7,7 @@ import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.runtime.stdlib.patternMatching.PatternMatchingImpl;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 
+import java.util.ArrayList;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
@@ -76,6 +77,64 @@ public class LString {
                     return LuaObject.of(r2.toString());
                 }));
 
+        registry.register(STRING_PREFIX + "find",
+                AtomicLuaFunction.vaForManyResults(registry, (vm, va) -> {
+                    var s = va.length > 0 ? va[0] : null;
+                    var pattern = va.length > 1 ? va[1] : null;
+                    var init = va.length > 2 ? va[2] : LuaObject.of(1); // startIndex
+                    var plain = va.length > 3 ? va[3] : LuaObject.NIL; // startIndex
+                    if (s == null || !s.isType(NUMBER | STRING)) {
+                        vm.error(funcArgAnyTypeError("string.find", 0, s, "string", "number"));
+                        return null;
+                    }
+                    if (pattern == null || !pattern.isType(NUMBER | STRING)) {
+                        vm.error(funcArgAnyTypeError("string.find", 1, pattern, "string", "number"));
+                        return null;
+                    }
+                    if (!init.hasLongRepr()) {
+                        vm.error(funcArgTypeError("string.find", 2, init, "integer"));
+                        return null;
+                    }
+                    if (!plain.isBoolean() && !plain.isNil()) {
+                        vm.error(funcArgTypeError("string.find", 3, plain, "boolean"));
+                        return null;
+                    }
+                    boolean isPlainSearch = plain.isTruthy();
+
+                    var inputStr = s.getString();
+                    var searchStartIndex = init.isNil() ? 0 : init.asLong();
+                    if (searchStartIndex < 0) // negatives go from the back, -1 being the last letter
+                        searchStartIndex += inputStr.length() + 1;
+                    else if (searchStartIndex == 0) { // startpos 0 is interpreted as startpos 1, aka the default value
+                        searchStartIndex++;
+                    }
+                    searchStartIndex--; // convert to java index
+                    if (searchStartIndex < 0) // if it is too small, make it start at 0
+                        searchStartIndex = 0;
+
+                    if (searchStartIndex > Integer.MAX_VALUE)
+                        throw new LuaJavaError("searchStartIndex too large");
+
+                    var patternString = pattern.getString();
+                    var match = PatternMatchingImpl.lua_match_extended(inputStr, patternString, (int) searchStartIndex, isPlainSearch);
+                    var res = match.res();
+                    if (res.success()) {
+                        // return start and end index and capture-values
+                        var rv = new ArrayList<LuaObject>();
+                        rv.add(LuaObject.of(res.start() + 1));
+                        rv.add(LuaObject.of(res.end()));
+                        if (res.captures() != null && !isPlainSearch &&
+                            patternString.replaceAll("%([%(])", "").contains("(")) // if we have captures and pattern wanted to capture some
+                            for (int i = 0; i < res.captures().length; i++) {
+                                rv.add(LuaObject.of(res.captures()[i]));
+                            }
+
+                        return rv.toArray(LuaObject[]::new);
+                    } else {
+                        return new LuaObject[]{LuaObject.NIL};
+                    }
+                }));
+
         registry.register(STRING_PREFIX + "match",
                 AtomicLuaFunction.vaForManyResults(registry, (vm, va) -> {
                     var s = va.length > 0 ? va[0] : null;
@@ -108,7 +167,7 @@ public class LString {
                     if (searchStartIndex > Integer.MAX_VALUE)
                         throw new LuaJavaError("searchStartIndex too large");
 
-                    return PatternMatchingImpl.lua_match(inputStr, pattern.getString(), (int)searchStartIndex);
+                    return PatternMatchingImpl.lua_match(inputStr, pattern.getString(), (int) searchStartIndex);
                 }));
 
         registry.register(STRING_PREFIX + "gmatch",

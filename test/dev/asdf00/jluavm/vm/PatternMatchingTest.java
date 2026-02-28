@@ -4,15 +4,6 @@ import dev.asdf00.jluavm.runtime.types.LuaObject;
 import org.junit.jupiter.api.Test;
 
 public class PatternMatchingTest extends BaseVmTest {
-    private static final String globalImpls = """
-                string.gmatch = function(s, pattern, initPos)
-                    local startPos = initPos
-                    while true do
-                         string.match(s, pattern, startPos)
-                    end
-                end
-            """;
-
     @Test
     void gmatchIndexExtraction() {
         loadAssertSuccessAndRv("""
@@ -60,7 +51,7 @@ public class PatternMatchingTest extends BaseVmTest {
                     appendResult(string.gsub(text, "^Bla" , ">%1<"))
                     appendResult(string.gsub(text, "af$" , ">%1<"))
                     --appendResult(string.gsub("abc", "()a*()", "%1 %2"))
-                                
+
                     return rv
                 """, LuaObject.of("""
                 Blabla Bee bee bumblebee banana.%123af|0
@@ -482,7 +473,7 @@ public class PatternMatchingTest extends BaseVmTest {
                 appendResult(string.match(text, "^Bla"))
                 appendResult(string.match(text, "af$"))
                 --appendResult(string.match("abc", "()a*()"))
-                                
+
                 return rv
                 """, LuaObject.of("""
                 _.
@@ -639,6 +630,226 @@ public class PatternMatchingTest extends BaseVmTest {
                 .
                 .Bla
                 .af
+                """));
+    }
+
+    @Test
+    void broadStringFind() {
+        loadAssertSuccessAndRv("""
+                local rv = "_"
+                local text = "Blabla Bee bee bumblebee banana.%123af"
+                local premadePattern = "bee"
+                local patternOptions = {"a", "b", "c", "d", "e", "f", "g", ".", "%a", "%c", "%d", "%g",
+                  "%l", "%p", "%s", "%u", "%w", "%x", "%%", "%.", " ", "[ ]", " [abc]",
+                  " [^abc]", " [%l]", " [^%l]", "%A", "%C", "%D", "%G", "%L", "%P", "%S",
+                  "%U", "%W", "%X"--[[, "()"]]}
+
+                local function appendResult(...)
+                  local tbl = {...}
+                  local sres = ""
+                  for _,v in ipairs(tbl) do sres = sres .. tostring(v) .. "|" end
+                  rv = rv ..".".. sres:sub(1,-2) .. "\\n"
+                end
+
+                for _,p in ipairs(patternOptions) do
+                  appendResult(string.find(text, premadePattern..p))
+                  appendResult(string.find(text, p..premadePattern))
+                  appendResult(string.find(text, p))
+                  appendResult(string.find(text, "("..p..")"))
+                end
+                appendResult(string.find(text, "(%w*)"))
+                appendResult(string.find(text, "(%w+)"))
+                appendResult(string.find(text, "(%w-)"))
+                appendResult(string.find(text, "(%w?)"))
+                appendResult(string.find(text, "(%w?)%1"))
+                --appendResult(string.find(text, "(%beb)"))
+                appendResult(string.find(text, "^bee"))
+                appendResult(string.find(text, "bee$"))
+                appendResult(string.find(text, "^Bla"))
+                appendResult(string.find(text, "af$"))
+                --appendResult(string.match("abc", "()a*()"))
+
+                return rv
+                """, LuaObject.of("""
+                _.
+                .
+                .3|3
+                .3|3|a
+                .
+                .
+                .4|4
+                .4|4|b
+                .
+                .
+                .
+                .
+                .
+                .
+                .
+                .
+                .
+                .21|24
+                .9|9
+                .9|9|e
+                .
+                .
+                .38|38
+                .38|38|f
+                .
+                .
+                .
+                .
+                .12|15
+                .11|14
+                .1|1
+                .1|1|B
+                .
+                .21|24
+                .1|1
+                .1|1|B
+                .
+                .
+                .
+                .
+                .
+                .
+                .34|34
+                .34|34|1
+                .
+                .21|24
+                .1|1
+                .1|1|B
+                .
+                .21|24
+                .2|2
+                .2|2|l
+                .
+                .
+                .32|32
+                .32|32|.
+                .12|15
+                .11|14
+                .7|7
+                .7|7|\s
+                .
+                .
+                .1|1
+                .1|1|B
+                .
+                .21|24
+                .1|1
+                .1|1|B
+                .
+                .21|24
+                .1|1
+                .1|1|B
+                .
+                .
+                .33|33
+                .33|33|%
+                .
+                .
+                .32|32
+                .32|32|.
+                .12|15
+                .11|14
+                .7|7
+                .7|7|\s
+                .12|15
+                .11|14
+                .7|7
+                .7|7|\s
+                .12|16
+                .
+                .11|12
+                .11|12| b
+                .
+                .
+                .7|8
+                .7|8| B
+                .12|16
+                .
+                .11|12
+                .11|12| b
+                .
+                .
+                .7|8
+                .7|8| B
+                .12|15
+                .11|14
+                .7|7
+                .7|7|\s
+                .12|15
+                .11|14
+                .1|1
+                .1|1|B
+                .12|15
+                .11|14
+                .1|1
+                .1|1|B
+                .12|15
+                .11|14
+                .7|7
+                .7|7|\s
+                .12|15
+                .11|14
+                .1|1
+                .1|1|B
+                .12|15
+                .11|14
+                .1|1
+                .1|1|B
+                .
+                .21|24
+                .1|1
+                .1|1|B
+                .12|15
+                .11|14
+                .2|2
+                .2|2|l
+                .12|15
+                .11|14
+                .7|7
+                .7|7|\s
+                .12|15
+                .11|14
+                .2|2
+                .2|2|l
+                .1|6|Blabla
+                .1|6|Blabla
+                .1|0|
+                .1|1|B
+                .1|0|
+                .
+                .
+                .1|3
+                .37|38
+                """));
+    }
+
+    @Test
+    void stringFindFrontier() {
+        loadAssertSuccessAndRv("""
+                local rv = "_"
+                local text = "Blabla Bee bee bumblebee banana.%123af"
+                local premadePattern = "bee"
+                local patternOptions = {"a", "b", "c", "d", "e", "f", "g", ".", "%a", "%c", "%d", "%g",
+                  "%l", "%p", "%s", "%u", "%w", "%x", "%%", "%.", " ", "[ ]", " [abc]",
+                  " [^abc]", " [%l]", " [^%l]", "%A", "%C", "%D", "%G", "%L", "%P", "%S",
+                  "%U", "%W", "%X"--[[, "()"]]}
+
+                local function appendResult(...)
+                  local tbl = {...}
+                  local sres = ""
+                  for _,v in ipairs(tbl) do sres = sres .. tostring(v) .. "|" end
+                  rv = rv ..".".. sres:sub(1,-2) .. "\\n"
+                end
+
+                appendResult(string.find(text, "(%f[abc])"))
+
+                return rv
+                """, LuaObject.of("""
+                .3|2|
                 """));
     }
 
