@@ -4,7 +4,6 @@ import dev.asdf00.jluavm.api.functions.AtomicLuaFunction;
 import dev.asdf00.jluavm.api.functions.MixedStateFunctionRegistry;
 import dev.asdf00.jluavm.exceptions.LuaJavaError;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
-import dev.asdf00.jluavm.runtime.stdlib.patternMatching.FindResult;
 import dev.asdf00.jluavm.runtime.stdlib.patternMatching.PatternMatchingImpl;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 
@@ -206,48 +205,79 @@ public class LString {
                     var maxReplacements = nReplacements.isNil() ? Integer.MAX_VALUE : nReplacements.asLong();
                     int numberOfTotalMatchesThatOccurred = 0;
                     int currentStartPos = 0;
+                    int lastNonZeroMatchPos = -1;
+                    var regexPattern = Pattern.compile("%(\\d|%)", Pattern.DOTALL);
                     for (int i = 0; i < maxReplacements; i++) {
-                        if (currentStartPos >= currentInputString.length())
-                            break;
-
                         var extRes = PatternMatchingImpl.lua_match_extended(currentInputString, patternString, currentStartPos);
-                        if (!extRes.res().success()) { // no more matches --> finish up and return
+                        var findRes = extRes.res();
+                        if (!findRes.success()) { // no more matches --> finish up and return
                             break;
                         }
+
+
+                        var lazinessPreservedPattern = patternString.replace(")", "").replaceAll("%\\d","");
+                        // match is out of bounds and not zerolength right at the end
+                        if (currentStartPos >= currentInputString.length() && (
+                                findRes.matchLength() != 0 ||
+                                !(lazinessPreservedPattern.endsWith("-") ||
+                                  lazinessPreservedPattern.endsWith("?") )           // this is hacky as it could also contain %? or %- respectively, and that wouldnt count
+                        )) {
+                            break;
+                        }
+
+                        Runnable applySubstitution = () -> {
+                            String currentReplacement = regexPattern.matcher(replacementString)
+                                    .replaceAll(mr -> {
+                                        if (mr.group().equals("%%"))
+                                            return "%";
+                                        var captureGroupId = Integer.parseInt(mr.group().substring(1));
+
+                                        // 0 is the whole match always, but so is 1 if the pattern does not contian any captures
+                                        if (captureGroupId == 0 ||
+                                            captureGroupId == 1 && findRes.captures().length == 0) {
+                                            return currentInputString.substring(findRes.start(), findRes.end());
+                                        }
+                                        var cap = findRes.captures()[captureGroupId - 1];
+                                        return cap != null ? cap : "";
+                                    });
+
+                            rv.append(currentReplacement);
+                        };
+
+                        if (findRes.matchLength() == 0) { // this is a zero len match
+                            if (currentStartPos >= currentInputString.length()) {
+                                applySubstitution.run();
+                                numberOfTotalMatchesThatOccurred++;
+                                break;
+                            }
+
+                            if (lastNonZeroMatchPos == findRes.start()) { // skip it if it is right after another match
+                                rv.append(currentInputString.charAt(currentStartPos));
+                                currentStartPos++;
+                                continue;
+                            }
+                        } else {
+                            lastNonZeroMatchPos = findRes.end();
+                        }
+
                         // there was a match
                         numberOfTotalMatchesThatOccurred++;
-                        FindResult findRes = extRes.res();
 
                         // add the original string thats before our match
                         if (currentStartPos != findRes.start())
                             rv.append(currentInputString, currentStartPos, findRes.start());
 
                         // then add the replacement
-                        var p = Pattern.compile("%(\\d|%)", Pattern.DOTALL);
-                        String currentReplacement = p.matcher(replacementString)
-                                .replaceAll(mr -> {
-                                    if (mr.group().equals("%%"))
-                                        return "%";
-                                    var captureGroupId = Integer.parseInt(mr.group().substring(1));
-
-                                    // 0 is the whole match always, but so is 1 if the pattern does not contian any captures
-                                    if (captureGroupId == 0 ||
-                                        captureGroupId == 1 && findRes.captures().length == 0) {
-                                        return currentInputString.substring(findRes.start(), findRes.end());
-                                    }
-                                    return findRes.captures()[captureGroupId - 1];
-                                });
-
-                        rv.append(currentReplacement);
+                        // TODO, here query the replacement function/table for a value to put in. For now we just use the supplied string
+                        applySubstitution.run();
 
                         // and advance the next matchpos
-                        if (findRes.end() == currentStartPos)
-                            currentStartPos = findRes.end() + 1;
-                        else
+                        if (findRes.end() == currentStartPos) {
+                            rv.append(currentInputString.charAt(currentStartPos));
+                            currentStartPos++;
+                        } else {
                             currentStartPos = findRes.end();
-
-                        // TODO, here query the replacement function/table for a value to put in. For now we just use the supplied string
-
+                        }
                     }
                     // no more matches --> finish up and return
                     if (currentStartPos < currentInputString.length())

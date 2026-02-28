@@ -32,6 +32,8 @@ public class PatternMatchingImpl {
             if (l == CAP_UNFINISHED) {
                 // error: unfinished capture
                 return null;
+                //throw new RuntimeException("error: unfinished capture");
+
             } else {
                 return ms.capture[i].src.substring(0, l);
             }
@@ -298,9 +300,7 @@ public class PatternMatchingImpl {
 
     private static String end_capture(MatchState ms, String s, String p) {
         int l = capture_to_close(ms);
-        if (l == -1) {
-            return null;
-        }
+        assert l >= 0; // cannot fail
 
         ms.capture[l].len = ms.capture[l].src.length() - s.length();
         String res = match(ms, s, p);
@@ -425,7 +425,14 @@ public class PatternMatchingImpl {
                         }
 
                         case '*' -> {
-                            return max_expand(ms, s, p, ep);
+                            var starMatch = max_expand(ms, s, p, ep);
+                            // null means we didnt find any match, but since this is *, we can treat this as a zerolen match
+                            if (starMatch != null) {
+                                return starMatch;
+                            }
+                            p = ep.substring(1);
+                            jumpDest = JUMPDEST_INIT;
+                            break start;
                         }
 
                         case '+' -> {

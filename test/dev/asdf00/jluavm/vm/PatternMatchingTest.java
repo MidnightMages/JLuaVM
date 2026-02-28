@@ -701,14 +701,14 @@ public class PatternMatchingTest extends BaseVmTest {
         loadAssertSuccessAndRv("""
                 local rv = "_"
                 local text = "Blabla Bee bee bumblebee banana.%123af"
-                                
+                
                 local function appendResult(...)
                   local tbl = {...}
                   local sres = ""
                   for _,v in ipairs(tbl) do sres = sres .. tostring(v) .. "|" end
                   rv = rv .. "." .. sres:sub(1,-2) .. "\\n"
                 end
-                                
+                
                 appendResult(string.gsub(text, "(%w*)" , "%1 %1"))
                 return rv
                 """, new LuaObject[]{LuaObject.of("_.Blabla Blabla Bee Bee bee bee bumblebee bumblebee banana banana. %123af 123af|7\n")});
@@ -737,7 +737,7 @@ public class PatternMatchingTest extends BaseVmTest {
                 appendResult(string.gsub(text, "(%w-)" , "%1 %1"))
                 appendResult(string.gsub(text, "(%w?)%1" , "%1 %1"))
                 appendResult(string.gsub(text, "(%f[abc])" , ">%1<"))
-                                
+                
                 return rv
                 """, LuaObject.of("""
                 Blabla Blabla Bee Bee bee bee bumblebee bumblebee banana banana. %123af 123af|7

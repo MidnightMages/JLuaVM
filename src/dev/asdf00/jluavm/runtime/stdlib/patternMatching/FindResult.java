@@ -8,4 +8,8 @@ public record FindResult(boolean success, int start, int end, String[] captures)
     public FindResult adjustForStartIndex(int startIndex) {
         return new FindResult(success, start+startIndex, end+startIndex, captures);
     }
+
+    public int matchLength() {
+        return end - start;
+    }
 }
