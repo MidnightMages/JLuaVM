@@ -2842,4 +2842,27 @@ public class VmTest extends BaseVmTest {
                 return rv
                 """, LuaObject.of("real->mt:NOPE;load->mt:NOPE"));
     }
+
+    @Test
+    void selfShadowingOnOopFuncDef() {
+        loadAssertSuccessAndRv("""
+                local printStream = ""
+                local function print(text)
+                    printStream = printStream..text.."\\n"
+                end
+                
+                local test = {a = "this"}
+                function test:check(self, x)
+                    if self ~= nil then
+                        print(self.a)
+                    else
+                        print("nil")
+                    end
+                end
+                test:check({a = "other"})
+                test:check()
+                
+                return printStream
+                """, LuaObject.of("other\nnil\n"));
+    }
 }

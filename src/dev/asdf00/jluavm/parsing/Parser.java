@@ -907,18 +907,13 @@ public final class Parser {
     private FunctionDefinitionNode FuncBody(boolean hasSelf) {
         Position capPos = cur.pos();
         check(LPAR);
-        Token selfPlaceholder = null;
+        ArrayList<Token> ps = new ArrayList<>();
+
         if (hasSelf) {
-            selfPlaceholder = new Token(IDENT, cur.pos(), "self");
+            ps.add(new Token(IDENT, cur.pos(), "self"));
         }
-        ArrayList<Token> ps;
         if (ltok == TDOT || ltok == IDENT) {
-            ps = ParList();
-        } else {
-            ps = new ArrayList<>();
-        }
-        if (selfPlaceholder != null) {
-            ps.add(0, selfPlaceholder);
+            ParList(ps);
         }
         check(RPAR);
         Position _pos = la.pos();
@@ -933,8 +928,7 @@ public final class Parser {
                 new IRFunction(_pos, innerStats.toArray(Node[]::new), scp.getLocalsCount(), scp.getClosableCount(), maxLocalCnt, args.length, hasParamsArg, scp.getBoxedParameterIndices()));
     }
 
-    private ArrayList<Token> ParList() {
-        var parameters = new ArrayList<Token>();
+    private void ParList(ArrayList<Token> parameters) {
         if (ltok == TDOT) {
             scan();
             parameters.add(cur);
@@ -952,7 +946,6 @@ public final class Parser {
                 parameters.add(cur);
             }
         }
-        return parameters;
     }
 
     @SuppressWarnings("unused")
