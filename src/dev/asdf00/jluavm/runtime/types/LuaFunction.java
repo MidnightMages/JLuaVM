@@ -2,8 +2,6 @@ package dev.asdf00.jluavm.runtime.types;
 
 import dev.asdf00.jluavm.api.userdata.LuaUserData;
 import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
-import dev.asdf00.jluavm.exceptions.LuaRuntimeError;
-import dev.asdf00.jluavm.internals.Coroutine;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.runtime.utils.LFunc;
 import dev.asdf00.jluavm.runtime.utils.RTUtils;
@@ -13,7 +11,6 @@ import dev.asdf00.jluavm.utils.ByteArrayBuilder;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 
 @SuppressWarnings("unused")
 public abstract sealed class LuaFunction permits AbstractGeneratedLuaFunction, LuaJavaApiFunction {
