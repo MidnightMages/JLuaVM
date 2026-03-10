@@ -73,11 +73,11 @@ public class MixedStateFunctionRegistry implements ApiFunctionRegistry {
 
     @Override
     public LuaJavaApiFunction getFunction(String serialName, LuaObject _ENV, LuaObject[] closures, byte[] additional) {
-        if ((closures == null || closures.length == 0) && additional == null) {
-            return getFunction(serialName, _ENV);
-        } else {
-            throw new UnsupportedOperationException("MixedStateFunctionRegistry does not support functions like %s with state outside of _ENV".formatted(serialName));
+        if (additional != null) {
+            throw new UnsupportedOperationException("MixedStateFunctionRegistry does not support additional data currently. Name: %s ".formatted(serialName));
         }
+
+        return getFunction(serialName, _ENV, closures);
     }
 
     public void register(String name, LuaJavaApiFunction apiFunction) {
