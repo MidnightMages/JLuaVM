@@ -76,6 +76,10 @@ public abstract class LuaVM {
         requestedStop = true;
     }
 
+    public boolean isStopping() {
+        return requestedStop;
+    }
+
     // =================================================================================================================
     // helper methods
     // =================================================================================================================
@@ -89,6 +93,7 @@ public abstract class LuaVM {
                     IRFunction rootFunc = new Parser(code).parse();
                     var javaIntermediateCode = new CompilationState(new Supplier<>() {
                         private int cnt = 0;
+
                         @Override
                         public String get() {
                             return "GeneratedLuaFunc_" + cnt++;
