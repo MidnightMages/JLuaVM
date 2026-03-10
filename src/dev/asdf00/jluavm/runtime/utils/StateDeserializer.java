@@ -218,6 +218,7 @@ public class StateDeserializer {
             var clazz = LuaVM_RT.getUserdataClass(clName);
             var instance = LuaVM_RT.getDescriptor(clazz).deserialize(objs, rdr, postActions, additionalData);
             lobj.refVal = instance;
+            instance.setSelfAsLuaObject(lobj);
         }
 
         // second round of userdata deserialization
