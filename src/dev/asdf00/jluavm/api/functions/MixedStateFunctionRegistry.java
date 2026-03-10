@@ -2,11 +2,13 @@ package dev.asdf00.jluavm.api.functions;
 
 import dev.asdf00.jluavm.runtime.types.LuaJavaApiFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
+import dev.asdf00.jluavm.runtime.utils.Singletons;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 /**
@@ -22,7 +24,7 @@ public class MixedStateFunctionRegistry implements ApiFunctionRegistry {
     protected final HashMap<LuaJavaApiFunction, String> lessReverseMap = new HashMap<>();
     protected final HashMap<String, LuaJavaApiFunction> lessFuncMap = new HashMap<>();
     protected final HashMap<Class<? extends LuaJavaApiFunction>, String> statefullReverseMap = new HashMap<>();
-    protected final HashMap<String, Function<LuaObject, LuaJavaApiFunction>> statefullFuncMap = new HashMap<>();
+    protected final HashMap<String, BiFunction<LuaObject, LuaObject[], LuaJavaApiFunction>> statefullFuncMap = new HashMap<>();
 
     public MixedStateFunctionRegistry(String id) {
         this.id = id;
@@ -50,22 +52,22 @@ public class MixedStateFunctionRegistry implements ApiFunctionRegistry {
 
     @Override
     public LuaJavaApiFunction getFunction(String serialName, LuaObject _ENV) {
-        if (_ENV == null && lessFuncMap.containsKey(serialName)) {
-            return getFunction(serialName);
-        }
-        if (statefullFuncMap.containsKey(serialName)) {
-            return statefullFuncMap.get(serialName).apply(_ENV);
-        } else {
-            throw new IllegalArgumentException("Statefull function %s was not found in registry".formatted(serialName, id));
-        }
+        return getFunction(serialName, _ENV, null);
     }
 
     @Override
     public LuaJavaApiFunction getFunction(String serialName, LuaObject _ENV, LuaObject[] closures) {
-        if (closures == null || closures.length == 0) {
-            return getFunction(serialName, _ENV);
+        if (_ENV == null && lessFuncMap.containsKey(serialName)) {
+            return getFunction(serialName);
+        }
+        if (statefullFuncMap.containsKey(serialName)) {
+            if (closures == null || closures.length == 0) {
+                return statefullFuncMap.get(serialName).apply(_ENV, Singletons.EMPTY_LUA_OBJ_ARRAY);
+            } else {
+                return statefullFuncMap.get(serialName).apply(_ENV, closures);
+            }
         } else {
-            throw new UnsupportedOperationException("MixedStateFunctionRegistry does not support functions like %s with state outside of _ENV".formatted(serialName));
+            throw new IllegalArgumentException("Statefull function %s was not found in registry %s".formatted(serialName, id));
         }
     }
 
@@ -84,6 +86,10 @@ public class MixedStateFunctionRegistry implements ApiFunctionRegistry {
     }
 
     public void register(String name, Class<? extends LuaJavaApiFunction> clazz, Function<LuaObject, LuaJavaApiFunction> instantiator) {
+        register(name, clazz, (env, closures) -> instantiator.apply(env));
+    }
+
+    public void register(String name, Class<? extends LuaJavaApiFunction> clazz, BiFunction<LuaObject, LuaObject[], LuaJavaApiFunction> instantiator) {
         statefullFuncMap.put(name, instantiator);
         statefullReverseMap.put(clazz, name);
     }
