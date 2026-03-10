@@ -986,12 +986,11 @@ public final class LuaObject {
     }
 
     public static LuaObject of(LuaUserData val) {
-        LuaObject self = val.getSelfAsLuaObject();
-        if (self == null) {
-            self = new LuaObject(val, 0, 0, Types.USERDATA);
-            val.setSelfAsLuaObject(self);
+        LuaObject self;
+        if (val != null && (self = val.getSelfAsLuaObject()) != null) {
+            return self;
         }
-        return self;
+        return new LuaObject(val, 0, 0, Types.USERDATA);
     }
 
     public static LuaObject of(LuaObject... val) {
