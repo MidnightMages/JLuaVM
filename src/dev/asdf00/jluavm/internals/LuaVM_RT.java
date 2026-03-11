@@ -94,7 +94,7 @@ public class LuaVM_RT extends LuaVM {
         }
         rootCoroutine = Coroutine.create(rootFunc);
         rootCoroutine.isYieldable = false;
-        rootCoroutine.luaCallStack.peek().getTopFrame().locals[0] = LuaObject.of(rootArgs);
+        rootCoroutine.luaCallStack.peek().locals[0] = LuaObject.of(rootArgs);
         setCoroutine(rootCoroutine);
         triggerEvent(HookType.VM_STARTED);
         execLoop();

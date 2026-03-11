@@ -14,19 +14,22 @@ import java.util.Objects;
 import java.util.Queue;
 
 public final class InternalCallFrame extends AbstractCallStackFrame {
+    private final FunctionCallFrame parentFuncFrame;
     private final LFunc callable;
     private final String funcName;
     public LuaObject[] arguments;
 
-    private InternalCallFrame(DataContainer container, LFunc callable, String funcName, LuaObject[] arguments) {
+    private InternalCallFrame(DataContainer container, FunctionCallFrame parentFuncFrame, LFunc callable, String funcName, LuaObject[] arguments) {
         super(container);
+        this.parentFuncFrame = parentFuncFrame;
         this.callable = callable;
         this.funcName = funcName;
         this.arguments = arguments;
     }
 
-    public InternalCallFrame(LuaObject[] locals, int startLocals, LFunc callable, String funcName, LuaObject[] arguments) {
-        super(locals, startLocals);
+    public InternalCallFrame(FunctionCallFrame parentFuncFrame, int startLocals, LFunc callable, String funcName, LuaObject[] arguments) {
+        super(startLocals);
+        this.parentFuncFrame = parentFuncFrame;
         this.callable = callable;
         this.funcName = funcName;
         this.arguments = arguments;
@@ -34,7 +37,7 @@ public final class InternalCallFrame extends AbstractCallStackFrame {
 
     @Override
     public void execute(LuaVM_RT vm) {
-        callable.invoke(vm, locals, arguments, resume, expressionStack, rvals);
+        callable.invoke(vm, parentFuncFrame.locals, arguments, resume, expressionStack, rvals);
         rvals = null;
         arguments = null;
     }
@@ -44,7 +47,7 @@ public final class InternalCallFrame extends AbstractCallStackFrame {
         init();
     }
 
-    public byte[] serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs, Object additionalData) {
+    byte[] serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs, Object additionalData) {
         var bb = new ByteArrayBuilder();
         serialize(serialData, mappedObjs, bb, additionalData);
         if (arguments == null) {
@@ -59,7 +62,7 @@ public final class InternalCallFrame extends AbstractCallStackFrame {
         return bb.toArray();
     }
 
-    public static InternalCallFrame deserialize(LuaFunction parentFunc, LuaObject[] objs, ByteArrayReader rdr) {
+    static InternalCallFrame deserialize(FunctionCallFrame parentFuncFrame, LuaFunction parentFuncObj, LuaObject[] objs, ByteArrayReader rdr) {
         DataContainer container = abstractDeserialize(objs, rdr);
         int argLen = rdr.readInt();
         LuaObject[] arguments = argLen == -1 ? null : new LuaObject[argLen];
@@ -71,12 +74,12 @@ public final class InternalCallFrame extends AbstractCallStackFrame {
         LFunc callable = LuaFunction.staticLFuncs.get(funcName);
         if (callable == null) {
             // recover internal scopes using reflection
-            Class<? extends LuaFunction> clazz = parentFunc.getClass();
+            Class<? extends LuaFunction> clazz = parentFuncObj.getClass();
             try {
                 var m = Objects.requireNonNull(clazz.getMethod(funcName, LuaVM_RT.class, LuaObject[].class, LuaObject[].class, int.class, LuaObject[].class, LuaObject[].class));
                 callable = (vm, stackFrame, args, resume, expressionStack, returned) -> {
                     try {
-                        m.invoke(parentFunc, vm, stackFrame, args, resume, expressionStack, returned);
+                        m.invoke(parentFuncObj, vm, stackFrame, args, resume, expressionStack, returned);
                     } catch (ReflectiveOperationException e) {
                         throw new InternalLuaRuntimeError("reflection error while executing deserialized internal scope");
                     }
@@ -87,6 +90,6 @@ public final class InternalCallFrame extends AbstractCallStackFrame {
             }
         }
 
-        return new InternalCallFrame(container, callable, funcName, arguments);
+        return new InternalCallFrame(container, parentFuncFrame, callable, funcName, arguments);
     }
 }
