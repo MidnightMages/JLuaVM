@@ -407,8 +407,7 @@ public final class CompilationState {
                     public static Constructor<? extends AbstractGeneratedLuaFunction>[] innerFunctions;
                     public static int compilationUnitDept = %d;
                     public static String luaCode = \"\"\"
-                    %s
-                    \"\"\";
+                    %s\"\"\";
                     
                     public %s(String compilationUnit, int lineNum, LuaObject _ENV, LuaObject[] closures) {
                         super(compilationUnit, lineNum, _ENV, closures);
