@@ -268,7 +268,13 @@ public class SerializationTest extends BaseVmTest {
 
     @Test
     void scopeSerializationSimplified2() {
-        var vm1 = LuaVM.builder().rootFunc("""                
+        var vm1 = LuaVM.builder().modifyEnv(env -> {
+            for (LuaObject key : env.asMap().keys()){
+                if (!key.asString().equals("vm")) {
+                    env.set(key, LuaObject.nil());
+                }
+            }
+        }).rootFunc("""
                 if true then
                     vm.pause()
                     local nextEvent = "a"
