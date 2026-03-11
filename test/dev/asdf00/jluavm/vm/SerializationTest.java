@@ -6,8 +6,7 @@ import dev.asdf00.jluavm.LuaVM.VmRunState;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class SerializationTest extends BaseVmTest {
 
@@ -284,5 +283,48 @@ public class SerializationTest extends BaseVmTest {
         var vm2 = assertDoesNotThrow(() -> LuaVM.builder().fromState(state).build());
         result = assertDoesNotThrow(() -> vm2.runContinue());
         assertEquals(VmResult.of(VmRunState.SUCCESS, LuaObject.of("a")), result);
+    }
+
+    /**
+     * A vm when serialized should produce a byte array containing exactly the same bytes as what it was built from
+     */
+    @Test
+    void serializationByteArrayEquality() {
+        var vm1 = LuaVM.builder().rootFunc("""
+                local iteration = 0
+                local rv = ""
+                local function printInline(x) rv = rv .. tostring(x) end
+                function getMachineEvent(x)\s
+                    iteration = iteration +1
+                    if iteration == 2 then
+                        vm.pause()
+                    end
+                    return "a"
+                end
+                                
+                local function readPrimitiveInput()
+                    local readInput = ""
+                    while iteration < 10 do
+                		if true then
+                		    local bla4 = 3
+                		end
+                        local nextEvent = table.pack(getMachineEvent())
+                        if true then
+                            local chr = nextEvent[1]
+                            printInline(chr)
+                            readInput = readInput .. chr
+                        end
+                    end
+                end
+                                
+                readPrimitiveInput()
+                return rv
+                """).build();
+        VmResult result = assertDoesNotThrow(() -> vm1.run());
+        assertEquals(VmResult.of(VmRunState.PAUSED), result);
+        var state = assertDoesNotThrow(() -> vm1.serialize());
+        var vm2 = assertDoesNotThrow(() -> LuaVM.builder().fromState(state).build());
+        var state2 = vm2.serialize();
+        assertArrayEquals(state, state2);
     }
 }
