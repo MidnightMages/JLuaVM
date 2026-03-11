@@ -213,12 +213,18 @@ public class DelayedJavaCompiler {
 
         var syncRes = finishCompilation(tasks[largestIndex], itemsToCompile[largestIndex].target);
         synchronized (monitor) {
-            try {
-                while (remainingTasks.get() != 0) {
+            boolean wasInterrupted = false;
+            // swallow interrupts vm exit and wait anyway
+            while (remainingTasks.get() != 0) {
+                try {
                     monitor.wait(500);
+                } catch (InterruptedException e) {
+                    wasInterrupted = true;
                 }
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+            }
+            if (wasInterrupted) {
+                // restore interrupted state
+                Thread.currentThread().interrupt();
             }
         }
 

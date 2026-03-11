@@ -66,10 +66,18 @@ public abstract class LuaVM {
 
     public abstract VmResult runContinue();
 
-    public abstract byte[] serialize();
+    public final byte[] serialize() {
+        return serialize(null);
+    }
+
+    public abstract byte[] serialize(Object additionalData);
 
     public void requestStop() {
         requestedStop = true;
+    }
+
+    public boolean isStopping() {
+        return requestedStop;
     }
 
     // =================================================================================================================
@@ -85,6 +93,7 @@ public abstract class LuaVM {
                     IRFunction rootFunc = new Parser(code).parse();
                     var javaIntermediateCode = new CompilationState(new Supplier<>() {
                         private int cnt = 0;
+
                         @Override
                         public String get() {
                             return "GeneratedLuaFunc_" + cnt++;

@@ -94,7 +94,7 @@ public class LuaVM_RT extends LuaVM {
         }
         rootCoroutine = Coroutine.create(rootFunc);
         rootCoroutine.isYieldable = false;
-        rootCoroutine.luaCallStack.peek().getTopFrame().locals[0] = LuaObject.of(rootArgs);
+        rootCoroutine.luaCallStack.peek().locals[0] = LuaObject.of(rootArgs);
         setCoroutine(rootCoroutine);
         triggerEvent(HookType.VM_STARTED);
         execLoop();
@@ -128,12 +128,11 @@ public class LuaVM_RT extends LuaVM {
             return new VmResult(co.rootFail ? VmRunState.EXECUTION_ERROR : VmRunState.SUCCESS, co.rootReturned);
         }
     }
-
     @Override
-    public byte[] serialize() {
+    public byte[] serialize(Object additionalData) {
         ArrayList<byte[]> serialData = new ArrayList<>();
         HashMap<LuaObject, Integer> mappedObjs = new HashMap<>();
-        int curCoIdx = currentCoroutine.selfLuaObject.serialize(serialData, mappedObjs);
+        int curCoIdx = currentCoroutine.selfLuaObject.serialize(serialData, mappedObjs, additionalData);
         var bb = new ByteArrayBuilder(serialData.stream().mapToInt(a -> a.length + 4).sum() + 4 * 4);
         bb.append(STATE_SERIALIZATION_VERSION)
                 .append(mappedObjs.get(rootCoroutine.selfLuaObject))

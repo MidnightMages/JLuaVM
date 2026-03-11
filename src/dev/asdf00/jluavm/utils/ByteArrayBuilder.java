@@ -1,5 +1,6 @@
 package dev.asdf00.jluavm.utils;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -74,6 +75,13 @@ public class ByteArrayBuilder {
         append((byte) (value >> 40));
         append((byte) (value >> 48));
         append((byte) (value >> 56));
+        return this;
+    }
+
+    public ByteArrayBuilder append(String text) {
+        var bytes = text.getBytes(StandardCharsets.UTF_8);
+        append(bytes.length);
+        appendAll(bytes);
         return this;
     }
 

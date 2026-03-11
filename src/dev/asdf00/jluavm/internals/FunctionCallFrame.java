@@ -8,12 +8,10 @@ import dev.asdf00.jluavm.runtime.utils.LFunc;
 import dev.asdf00.jluavm.utils.ByteArrayBuilder;
 import dev.asdf00.jluavm.utils.ByteArrayReader;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Stack;
+import java.util.*;
 
 public final class FunctionCallFrame extends AbstractCallStackFrame {
+    public final LuaObject[] locals;
     public final LuaFunction lFunc;
     private final Stack<InternalCallFrame> scopes;
     public int failCnt;
@@ -25,9 +23,10 @@ public final class FunctionCallFrame extends AbstractCallStackFrame {
     public String lastName = "?";
     public boolean tailCalled = false;
 
-    private FunctionCallFrame(DataContainer container, LuaFunction lFunc, Stack<InternalCallFrame> scopes,
+    private FunctionCallFrame(DataContainer container, LuaObject[] locals, LuaFunction lFunc, Stack<InternalCallFrame> scopes,
                               int failCnt, boolean isResumable, boolean isProtected, LuaFunction msgHandler) {
         super(container);
+        this.locals = locals;
         this.lFunc = lFunc;
         this.scopes = scopes;
         this.failCnt = failCnt;
@@ -37,7 +36,8 @@ public final class FunctionCallFrame extends AbstractCallStackFrame {
     }
 
     public FunctionCallFrame(LuaObject[] locals, LuaFunction lFunc) {
-        super(locals, 0);
+        super(0);
+        this.locals = locals;
         this.lFunc = lFunc;
         this.scopes = new Stack<>();
         isResumable = true;
@@ -55,7 +55,7 @@ public final class FunctionCallFrame extends AbstractCallStackFrame {
     }
 
     public void enterScope(int localsStart, LFunc localTarget, String targetName, LuaObject[] args) {
-        scopes.push(new InternalCallFrame(locals, localsStart, localTarget, targetName, args));
+        scopes.push(new InternalCallFrame(this, localsStart, localTarget, targetName, args));
     }
 
     public void exitScope(LuaObject[] rvals) {
@@ -115,35 +115,36 @@ public final class FunctionCallFrame extends AbstractCallStackFrame {
         throw new InternalLuaRuntimeError("Closable stack is empty!");
     }
 
-    public byte[] serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs) {
+    byte[] serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs, Object additionalData) {
         var bb = new ByteArrayBuilder();
-        serialize(serialData, mappedObjs, bb);
-        bb.append(LuaObject.of(lFunc).serialize(serialData, mappedObjs))
+        serialize(serialData, mappedObjs, bb, additionalData);
+        bb.append(LuaObject.of(locals).serialize(serialData, mappedObjs, additionalData));
+        bb.append(LuaObject.of(lFunc).serialize(serialData, mappedObjs, additionalData))
                 .append(failCnt)
                 .append(isResumable)
                 .append(isProtected);
         if (msgHandler == null) {
             bb.append(-1);
         } else {
-            bb.append(LuaObject.of(msgHandler).serialize(serialData, mappedObjs));
+            bb.append(LuaObject.of(msgHandler).serialize(serialData, mappedObjs, additionalData));
         }
 
         bb.append(lastLine)
-                .append(LuaObject.of(lastName).serialize(serialData, mappedObjs))
+                .append(LuaObject.of(lastName).serialize(serialData, mappedObjs, additionalData))
                 .append(tailCalled);
 
         // serialize inner scopes
         for (int i = 0; i < scopes.size(); i++) {
-            var innerBytes = scopes.get(i).serialize(serialData, mappedObjs);
+            var innerBytes = scopes.get(i).serialize(serialData, mappedObjs, additionalData);
             bb.append(innerBytes.length).appendAll(innerBytes);
         }
 
         return bb.toArray();
     }
 
-    public static FunctionCallFrame deserialize(LuaObject[] objs, ByteArrayReader rdr) {
+    static FunctionCallFrame deserialize(LuaObject[] objs, ByteArrayReader rdr) {
         var superData = abstractDeserialize(objs, rdr);
-
+        LuaObject[] locals = objs[rdr.readInt()].asArray();
         LuaFunction func = objs[rdr.readInt()].getFunc();
         int failCnt = rdr.readInt();
         boolean isResumable = rdr.readBool();
@@ -156,15 +157,15 @@ public final class FunctionCallFrame extends AbstractCallStackFrame {
         boolean tailCalled = rdr.readBool();
 
         Stack<InternalCallFrame> scopes = new Stack<>();
-        while (rdr.remaining() > 0) {
-            // still internal scopes to deserialize
-            scopes.push(InternalCallFrame.deserialize(func, objs, rdr.slice(rdr.readInt())));
-        }
-
-        var nu = new FunctionCallFrame(superData, func, scopes, failCnt, isResumable, isProtected, msgHandler);
+        var nu = new FunctionCallFrame(superData, locals, func, scopes, failCnt, isResumable, isProtected, msgHandler);
         nu.lastLine = lastLine;
         nu.lastName = lastName;
         nu.tailCalled = tailCalled;
+
+        while (rdr.remaining() > 0) {
+            // still internal scopes to deserialize
+            scopes.push(InternalCallFrame.deserialize(nu, func, objs, rdr.slice(rdr.readInt())));
+        }
         return nu;
     }
 }

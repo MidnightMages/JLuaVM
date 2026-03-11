@@ -7,6 +7,7 @@ import dev.asdf00.jluavm.utils.ByteArrayBuilder;
 import java.lang.reflect.Constructor;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 
 public abstract non-sealed class AbstractGeneratedLuaFunction extends LuaFunction {
     public final String compilationUnit;
@@ -33,7 +34,7 @@ public abstract non-sealed class AbstractGeneratedLuaFunction extends LuaFunctio
     }
 
     @Override
-    public void serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs, ByteArrayBuilder bb) {
+    public void serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs, ByteArrayBuilder bb, Object additionalData) {
         Class<? extends AbstractGeneratedLuaFunction> clazz = getClass();
         try {
             var cudField = clazz.getDeclaredField("compilationUnitDept");
@@ -41,13 +42,13 @@ public abstract non-sealed class AbstractGeneratedLuaFunction extends LuaFunctio
             int dpt = cudField.getInt(null);
             bb.append(false) // not serialized with registry
                     // TODO insert compilationUnit
-                    .append(LuaObject.of(compilationUnit).serialize(serialData, mappedObjs))
+                    .append(LuaObject.of(compilationUnit).serialize(serialData, mappedObjs, additionalData))
                     .append(lineNum)
-                    .append(LuaObject.of((String) codeField.get(null)).serialize(serialData, mappedObjs))
-                    .append(_ENV.serialize(serialData, mappedObjs))
+                    .append(LuaObject.of((String) codeField.get(null)).serialize(serialData, mappedObjs, additionalData))
+                    .append(_ENV.serialize(serialData, mappedObjs, additionalData))
                     .append(closures.length);
             for (var c : closures) {
-                bb.append(c == null ? -1 : c.serialize(serialData, mappedObjs));
+                bb.append(c == null ? -1 : c.serialize(serialData, mappedObjs, additionalData));
             }
             bb.append(dpt);
         } catch (ReflectiveOperationException e) {

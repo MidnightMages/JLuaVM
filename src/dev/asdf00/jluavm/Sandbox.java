@@ -7,10 +7,12 @@ import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 import dev.asdf00.jluavm.runtime.utils.UDTranslators;
 import dev.asdf00.jluavm.utils.ByteArrayReader;
+import dev.asdf00.jluavm.utils.QuadFunction;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -63,12 +65,12 @@ public class Sandbox implements LuaUserData {
     }
 
     @Override
-    public byte[] luaSerialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs) {
+    public byte[] luaSerialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs, Object additionalData) {
         return new byte[0];
     }
 
     @LuaDeserializer
-    public static Sandbox luaDeserialize(LuaObject[] objs, ByteArrayReader reader) {
+    public static Sandbox luaDeserialize(LuaObject[] objs, ByteArrayReader reader, Queue<Runnable> postActions, Object additionalData) {
         return new Sandbox();
     }
 
@@ -76,7 +78,7 @@ public class Sandbox implements LuaUserData {
 }
 
 class GlueFunc$_dev$_asdf00$_jluavm$_Sandbox {
-    public static final BiFunction<LuaObject[], ByteArrayReader, LuaUserData> serializer = dev.asdf00.jluavm.Sandbox::luaDeserialize;
+    public static final QuadFunction<LuaObject[], ByteArrayReader, Queue<Runnable>, Object, LuaUserData> serializer = dev.asdf00.jluavm.Sandbox::luaDeserialize;
 
     public static final Map<String, LLVaMultiFunction> functions = Map.of(
             "method", (vm, params) -> {

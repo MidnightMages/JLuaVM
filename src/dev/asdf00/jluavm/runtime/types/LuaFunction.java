@@ -2,8 +2,6 @@ package dev.asdf00.jluavm.runtime.types;
 
 import dev.asdf00.jluavm.api.userdata.LuaUserData;
 import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
-import dev.asdf00.jluavm.exceptions.LuaRuntimeError;
-import dev.asdf00.jluavm.internals.Coroutine;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.runtime.utils.LFunc;
 import dev.asdf00.jluavm.runtime.utils.RTUtils;
@@ -56,7 +54,7 @@ public abstract sealed class LuaFunction permits AbstractGeneratedLuaFunction, L
     /**
      * This method serializes the function into the provided byte array builder.
      */
-    public void serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs, ByteArrayBuilder bb) {
+    public void serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs, ByteArrayBuilder bb, Object additionalData) {
         throw new UnsupportedOperationException("Unimplemented parent");
     }
 

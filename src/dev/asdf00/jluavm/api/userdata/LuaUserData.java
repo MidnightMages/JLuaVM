@@ -61,10 +61,32 @@ public interface LuaUserData {
     }
 
     /**
+     * To ensure equality for USERDATA objects in the LUA VM, a userdata object may provide a back reference to its own
+     * LUA object. This method is queried on {@link LuaObject#of(LuaUserData)}, to possibly provide its identity. If no
+     * LUA object is returned here, a new one is created and {@link LuaUserData#setSelfAsLuaObject(LuaObject)} is called
+     * with the newly created identity.
+     *
+     * @return itself as a LuaObject or {@code null}.
+     */
+    default LuaObject getSelfAsLuaObject() {
+        return null;
+    }
+
+    /**
+     * On creation of a new LUA object for this userdata object, the new object is passed to this method. If equality is
+     * important, please store this value to be returned on the next call to {@link LuaUserData#getSelfAsLuaObject()}.
+     *
+     * @param self its own LUA object.
+     */
+    default void setSelfAsLuaObject(LuaObject self) {
+        // empty default implementation to make this method optional
+    }
+
+    /**
      * This method is called when the LUA VM attempts to serialize its state. The input parameters are meant to be
      * <b>READ-ONLY</b>! These parameters are only passed to allow this method to serialize inner LuaObjects.
      *
      * @return a non-null serial byte[] representation of this userdata object.
      */
-    byte[] luaSerialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs);
+    byte[] luaSerialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs, Object additionalData);
 }

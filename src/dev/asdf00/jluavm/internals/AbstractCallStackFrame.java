@@ -6,13 +6,13 @@ import dev.asdf00.jluavm.utils.ByteArrayReader;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Stack;
 
 import static dev.asdf00.jluavm.runtime.utils.StateDeserializer.maybeNull;
 
 public abstract sealed class AbstractCallStackFrame permits FunctionCallFrame, InternalCallFrame {
     // effectively finals
-    public final LuaObject[] locals;
     public final int startLocals;
     public int localCnt;  // late init
     public int curInlinedLocalCnt;  // late init
@@ -24,7 +24,6 @@ public abstract sealed class AbstractCallStackFrame permits FunctionCallFrame, I
     public LuaObject[] rvals;
 
     protected AbstractCallStackFrame(DataContainer container) {
-        locals = container.locals();
         startLocals = container.startLocals();
         localCnt = container.localCnt();
         curInlinedLocalCnt = container.curInlinedLocalCnt();
@@ -34,8 +33,7 @@ public abstract sealed class AbstractCallStackFrame permits FunctionCallFrame, I
         rvals = container.rvals();
     }
 
-    public AbstractCallStackFrame(LuaObject[] locals, int startLocals) {
-        this.locals = locals;
+    public AbstractCallStackFrame(int startLocals) {
         this.startLocals = startLocals;
         this.closables = new Stack<>();
         init();
@@ -50,28 +48,26 @@ public abstract sealed class AbstractCallStackFrame permits FunctionCallFrame, I
         assert closables.isEmpty();
     }
 
-    protected void serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs, ByteArrayBuilder bb) {
-        bb.append(LuaObject.of(locals).serialize(serialData, mappedObjs))
-                .append(startLocals)
+    protected void serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs, ByteArrayBuilder bb, Object additionalData) {
+        bb.append(startLocals)
                 .append(localCnt)
                 .append(curInlinedLocalCnt)
                 .append(resume)
                 .append(expressionStack == null
                         ? -1
-                        : LuaObject.of(expressionStack).serialize(serialData, mappedObjs))
+                        : LuaObject.of(expressionStack).serialize(serialData, mappedObjs, additionalData))
                 .append(rvals == null
                         ? -1
-                        : LuaObject.of(rvals).serialize(serialData, mappedObjs));
+                        : LuaObject.of(rvals).serialize(serialData, mappedObjs, additionalData));
 
         int size = closables.size();
         bb.append(size);
         for (int i = 0; i < size; i++) {
-            bb.append(closables.get(i).serialize(serialData, mappedObjs));
+            bb.append(closables.get(i).serialize(serialData, mappedObjs, additionalData));
         }
     }
 
     protected static DataContainer abstractDeserialize(LuaObject[] objs, ByteArrayReader rdr) {
-        LuaObject[] locals = objs[rdr.readInt()].asArray();
         int startLocals = rdr.readInt();
         int localCnt = rdr.readInt();
         int curInlinedLocalCnt = rdr.readInt();
@@ -83,11 +79,10 @@ public abstract sealed class AbstractCallStackFrame permits FunctionCallFrame, I
         for (int i = 0; i < closeCnt; i++) {
             closables.push(objs[rdr.readInt()]);
         }
-        return new DataContainer(locals, startLocals, localCnt, curInlinedLocalCnt, closables, resume, expressionStack, rvals);
+        return new DataContainer(startLocals, localCnt, curInlinedLocalCnt, closables, resume, expressionStack, rvals);
     }
 
     protected record DataContainer(
-            LuaObject[] locals,
             int startLocals,
             int localCnt,
             int curInlinedLocalCnt,

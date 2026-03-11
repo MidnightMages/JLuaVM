@@ -1,5 +1,7 @@
 package dev.asdf00.jluavm.utils;
 
+import java.nio.charset.StandardCharsets;
+
 public class ByteArrayReader {
     private final byte[] data;
     private final int start;
@@ -40,6 +42,13 @@ public class ByteArrayReader {
         rangeAssert(8);
         return (0xffL & data[cursor++]) | ((0xffL & data[cursor++]) << 8) | ((0xffL & data[cursor++]) << 16) | ((0xffL & data[cursor++]) << 24) |
                 ((0xffL & data[cursor++]) << 32) | ((0xffL & data[cursor++]) << 40) | ((0xffL & data[cursor++]) << 48) | ((0xffL & data[cursor++]) << 56);
+    }
+
+    public String readString() {
+        rangeAssert(4);
+        int len = readInt();
+        rangeAssert(len);
+        return new String(readArray(len), StandardCharsets.UTF_8);
     }
 
     public byte[] readArray(int len) {

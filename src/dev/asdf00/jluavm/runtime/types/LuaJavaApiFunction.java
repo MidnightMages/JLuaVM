@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 
 public abstract non-sealed class LuaJavaApiFunction extends LuaFunction {
     public final ApiFunctionRegistry registry;
@@ -27,16 +28,16 @@ public abstract non-sealed class LuaJavaApiFunction extends LuaFunction {
     }
 
     @Override
-    public final void serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs, ByteArrayBuilder bb) {
+    public final void serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs, ByteArrayBuilder bb, Object additionalData) {
         var funcName = registry.getSerialName(this).getBytes(StandardCharsets.UTF_8);
         bb.append(true) // serialized with registry
-                .append(_ENV == null ? -1 : _ENV.serialize(serialData, mappedObjs))
+                .append(_ENV == null ? -1 : _ENV.serialize(serialData, mappedObjs, additionalData))
                 .append(closures.length)
-                .appendAll(Arrays.stream(closures).mapToInt(c -> c.serialize(serialData, mappedObjs)).toArray())
-                .append(LuaObject.of(registry.registryID()).serialize(serialData, mappedObjs))
+                .appendAll(Arrays.stream(closures).mapToInt(c -> c.serialize(serialData, mappedObjs, additionalData)).toArray())
+                .append(LuaObject.of(registry.registryID()).serialize(serialData, mappedObjs, additionalData))
                 .append(funcName.length)
                 .appendAll(funcName);
-        var extra = serialize(serialData, mappedObjs);
+        var extra = serialize(serialData, mappedObjs, additionalData);
         if (extra != null) {
             bb.appendAll(extra);
         }
@@ -47,7 +48,7 @@ public abstract non-sealed class LuaJavaApiFunction extends LuaFunction {
      * to {@link ApiFunctionRegistry#getFunction(String, LuaObject, LuaObject[], byte[])} as its last argument when
      * deserializing this instance.
      */
-    public byte[] serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs) {
+    public byte[] serialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs, Object additionalData) {
         return null;
     }
 }

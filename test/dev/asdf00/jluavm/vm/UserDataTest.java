@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 
 public class UserDataTest extends BaseVmTest {
     @Test
@@ -106,13 +107,13 @@ public class UserDataTest extends BaseVmTest {
         }
 
         @Override
-        public byte[] luaSerialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs) {
+        public byte[] luaSerialize(List<byte[]> serialData, Map<LuaObject, Integer> mappedObjs, Object additionalData) {
             // TODO actually provide serializaion
             return null;
         }
 
         @LuaDeserializer
-        public static HotMess todoDeserializer(LuaObject[] objs, ByteArrayReader reader) {
+        public static HotMess todoDeserializer(LuaObject[] objs, ByteArrayReader reader, Queue<Runnable> postActions, Object additionalData) {
             // TODO actually provide serializaion
             return null;
         }
