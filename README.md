@@ -6,7 +6,13 @@ Differences in behaviour compared to the Lua specification itself and LuaC can b
 
 ## Current state
 
-TODO explain what is missing
+Currently most features are already implemented, except for the below ones, which will follow in the future:
+- some Lua pattern matching tests still fail (for string.gmatch, gsub, etc.), though it mostly works
+- ram usage tracking is not yet implemented
+- coroutine.close
+- variables tagged with `<close>` might not correctly behave on error
+- optimize code execution: we plan to rework the core execution loop in the future to speed things up some more :D
+
 
 ## Usage
 Despite the fact that this Lua VM is primarily developed for the Minecraft mod [Advanced Computers](https://github.com/MidnightMages/AdvancedComputers), we aim to also provide support and bugfixes for features that other projects (including other computer mods) are making use of, though adding completely new features may be slow.
