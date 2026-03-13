@@ -9,7 +9,7 @@ Differences in behaviour compared to the Lua specification itself and LuaC can b
 TODO explain what is missing
 
 ## Usage
-Despite the fact that this Lua VM is primarily developed for the Minecraft mod Advanced Computers<!-- todo add link -->, we aim to also provide support and bugfixes for features that other projects (including other computer mods) are making use of, though adding completely new features may be slow.
+Despite the fact that this Lua VM is primarily developed for the Minecraft mod [Advanced Computers](https://github.com/MidnightMages/AdvancedComputers), we aim to also provide support and bugfixes for features that other projects (including other computer mods) are making use of, though adding completely new features may be slow.
 
 Thus, feel free to use this and open up an issue ticket if something does not work.
 
