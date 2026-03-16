@@ -8,7 +8,10 @@ import dev.asdf00.jluavm.runtime.utils.LFunc;
 import dev.asdf00.jluavm.utils.ByteArrayBuilder;
 import dev.asdf00.jluavm.utils.ByteArrayReader;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Stack;
 
 public final class FunctionCallFrame extends AbstractCallStackFrame {
     public final LuaObject[] locals;
@@ -80,12 +83,7 @@ public final class FunctionCallFrame extends AbstractCallStackFrame {
         try {
             lFunc.invoke(vm, locals, resume, expressionStack, rvals);
         } catch (LuaJavaError e) {
-            vm.error(LuaObject.of(e.getMessage() + "\nJava Stacktrace:\n  " +
-                    String.join("\n  ", Arrays.stream(e.getStackTrace())
-                            .limit(e.getStackTrace().length - new Exception().getStackTrace().length)
-                            .map(ste -> "at %s.%s(%s:%d)".formatted(
-                                    ste.getClassName(), ste.getMethodName(), ste.getFileName(), ste.getLineNumber()))
-                            .toList())));
+            emitAsVmLuaError(vm, e);
         }
         rvals = null;
     }

@@ -1,6 +1,7 @@
 package dev.asdf00.jluavm.internals;
 
 import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
+import dev.asdf00.jluavm.exceptions.LuaJavaError;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.LFunc;
@@ -11,7 +12,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Queue;
 
 public final class InternalCallFrame extends AbstractCallStackFrame {
     private final FunctionCallFrame parentFuncFrame;
@@ -37,7 +37,11 @@ public final class InternalCallFrame extends AbstractCallStackFrame {
 
     @Override
     public void execute(LuaVM_RT vm) {
+        try {
         callable.invoke(vm, parentFuncFrame.locals, arguments, resume, expressionStack, rvals);
+        } catch (LuaJavaError e) {
+            emitAsVmLuaError(vm, e);
+        }
         rvals = null;
         arguments = null;
     }

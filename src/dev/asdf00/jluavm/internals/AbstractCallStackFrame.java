@@ -1,12 +1,13 @@
 package dev.asdf00.jluavm.internals;
 
+import dev.asdf00.jluavm.exceptions.LuaJavaError;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.utils.ByteArrayBuilder;
 import dev.asdf00.jluavm.utils.ByteArrayReader;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.Stack;
 
 import static dev.asdf00.jluavm.runtime.utils.StateDeserializer.maybeNull;
@@ -96,4 +97,13 @@ public abstract sealed class AbstractCallStackFrame permits FunctionCallFrame, I
     public abstract void execute(LuaVM_RT vm);
 
     public abstract void reset();
+
+    protected static void emitAsVmLuaError(LuaVM_RT vm, LuaJavaError e) {
+        vm.error(LuaObject.of(e.getMessage() + "\nJava Stacktrace:\n  " +
+                              String.join("\n  ", Arrays.stream(e.getStackTrace())
+                                      .limit(e.getStackTrace().length - new Exception().getStackTrace().length)
+                                      .map(ste -> "at %s.%s(%s:%d)".formatted(
+                                              ste.getClassName(), ste.getMethodName(), ste.getFileName(), ste.getLineNumber()))
+                                      .toList())));
+    }
 }
