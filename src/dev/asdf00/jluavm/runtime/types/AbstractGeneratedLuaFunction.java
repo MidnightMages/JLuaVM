@@ -7,7 +7,6 @@ import dev.asdf00.jluavm.utils.ByteArrayBuilder;
 import java.lang.reflect.Constructor;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 
 public abstract non-sealed class AbstractGeneratedLuaFunction extends LuaFunction {
     public final String compilationUnit;

@@ -8,7 +8,6 @@ import dev.asdf00.jluavm.runtime.types.LuaJavaApiFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 
-import java.util.Objects;
 import java.util.function.BiFunction;
 
 @SuppressWarnings("unused")

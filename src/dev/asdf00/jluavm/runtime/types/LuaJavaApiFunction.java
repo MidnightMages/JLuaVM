@@ -7,7 +7,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 
 public abstract non-sealed class LuaJavaApiFunction extends LuaFunction {
     public final ApiFunctionRegistry registry;
