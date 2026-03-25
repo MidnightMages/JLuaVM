@@ -2865,4 +2865,15 @@ public class VmTest extends BaseVmTest {
                 return printStream
                 """, LuaObject.of("other\nnil\n"));
     }
+
+    @Test
+    void stringByteCharConversion() {
+        loadAssertSuccessAndRv("""
+                return string.byte("a")
+                """, LuaObject.of(97));
+
+        loadAssertSuccessAndRv("""
+                return string.char(98)
+                """, LuaObject.of("b"));
+    }
 }

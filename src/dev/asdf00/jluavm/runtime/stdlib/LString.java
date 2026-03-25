@@ -43,7 +43,7 @@ public class LString {
          */
 
         registry.register(STRING_PREFIX + "byte",
-                AtomicLuaFunction.vaForOneResult(registry, (vm, va) -> {
+                AtomicLuaFunction.vaForManyResults(registry, (vm, va) -> {
                     if (va.length < 1 || !va[0].isType(ARITHMETIC)) {
                         vm.error(funcArgTypeError("string.byte", 0, va.length > 0 ? va[0] : null, "string"));
                         return null;
@@ -58,7 +58,17 @@ public class LString {
                         vm.error(funcArgAnyTypeError("string.byte", 2, va[2], "integer", "nil", "nothing"));
                         return null;
                     }
-                    return sub(vm, va);
+                    var startIdx = va.length > 1 ? va[1] : LuaObject.of(1);
+                    var endIdx = va.length > 2 ? va[2] : startIdx;
+
+                    var subbedString = sub(vm, new LuaObject[]{va[0], startIdx, endIdx});
+                    assert subbedString != null;
+                    var stringToConvert = subbedString.getString();
+                    LuaObject[] converted = new LuaObject[stringToConvert.length()];
+                    for (int i = 0; i < stringToConvert.length(); i++) {
+                        converted[i] = LuaObject.of((int) stringToConvert.charAt(i));
+                    }
+                    return converted;
                 }));
 
         registry.register(STRING_PREFIX + "char",
