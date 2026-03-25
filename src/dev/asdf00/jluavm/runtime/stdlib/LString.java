@@ -67,7 +67,7 @@ public class LString {
                     for (int i = 0; i < va.length; i++) {
                         if (va[i].isNumberCoercible()) {
                             if (va[i].hasLongRepr()) {
-                                r2.append(va[i].asLong());
+                                r2.append((char)(va[i].asLong() & 0xFF));
                             } else {
                                 vm.error(funcArgTypeError("string.char", i, va[i], "integer"));
                                 return null;
