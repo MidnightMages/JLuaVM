@@ -8,6 +8,7 @@ import dev.asdf00.jluavm.runtime.utils.Singletons;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
 
@@ -2875,5 +2876,40 @@ public class VmTest extends BaseVmTest {
         loadAssertSuccessAndRv("""
                 return string.char(98)
                 """, LuaObject.of("b"));
+    }
+
+    @Test
+    @Timeout(value = 5)
+    void doubleLookBreak() {
+        loadAssertSuccessAndRv("""
+                repeat
+                  while true do
+                    if false then
+                    else
+                        goto exit
+                    end
+                  end
+                  ::exit::
+                until true;
+                return "it works"
+                """, LuaObject.of("it works"));
+    }
+
+    @Test
+    void doubleLookBreak2() {
+        assertTimeoutPreemptively(Duration.ofSeconds(10), () -> {
+            loadAssertSuccessAndRv("""
+                    repeat
+                      while true do
+                        if false then
+                        else
+                            break
+                        end
+                      end
+                      ::exit::
+                    until true;
+                    return "it works"
+                    """, LuaObject.of("it works"));
+        });
     }
 }
