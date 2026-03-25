@@ -239,7 +239,7 @@ public final class Parser {
                 VarScope elseScp = VarScope.EMPTY_DUMMY;
                 if (ltok == ELSE) {
                     scan();
-                    symTab.enterLoopScope();
+                    symTab.enterPlainScope(false);
                     elsePos = cur.pos();
                     elseBlock = Block();
                     elseScp = symTab.exitScope();
