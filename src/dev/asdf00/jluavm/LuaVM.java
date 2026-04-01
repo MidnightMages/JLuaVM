@@ -130,6 +130,10 @@ public abstract class LuaVM {
             eventCallback.accept(this, hookType);
     }
 
+    public static void clearCache() {
+        COMPILATION_CACHE.clear();
+    }
+
     // =================================================================================================================
     // debug access to java intermediate code
     // =================================================================================================================
