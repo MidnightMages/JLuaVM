@@ -5,6 +5,7 @@ import dev.asdf00.jluavm.exceptions.loading.InternalLuaLoadingError;
 
 import javax.tools.*;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.OutputStream;
 import java.io.StringWriter;
 import java.net.URI;
@@ -79,7 +80,7 @@ public class DelayedJavaCompiler {
             if (virtualJarUri.getScheme().equals("union")) {
                 var jarDiskPath = virtualJarUri
                         .getPath()
-                        .replaceAll("#\\d+!/$", "")  // remove the trailing '#NUMBER!/'
+                        .replaceAll("(#|%23)\\d+!/$", "")  // remove the trailing '#NUMBER!/'
                         .trim();
 
                 // trim leading / on windows, e.g. /C:/something/something.jar
@@ -93,7 +94,7 @@ public class DelayedJavaCompiler {
                 // if it is a .jar path, add it to the classpath
                 String normalizedJarDiskPathString = normalizedJarDiskPath.toString().replace('\\', '/');
                 if (normalizedJarDiskPathString.endsWith(".jar")) {
-                    classpath.append(";").append(normalizedJarDiskPathString);
+                    classpath.append(File.pathSeparator).append(normalizedJarDiskPathString);
                 }
             }
         } catch (URISyntaxException e) {
