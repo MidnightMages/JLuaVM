@@ -364,6 +364,12 @@ public class LuaVM_RT extends LuaVM {
         var targetArgCnt = externalTarget.getArgCount();
         LuaObject[] VADestArray = null;
 
+        // if we process varargs that are not the last one, unpack it into just the first one as we need to drop the extra ones
+        for (int i = 0; i < args.length-1; i++) {
+            if (args[i].isArray())
+                args[i] = args[i].asArray()[0];
+        }
+
         while (dstIdx < externalTarget.getArgCount()) {
             boolean isLastDest = dstIdx == targetArgCnt - 1;
             if (isLastDest && vaDest) {
