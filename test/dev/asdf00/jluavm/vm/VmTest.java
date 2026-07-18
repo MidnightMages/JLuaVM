@@ -2912,4 +2912,37 @@ public class VmTest extends BaseVmTest {
                     """, LuaObject.of("it works"));
         });
     }
+
+    @Test
+    void varargConcatenationFront() {
+        var res = loadAssertSuccessGetRv("""
+                function a(...)
+                    return table.pack(...,"\\n") -- only the first value of ... should be grabbed
+                end
+                return a("test","test2")
+                """);
+        assertEquals(1, res.length);
+        var resTable = res[0];
+        assertTrue(resTable.isTable());
+        assertEquals(2, resTable.len().lVal);
+        assertEquals("test", resTable.get(LuaObject.of(1)).getString());
+        assertEquals("\n", resTable.get(LuaObject.of(2)).getString());
+    }
+
+    @Test
+    void varargConcatenationBack() {
+        var res = loadAssertSuccessGetRv("""
+                function a(...)
+                    return table.pack("\\n",...)
+                end
+                return a("test","test2")
+                """);
+        assertEquals(1, res.length);
+        var resTable = res[0];
+        assertTrue(resTable.isTable());
+        assertEquals(3, resTable.len().lVal);
+        assertEquals("\n", resTable.get(LuaObject.of(1)).getString());
+        assertEquals("test", resTable.get(LuaObject.of(2)).getString());
+        assertEquals("test2", resTable.get(LuaObject.of(3)).getString());
+    }
 }
