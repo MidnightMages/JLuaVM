@@ -162,7 +162,7 @@ public class LString {
                         return null;
                     }
                     if (!init.hasLongRepr()) {
-                        vm.error(funcArgTypeError("string.match", 1, pattern, "integer"));
+                        vm.error(funcArgTypeError("string.match", 1, init, "integer"));
                         return null;
                     }
 
@@ -197,7 +197,7 @@ public class LString {
                         return null;
                     }
                     if (!init.hasLongRepr()) {
-                        vm.error(funcArgTypeError("string.gmatch", 2, pattern, "integer"));
+                        vm.error(funcArgTypeError("string.gmatch", 2, init, "integer"));
                         return null;
                     }
 
@@ -259,11 +259,11 @@ public class LString {
 
                     // TODO support tables and functions for replacements (see ref manual https://www.lua.org/manual/5.4/manual.html#pdf-string.gsub )
                     if (repl == null || !repl.isType(NUMBER | STRING)) {
-                        vm.error(funcArgAnyTypeError("string.gsub", 2, pattern, "string", "number"));
+                        vm.error(funcArgAnyTypeError("string.gsub", 2, repl, "string", "number"));
                         return null;
                     }
                     if (!nReplacements.isNil() && !nReplacements.hasLongRepr()) {
-                        vm.error(funcArgTypeError("string.gsub", 3, pattern, "integer"));
+                        vm.error(funcArgTypeError("string.gsub", 3, nReplacements, "integer"));
                         return null;
                     }
 
