@@ -4,11 +4,17 @@ import dev.asdf00.jluavm.api.functions.AtomicLuaFunction;
 import dev.asdf00.jluavm.api.functions.MixedStateFunctionRegistry;
 import dev.asdf00.jluavm.exceptions.LuaJavaError;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
+import dev.asdf00.jluavm.runtime.stdlib.patternMatching.FindResult;
 import dev.asdf00.jluavm.runtime.stdlib.patternMatching.PatternMatchingImpl;
+import dev.asdf00.jluavm.runtime.types.LuaJavaApiFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
+import dev.asdf00.jluavm.runtime.utils.RTUtils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Locale;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 
 import static dev.asdf00.jluavm.runtime.types.LuaObject.Types.*;
@@ -243,121 +249,221 @@ public class LString {
                 }));
 
         registry.register(STRING_PREFIX + "gsub",
-                AtomicLuaFunction.vaForManyResults(registry, (vm, va) -> {
-                    var s = va.length > 0 ? va[0] : null;
-                    var pattern = va.length > 1 ? va[1] : null;
-                    var repl = va.length > 2 ? va[2] : null;
-                    var nReplacements = va.length > 3 ? va[3] : LuaObject.NIL; // max number of replacements
-                    if (s == null || !s.isType(NUMBER | STRING)) {
-                        vm.error(funcArgAnyTypeError("string.gsub", 0, s, "string", "number"));
-                        return null;
-                    }
-                    if (pattern == null || !pattern.isType(NUMBER | STRING)) {
-                        vm.error(funcArgAnyTypeError("string.gsub", 1, pattern, "string", "number"));
-                        return null;
-                    }
+                new LuaJavaApiFunction(registry) {
+                    final static Pattern regexPattern = Pattern.compile("%(\\d|%)", Pattern.DOTALL);
 
-                    // TODO support tables and functions for replacements (see ref manual https://www.lua.org/manual/5.4/manual.html#pdf-string.gsub )
-                    if (repl == null || !repl.isType(NUMBER | STRING)) {
-                        vm.error(funcArgAnyTypeError("string.gsub", 2, repl, "string", "number"));
-                        return null;
-                    }
-                    if (!nReplacements.isNil() && !nReplacements.hasLongRepr()) {
-                        vm.error(funcArgTypeError("string.gsub", 3, nReplacements, "integer"));
-                        return null;
-                    }
+                    @Override
+                    public void invoke(LuaVM_RT vm, LuaObject[] stackFrame, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
+                        final int ARG_VARARG = 0;
+                        final int STATE_RESULT_STR_WITH_PLACEHOLDERS = 1;
+                        final int STATE_FUNC_CALL_ARGS = 2;
+                        final int STATE_FUNC_CALL_DEFAULT_RETURNS = 3; // the string that we use if the function happens to return NIL or FALSE
+                        LuaObject[] va = stackFrame[ARG_VARARG].asArray();
+                        var repl = va.length > 2 ? va[2] : null;
+                        final boolean REQUIRE_ITERATIVE = repl != null && repl.isFunction();
 
-                    String currentInputString = s.asString();
-                    String replacementString = repl.asString();
-                    String patternString = pattern.asString();
-//                    if (patternString.startsWith("^"))
-//                        patternString = "%"+patternString;
+                        if (resume == -1) {
+                            // ---- INPUT HANDLING ----
+                            var s = va.length > 0 ? va[0] : null;
+                            var pattern = va.length > 1 ? va[1] : null;
+                            var nReplacements = va.length > 3 ? va[3] : LuaObject.NIL; // max number of replacements
+                            if (s == null || !s.isType(NUMBER | STRING)) {
+                                vm.error(funcArgAnyTypeError("string.gsub", 0, s, "string", "number"));
+                                return;
+                            }
+                            if (pattern == null || !pattern.isType(NUMBER | STRING)) {
+                                vm.error(funcArgAnyTypeError("string.gsub", 1, pattern, "string", "number"));
+                                return;
+                            }
 
-                    StringBuilder rv = new StringBuilder();
-                    var maxReplacements = nReplacements.isNil() ? Integer.MAX_VALUE : nReplacements.asLong();
-                    int numberOfTotalMatchesThatOccurred = 0;
-                    int currentStartPos = 0;
-                    int lastNonZeroMatchPos = -1;
-                    var regexPattern = Pattern.compile("%(\\d|%)", Pattern.DOTALL);
-                    for (int i = 0; i < maxReplacements; i++) {
-                        var extRes = PatternMatchingImpl.lua_match_extended(currentInputString, patternString, currentStartPos);
-                        var findRes = extRes.res();
-                        if (!findRes.success()) { // no more matches --> finish up and return
-                            break;
-                        }
+                            // TODO support tables for replacements (see ref manual https://www.lua.org/manual/5.4/manual.html#pdf-string.gsub )
+                            if (repl == null || !repl.isType(NUMBER | STRING | FUNCTION)) {
+                                vm.error(funcArgAnyTypeError("string.gsub", 2, repl, "string", "number", "function"));
+                                return;
+                            }
+                            if (!nReplacements.isNil() && !nReplacements.hasLongRepr()) {
+                                vm.error(funcArgTypeError("string.gsub", 3, nReplacements, "integer"));
+                                return;
+                            }
+
+                            String inputString = s.asString();
+                            String replacementString = repl.asString();
+                            String patternString = pattern.asString();
+                            var maxReplacements = nReplacements.isNil() ? Integer.MAX_VALUE : nReplacements.asLong();
+
+                            // ------------------------
+
+                            var rv = new ArrayList<String>(); // null as placeholders for REQUIRE_ITERATIVE=true
+                            var funcCallArgsToEvaluate = REQUIRE_ITERATIVE ? new ArrayList<LuaObject[]>() : null; // contains the parameters for the replacement function calls
+                            var funcCallArgsToEvaluate_defaultRets = REQUIRE_ITERATIVE ? new ArrayList<LuaObject>() : null; // default values for the func returns (for nil/false)
+
+                            Function<FindResult, String> computeReplacementResult = (FindResult findRes) -> {
+                                if (REQUIRE_ITERATIVE) {
+                                    var caps = findRes.captures();
+                                    var fullCaptureString = inputString.substring(findRes.start(), findRes.end());
+                                    funcCallArgsToEvaluate.add((caps == null || caps.length == 0) ?
+                                            new LuaObject[]{LuaObject.of(fullCaptureString)} :
+                                            Arrays.stream(caps).map(LuaObject::of).toArray(LuaObject[]::new));
+                                    funcCallArgsToEvaluate_defaultRets.add(LuaObject.of(fullCaptureString));
+                                    return null; // that way the null-placeholder is added into rv
+                                }
+
+                                return regexPattern.matcher(replacementString)
+                                        .replaceAll(mr -> {
+                                            if (mr.group().equals("%%"))
+                                                return "%";
+                                            var captureGroupId = Integer.parseInt(mr.group().substring(1));
+
+                                            // 0 is the whole match always, but so is 1 if the pattern does not contian any captures
+                                            if (captureGroupId == 0 ||
+                                                captureGroupId == 1 && findRes.captures().length == 0) {
+                                                return inputString.substring(findRes.start(), findRes.end());
+                                            }
+                                            var cap = findRes.captures()[captureGroupId - 1];
+                                            return cap != null ? cap : "";
+                                        });
+                            };
+                            int numberOfTotalMatchesThatOccurred = 0;
+                            int currentStartPos = 0;
+                            int lastNonZeroMatchPos = -1;
+                            for (int i = 0; i < maxReplacements; i++) {
+                                var extRes = PatternMatchingImpl.lua_match_extended(inputString, patternString, currentStartPos);
+                                var findRes = extRes.res();
+                                if (!findRes.success()) { // no more matches --> finish up and return
+                                    break;
+                                }
 
 
-                        var lazinessPreservedPattern = patternString.replace(")", "").replaceAll("%\\d","");
-                        // match is out of bounds and not zerolength right at the end
-                        if (currentStartPos >= currentInputString.length() && (
-                                findRes.matchLength() != 0 ||
-                                !(lazinessPreservedPattern.endsWith("-") ||
-                                  lazinessPreservedPattern.endsWith("?") )           // this is hacky as it could also contain %? or %- respectively, and that wouldnt count
-                        )) {
-                            break;
-                        }
+                                var lazinessPreservedPattern = patternString.replace(")", "").replaceAll("%\\d", "");
+                                // match is out of bounds and not zerolength right at the end
+                                if (currentStartPos >= inputString.length() && (
+                                        findRes.matchLength() != 0 ||
+                                        !(lazinessPreservedPattern.endsWith("-") ||
+                                          lazinessPreservedPattern.endsWith("?"))           // this is hacky as it could also contain %? or %- respectively, and that wouldnt count
+                                )) {
+                                    break;
+                                }
 
-                        Runnable applySubstitution = () -> {
-                            String currentReplacement = regexPattern.matcher(replacementString)
-                                    .replaceAll(mr -> {
-                                        if (mr.group().equals("%%"))
-                                            return "%";
-                                        var captureGroupId = Integer.parseInt(mr.group().substring(1));
+                                if (findRes.matchLength() == 0) { // this is a zero len match
+                                    if (currentStartPos >= inputString.length()) {
+                                        rv.add(computeReplacementResult.apply(findRes));
+                                        numberOfTotalMatchesThatOccurred++;
+                                        break;
+                                    }
 
-                                        // 0 is the whole match always, but so is 1 if the pattern does not contian any captures
-                                        if (captureGroupId == 0 ||
-                                            captureGroupId == 1 && findRes.captures().length == 0) {
-                                            return currentInputString.substring(findRes.start(), findRes.end());
-                                        }
-                                        var cap = findRes.captures()[captureGroupId - 1];
-                                        return cap != null ? cap : "";
-                                    });
+                                    if (lastNonZeroMatchPos == findRes.start()) { // skip it if it is right after another match
+                                        rv.add(inputString.substring(currentStartPos, currentStartPos + 1));
+                                        currentStartPos++;
+                                        continue;
+                                    }
+                                } else {
+                                    lastNonZeroMatchPos = findRes.end();
+                                }
 
-                            rv.append(currentReplacement);
-                        };
-
-                        if (findRes.matchLength() == 0) { // this is a zero len match
-                            if (currentStartPos >= currentInputString.length()) {
-                                applySubstitution.run();
+                                // there was a match
                                 numberOfTotalMatchesThatOccurred++;
-                                break;
-                            }
 
-                            if (lastNonZeroMatchPos == findRes.start()) { // skip it if it is right after another match
-                                rv.append(currentInputString.charAt(currentStartPos));
-                                currentStartPos++;
-                                continue;
+                                // add the original string thats before our match
+                                if (currentStartPos != findRes.start())
+                                    rv.add(inputString.substring(currentStartPos, findRes.start()));
+
+                                // then add/queue the replacement
+                                rv.add(computeReplacementResult.apply(findRes));
+
+                                // and advance the next matchpos
+                                if (findRes.end() == currentStartPos) {
+                                    rv.add(inputString.substring(currentStartPos, currentStartPos + 1));
+                                    currentStartPos++;
+                                } else {
+                                    currentStartPos = findRes.end();
+                                }
                             }
-                        } else {
-                            lastNonZeroMatchPos = findRes.end();
+                            // no more matches --> finish up and return
+                            if (currentStartPos < inputString.length())
+                                rv.add(inputString.substring(currentStartPos));
+
+                            if (!REQUIRE_ITERATIVE) { // we are done
+                                assert !rv.contains(null);
+                                assert funcCallArgsToEvaluate == null;
+                                vm.returnValue(LuaObject.of(String.join("", rv)), LuaObject.of(numberOfTotalMatchesThatOccurred));
+                                return;
+                            } else { // we need to start calling our functions, see below
+                                // we should have exactly as many nulls as funcCallArgs
+                                assert Collections.frequency(rv, null) == funcCallArgsToEvaluate.size();
+
+                                stackFrame[STATE_RESULT_STR_WITH_PLACEHOLDERS] = LuaObject.of(rv.stream()
+                                        .map(LuaObject::of).toArray(LuaObject[]::new));
+                                stackFrame[STATE_FUNC_CALL_ARGS] = LuaObject.of(funcCallArgsToEvaluate.stream()
+                                        .map(LuaObject::of).toArray(LuaObject[]::new));
+                                stackFrame[STATE_FUNC_CALL_DEFAULT_RETURNS] = LuaObject.of(funcCallArgsToEvaluate_defaultRets.toArray(LuaObject[]::new));
+
+                                resume = 0;
+                            }
+                        } // end resume -1
+
+                        assert resume >= 0;
+                        assert repl != null;
+                        var replFunc = repl.getFunc();
+                        var resultStrArray = stackFrame[STATE_RESULT_STR_WITH_PLACEHOLDERS].asArray();
+                        var funcCallArgsToEvaluate_defaultRets = stackFrame[STATE_FUNC_CALL_DEFAULT_RETURNS].asArray();
+
+                        if (resume > 0) { // we have a previous returnvalue
+                            // replacement types:
+                            // allowed:
+                            // nil, boolean [false] --> use the original string
+                            // string, int, float --> use this as a replacement (float with max precision)
+                            // boolean [true] --> error
+
+                            // forbidden: coroutine, function, table
+                            var returnedResult = returned.length == 0 ? LuaObject.NIL : returned[0];
+                            LuaObject replacementValue;
+                            if (returnedResult.isType(NIL | BOOLEAN)) {
+                                if (returnedResult.isTruthy()) { // this must be boolean=true which is not allowed
+                                    vm.error(LuaObject.of("invalid replacement value (boolean: false)"));
+                                    return;
+                                }
+
+                                // replace it with the original text, so effectively perform no replacement at all
+                                replacementValue = funcCallArgsToEvaluate_defaultRets[resume - 1];
+                            } else if (returnedResult.isType(DOUBLE | LONG | STRING)) {
+                                replacementValue = returnedResult;
+                            } else {
+                                vm.error(LuaObject.of("invalid replacement value (%s)".formatted(returnedResult.getTypeAsString())));
+                                return;
+                            }
+                            resultStrArray[RTUtils.findIndexOf(resultStrArray, x -> x.refVal == null)] = replacementValue;
                         }
 
-                        // there was a match
-                        numberOfTotalMatchesThatOccurred++;
-
-                        // add the original string thats before our match
-                        if (currentStartPos != findRes.start())
-                            rv.append(currentInputString, currentStartPos, findRes.start());
-
-                        // then add the replacement
-                        // TODO, here query the replacement function/table for a value to put in. For now we just use the supplied string
-                        applySubstitution.run();
-
-                        // and advance the next matchpos
-                        if (findRes.end() == currentStartPos) {
-                            rv.append(currentInputString.charAt(currentStartPos));
-                            currentStartPos++;
-                        } else {
-                            currentStartPos = findRes.end();
+                        var funcCallArgs = stackFrame[STATE_FUNC_CALL_ARGS].asArray();
+                        if (resume < funcCallArgs.length) {
+                            vm.callExternal(resume + 1, replFunc, funcCallArgs[resume]);
+                            return;
                         }
+
+                        // else: no more replacements to make --> cook up the result and return it
+                        assert RTUtils.findIndexOf(resultStrArray, x -> x.refVal == null) == -1; // there shouldnt be any nulls in there anymore
+                        var rv = new StringBuilder();
+                        for (var s : resultStrArray) {
+                            rv.append(s.getString());
+                        }
+                        vm.returnValue(LuaObject.of(rv.toString()));
                     }
-                    // no more matches --> finish up and return
-                    if (currentStartPos < currentInputString.length())
-                        rv.append(currentInputString.substring(currentStartPos));
 
-                    return new LuaObject[]{LuaObject.of(rv.toString()), LuaObject.of(numberOfTotalMatchesThatOccurred)};
-                }));
+                    @Override
+                    public int getMaxLocalsSize() {
+                        return 1 + 3; // vararg + state-locals
+                    }
 
+                    @Override
+                    public int getArgCount() {
+                        return 1;
+                    }
+
+                    @Override
+                    public boolean hasParamsArg() {
+                        return true;
+                    }
+                });
         registry.register(STRING_PREFIX + "len",
                 AtomicLuaFunction.forOneResult(registry, (vm, s) -> {
                     if (!s.isType(ARITHMETIC)) {

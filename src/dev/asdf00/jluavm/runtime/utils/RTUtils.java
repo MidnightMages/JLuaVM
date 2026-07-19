@@ -68,4 +68,25 @@ public class RTUtils {
                                                     String expectedType) {
         return checkPositionalArgError(vm, args, funcName, argIdx, isArgValid, null, new String[]{expectedType});
     }
+
+    /**
+     * Similar to C#'s Array.IndexOf. Returns the first index {@code} in {@code array} for which it holds that
+     * {@code array[i] == itemToFind}. If no such index is found, {@code -1} is returned.
+     */
+    public static <T> int indexOf(T[] array, T itemToFind) {
+        for (int i = 0; i < array.length; i++) {
+            if (array[i] == itemToFind)
+                return i;
+        }
+        return -1;
+    }
+
+    // similar, but uses a predicate
+    public static <T> int findIndexOf(T[] array, Function<T, Boolean> filter) {
+        for (int i = 0; i < array.length; i++) {
+            if (filter.apply(array[i]))
+                return i;
+        }
+        return -1;
+    }
 }

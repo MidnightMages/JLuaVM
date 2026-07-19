@@ -982,4 +982,30 @@ public class PatternMatchingTest extends BaseVmTest {
                 """));
     }
 
+    @Test
+    void gsubWithReplacementFunc() {
+        loadAssertSuccessAndRv("""
+                rv = ""
+
+                innerLog = ""
+                function inner(...)
+                    innerLog = innerLog..table.concat(table.pack(...),"|")..";"
+                end
+
+                local patterns = {"",".",".(.)","(.(.))","(e(.))"}
+                for _,pattern in ipairs(patterns) do
+                    rv = rv .. string.gsub("test",pattern, inner)
+                    rv = rv .. "=>" .. innerLog .. ";\\n"
+                    innerLog=""
+                end
+                
+                return rv
+                """, LuaObject.of("""
+                test=>;;;;;;
+                test=>t;e;s;t;;
+                test=>e;t;;
+                test=>te|e;st|t;;
+                test=>es|s;;
+                """));
+    }
 }
