@@ -379,8 +379,8 @@ public class LGlobal {
                         return LuaObject.NIL;
 
                     var mt = t.getMetaTable();
-                    if (mt.isNil())
-                        return mt;
+                    if (mt == null)
+                        return LuaObject.NIL;
 
                     return mt.get(LuaObject.of("__metatable"));
                 }));
@@ -475,7 +475,7 @@ public class LGlobal {
                     }
 
                     var existingMt = tbl.getMetaTable();
-                    if (existingMt != null && !existingMt.isNil())
+                    if (existingMt != null)
                         return mt;
                     tbl.setMetatable(mt);
 

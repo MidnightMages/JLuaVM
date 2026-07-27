@@ -62,12 +62,13 @@ public final class LuaObject {
     // =================================================================================================================
 
     public LuaObject getMetaTable() {
+        assert metaTable == null || !metaTable.isNil(); // metatable should never be NIL as we should use null instead
         return metaTable;
     }
 
     public void setMetatable(LuaObject mt) {
         assert metaTable == null || metaTable.get(LuaObject.of("__metatable")).isNil();
-        metaTable = mt;
+        metaTable = (mt == null || mt.isNil()) ? null : mt;
     }
 
     public LuaObject getMetaValueOrNil(String mtKey) {

@@ -158,7 +158,8 @@ public class StateDeserializer {
                     int mtblIdx = rdr.readInt();
                     if (mtblIdx >= 0) {
                         // valid metatable
-                        lobj.metaTable = objs[mtblIdx];
+                        var mt = objs[mtblIdx];
+                        lobj.metaTable = (mt == null || mt.isNil()) ? null : mt; // we shouldnt ever encounter NIL but if we do, map it to null
                     }
                     int kvPairs = rdr.remaining() / 8;
                     var tbl = new LuaHashMap();
