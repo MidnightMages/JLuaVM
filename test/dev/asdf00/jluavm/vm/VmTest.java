@@ -2945,4 +2945,12 @@ public class VmTest extends BaseVmTest {
         assertEquals("test", resTable.get(LuaObject.of(2)).getString());
         assertEquals("test2", resTable.get(LuaObject.of(3)).getString());
     }
+
+    @Test
+    void basicGetmetatable() {
+        loadAssertSuccessAndRv("""
+                local a = {}
+                return getmetatable(a) == nil
+                """, LuaObject.TRUE);
+    }
 }
