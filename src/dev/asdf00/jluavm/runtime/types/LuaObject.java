@@ -794,6 +794,16 @@ public final class LuaObject {
         return (String) refVal;
     }
 
+    public double getDouble() {
+        assert isDouble();
+        return dVal;
+    }
+
+    public double getLong() {
+        assert isLong();
+        return lVal;
+    }
+
     public double asDouble() {
         if (isString()) {
             var cres = coerceToNumber();

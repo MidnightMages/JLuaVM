@@ -3,18 +3,18 @@ package dev.asdf00.jluavm.runtime.stdlib;
 import dev.asdf00.jluavm.api.functions.AtomicLuaFunction;
 import dev.asdf00.jluavm.api.functions.MixedStateFunctionRegistry;
 import dev.asdf00.jluavm.exceptions.LuaJavaError;
+import dev.asdf00.jluavm.exceptions.loading.LuaLexerException;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
+import dev.asdf00.jluavm.parsing.Lexer;
 import dev.asdf00.jluavm.runtime.stdlib.patternMatching.FindResult;
 import dev.asdf00.jluavm.runtime.stdlib.patternMatching.PatternMatchingImpl;
 import dev.asdf00.jluavm.runtime.types.LuaJavaApiFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.RTUtils;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Locale;
+import java.util.*;
 import java.util.function.Function;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static dev.asdf00.jluavm.runtime.types.LuaObject.Types.*;
@@ -22,6 +22,10 @@ import static dev.asdf00.jluavm.runtime.utils.RTUtils.funcArgAnyTypeError;
 import static dev.asdf00.jluavm.runtime.utils.RTUtils.funcArgTypeError;
 
 public class LString {
+
+    // see Formatter#FORMAT_SPECIFIER;
+    private static final Pattern JAVA_STRING_FORMAT_SPECIFIERS = Pattern.compile("%(\\d+\\$)?([-#+ 0,(\\<]*)?(\\d+)?(\\.\\d+)?([tT])?([a-zA-Z%])");
+    private static final Pattern LUA_QFMT = Pattern.compile("(^|[^%])%q");
 
     private static final String STRING_PREFIX = "string.";
 
@@ -35,7 +39,6 @@ public class LString {
     public static void registerStdString(MixedStateFunctionRegistry registry) {
         /* TODO, add the following ones: https://www.lua.org/manual/5.4/manual.html#6.4
         string.dump(function [, strip])
-        string.format(formatstring, ···)
         string.pack(fmt, v1, v2, ···)
         string.packsize(fmt)
         string.unpack(fmt, s [, pos])
@@ -151,6 +154,206 @@ public class LString {
                         return rv.toArray(LuaObject[]::new);
                     } else {
                         return new LuaObject[]{LuaObject.NIL};
+                    }
+                }));
+
+        registry.register(STRING_PREFIX + "format",
+                AtomicLuaFunction.vaForOneResult(registry, (vm, va) -> {
+                    if (va.length < 1) {
+                        vm.error(funcArgTypeError("string.format", 0, LuaObject.NIL, "string"));
+                        return null;
+                    }
+                    if (!va[0].isString()) {
+                        vm.error(funcArgTypeError("string.format", 0, va[0], "string"));
+                        return null;
+                    }
+                    String fmt = va[0].asString();
+                    LuaObject[] args = Arrays.copyOfRange(va, 1, va.length);
+                    Matcher matcher = JAVA_STRING_FORMAT_SPECIFIERS.matcher(fmt);
+                    var posAdjustment = new int[args.length];
+                    var nativeFmtArgs = new ArrayList<Object>(args.length);
+                    var qFmtArgs = new ArrayList<LuaObject>(args.length);
+                    {
+                        int i = 0;
+                        while (matcher.find()) {
+                            if (i >= args.length) {
+                                vm.error(funcArgTypeError("string.format", i + 1, LuaObject.NIL, "string"));
+                                return null;
+                            }
+                            if (matcher.group(1) != null) {
+                                posAdjustment[nativeFmtArgs.size()] = qFmtArgs.size();
+                            }
+                            LuaObject toDistribute = args[i];
+                            String conversion = matcher.group(5) == null ? matcher.group(6) : matcher.group(5);
+                            switch (conversion.toLowerCase()) {
+                                case "%", "n" -> {
+                                    // don't move to the next argument
+                                    continue;
+                                }
+                                case "b" ->
+                                        nativeFmtArgs.add(toDistribute.isBoolean() ? toDistribute.getBool() : !toDistribute.isNil());
+                                case "c", "d", "o", "x" -> {
+                                    // must be int coercible
+                                    switch (toDistribute.getType()) {
+                                        case LONG -> nativeFmtArgs.add(toDistribute.getLong());
+                                        case DOUBLE -> {
+                                            if (toDistribute.isIntCoercible()) {
+                                                nativeFmtArgs.add(toDistribute.asLong());
+                                            } else {
+                                                vm.error(LuaObject.of("In 'string.format': Argument #%d has no integer representation!".formatted(i + 2)));
+                                                return null;
+                                            }
+                                        }
+                                        case STRING -> {
+                                            String s = toDistribute.asString();
+                                            try {
+                                                boolean isNegative = s.startsWith("-");
+                                                var result = Lexer.parseNumber(isNegative ? s.substring(1) : s);
+                                                if (result.lVal() == -1) {
+                                                    throw new LuaLexerException(Lexer.STARTING_POS, "not an integer");
+                                                }
+                                                long num = result.lVal();
+                                                if (isNegative) {
+                                                    num = -num;
+                                                }
+                                                nativeFmtArgs.add(num);
+                                            } catch (LuaLexerException ignore) {
+                                                vm.error(LuaObject.of("In 'string.format': Argument #%d has no integer representation!".formatted(i + 2)));
+                                                return null;
+                                            }
+                                        }
+                                        default -> {
+                                            vm.error(LuaObject.of("In 'string.format': Argument #%d has no integer representation!".formatted(i + 2)));
+                                            return null;
+                                        }
+                                    }
+                                }
+                                case "e", "f", "g", "a" -> {
+                                    // must be number coercible
+                                    switch (toDistribute.getType()) {
+                                        case LONG -> nativeFmtArgs.add(toDistribute.getLong());
+                                        case DOUBLE -> nativeFmtArgs.add(toDistribute.getDouble());
+                                        case STRING -> {
+                                            String s = toDistribute.getString();
+                                            try {
+                                                boolean isNegative = s.startsWith("-");
+                                                var result = Lexer.parseNumber(isNegative ? s.substring(1) : s);
+                                                nativeFmtArgs.add(result.lVal() == -1
+                                                        ? isNegative ? -result.dVal() : result.dVal()
+                                                        : isNegative ? -result.lVal() : result.lVal());
+                                            } catch (LuaLexerException ignore) {
+                                                vm.error(LuaObject.of("In 'string.format': Argument #%d has no integer representation!".formatted(i + 2)));
+                                                return null;
+                                            }
+                                        }
+                                        default -> {
+                                            vm.error(LuaObject.of("In 'string.format': Argument #%d has no integer representation!".formatted(i + 2)));
+                                            return null;
+                                        }
+                                    }
+                                }
+                                case "q" -> {
+                                    // this is a lua special formatter
+                                    if (matcher.group(1) != null || matcher.group(2) != null || matcher.group(3) != null || matcher.group(4) != null || matcher.group(5) != null) {
+                                        vm.error(LuaObject.of("specifier '%q' cannot have modifiers"));
+                                        return null;
+                                    }
+                                    qFmtArgs.add(toDistribute);
+                                }
+                                case "s" -> nativeFmtArgs.add(toDistribute.asString());
+                                default -> nativeFmtArgs.add(toDistribute.asString());
+                            }
+                            i++;
+                        }
+                    }
+
+                    if (qFmtArgs.isEmpty()) {
+                        // easy only native replacements
+                        try {
+                            return LuaObject.of(fmt.formatted(nativeFmtArgs.toArray(Object[]::new)));
+                        } catch (IllegalFormatException e) {
+                            vm.error(LuaObject.of(e.getMessage()));
+                            return null;
+                        }
+                    } else {
+                        // first do native, then do Lua
+                        try {
+                            // adjust argument indices and do native replacement
+                            String afterNative = smartReplace(fmt, JAVA_STRING_FORMAT_SPECIFIERS, new Function<>() {
+                                int i = 0;
+
+                                @Override
+                                public String apply(Matcher matcher) {
+                                    String conversion = matcher.group(5) == null ? matcher.group(6) : matcher.group(5);
+                                    if ("q".equals(conversion)) {
+                                        // escape the Lua special match for later
+                                        return "%%q";
+                                    } else if ("%".equals(conversion) || "n".equals(conversion)) {
+                                        // noarg match
+                                        return matcher.group(0);
+                                    } else {
+                                        // native arg
+                                        String result;
+                                        if (posAdjustment[i] == 0 || matcher.group(1) == null) {
+                                            result = matcher.group(0);
+                                        } else {
+                                            var sb = new StringBuilder("%");
+                                            String g1 = matcher.group(1);
+                                            sb.append(Long.parseLong(g1.substring(0, g1.length() - 1)));
+                                            sb.append('$');
+                                            for (int j = 2; j <= 6; j++) {
+                                                sb.append(matcher.group(j) == null ? "" : matcher.group(j));
+                                            }
+                                            result = sb.toString();
+                                        }
+                                        i++;
+                                        return result;
+                                    }
+                                }
+                            }).formatted(nativeFmtArgs.toArray(Object[]::new));
+
+                            // do lua special q replacement
+                            return LuaObject.of(smartReplace(afterNative, LUA_QFMT, new Function<>() {
+                                int i = -1;
+
+                                @Override
+                                public String apply(Matcher matcher) {
+                                    i++;
+                                    LuaObject elem = qFmtArgs.get(i);
+                                    return switch (elem.getType()) {
+                                        case NIL -> "nil";
+                                        case STRING ->
+                                            // do the necessary escapes
+                                                elem.getString().replaceAll("\\\\", "\\\\")
+                                                        .replaceAll("\n", "\\\n")
+                                                        .replaceAll("\"", "\\\"");
+                                        case DOUBLE -> {
+                                            if (elem.isNaN()) {
+                                                yield "NaN";
+                                            }
+                                            // do bithacks to represent it as a lua hexfloat
+                                            long bits = Double.doubleToRawLongBits(elem.asDouble());
+                                            if (Double.isInfinite(elem.asDouble())) {
+                                                yield bits < 0 ? "-Infinity" : "Infinity";
+                                            }
+                                            // TODO check if we need subnormals
+                                            long mantissa = bits & ((1L << 52) - 1);
+                                            long exponent = ((bits >>> 52) & ((1 << 11) - 1)) - 1023;
+                                            yield "%s0X1.%sP%s%s".formatted(
+                                                    bits < 0 ? "-" : "", // sign
+                                                    Long.toHexString(mantissa), // mantissa
+                                                    exponent < 0 ? "-" : "", // exponent sign
+                                                    Long.toHexString(Math.abs(exponent)) // exponent
+                                            );
+                                        }
+                                        default -> elem.asString();
+                                    };
+                                }
+                            }));
+                        } catch (IllegalFormatException e) {
+                            vm.error(LuaObject.of(e.getMessage()));
+                            return null;
+                        }
                     }
                 }));
 
@@ -975,5 +1178,19 @@ public class LString {
                 return rv;
             }
         }
+    }
+
+    private static String smartReplace(String text, Pattern pattern, Function<Matcher, String> match) {
+        int lastIndex = 0;
+        StringBuilder output = new StringBuilder();
+        Matcher matcher = pattern.matcher(text);
+        while (matcher.find()) {
+            output.append(text, lastIndex, matcher.start()).append(match.apply(matcher));
+            lastIndex = matcher.end();
+        }
+        if (lastIndex < text.length()) {
+            output.append(text, lastIndex, text.length());
+        }
+        return output.toString();
     }
 }

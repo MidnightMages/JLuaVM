@@ -13,6 +13,10 @@ import java.util.function.Supplier;
 import static dev.asdf00.jluavm.parsing.container.TokenType.*;
 
 public class Lexer {
+    public static final Position STARTING_POS = new Position(0, 0, 0);
+    private static final Runnable NOP = () -> {
+    };
+
     private static final char CEOF = (char) -1;
     private static final Set<String> KEYWORDS = Set.of("break", "goto", "do", "end", "while", "repeat", "until", "if",
             "then", "elseif", "else", "for", "in", "function", "local", "return", "nil", "false", "true", "and", "or",
@@ -340,6 +344,21 @@ public class Lexer {
     public record NumberParseResult(double dVal, long lVal, String consumedString) {
     }
 
+    public static NumberParseResult parseNumber(CharSequence text) throws LuaLexerException {
+        var res = parseNumber(STARTING_POS, new Supplier<>() {
+            int idx = 0;
+
+            @Override
+            public Character get() {
+                return idx < text.length() ? text.charAt(idx++) : (char) -1;
+            }
+        }, NOP);
+        if (!text.equals(res.consumedString())) {
+            throw new LuaLexerException(STARTING_POS, "still characters remaining after parsing");
+        }
+        return res;
+    }
+
     @SuppressWarnings("DuplicateExpressions")
     public static NumberParseResult parseNumber(Position globalStartPos, Supplier<Character> getCurrCharRaw, Runnable performCharAdvance) {
         // numbers can start with any digit, the prefix '0x' or .
@@ -496,10 +515,10 @@ public class Lexer {
 
     private static boolean isIdentStart(char c) {
         return c != CEOF && (c == '_' |
-                             ((((1 << Character.UPPERCASE_LETTER) |
-                                (1 << Character.LOWERCASE_LETTER) |
-                                (1 << Character.TITLECASE_LETTER))
-                               >> Character.getType(c)) & 1) != 0);
+                ((((1 << Character.UPPERCASE_LETTER) |
+                        (1 << Character.LOWERCASE_LETTER) |
+                        (1 << Character.TITLECASE_LETTER))
+                        >> Character.getType(c)) & 1) != 0);
     }
 
     private static boolean isIdentContination(char c) {
