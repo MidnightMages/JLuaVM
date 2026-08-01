@@ -2953,4 +2953,50 @@ public class VmTest extends BaseVmTest {
                 return getmetatable(a) == nil
                 """, LuaObject.TRUE);
     }
+
+    @Test
+    void lengthOfVararg() {
+        loadAssertSuccessAndRv("""
+                function test(...)
+                    return(#...)
+                end
+                return test({1,2},2,3)
+                """, LuaObject.of(2));
+    }
+    @Test
+    void lengthOfVararg2() {
+        loadAssertSuccessAndRv("""
+                function test(...)
+                    return(#...)
+                end
+                return test({1},2,3)
+                """, LuaObject.of(1));
+    }
+    @Test
+    void lengthOfVararg3() {
+        loadAssertSuccessAndRv("""
+                function test(...)
+                    return(#...)
+                end
+                return test({},2,3)
+                """, LuaObject.of(0));
+    }
+    @Test
+    void lengthOfVararg4() {
+        loadAssertRuntimeError("""
+                function test(...)
+                    return(#...)
+                end
+                return test(1,2,3)
+                """);
+    }
+    @Test
+    void addOfVararg() {
+        loadAssertSuccessAndRv("""
+                function test(...)
+                    return(...+...)
+                end
+                return test(1,2,3)
+                """, LuaObject.of(2));
+    }
 }
