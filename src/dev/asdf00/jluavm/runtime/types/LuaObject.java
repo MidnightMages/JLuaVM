@@ -799,7 +799,7 @@ public final class LuaObject {
         return dVal;
     }
 
-    public double getLong() {
+    public long getLong() {
         assert isLong();
         return lVal;
     }
@@ -973,6 +973,10 @@ public final class LuaObject {
 
     public static LuaObject of(long val) {
         return new LuaObject(null, 0, val, Types.LONG);
+    }
+
+    public static LuaObject of(char val) {
+        return new LuaObject(String.valueOf(val), 0, 0, Types.STRING);
     }
 
     public static LuaObject of(String val) {
