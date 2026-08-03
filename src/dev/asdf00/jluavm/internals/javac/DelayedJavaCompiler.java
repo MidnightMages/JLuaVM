@@ -14,10 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -33,7 +30,7 @@ import java.util.function.Supplier;
  * License Version 2.0 with the source code available at <a href="https://github.com/jOOQ/jOOR">jOOR on Github</a>.
  */
 public class DelayedJavaCompiler {
-    private static final ArrayList<String> extraCompilationJarPaths = new ArrayList<>(); // additioanl jars that are needed for compiling JLuaVM java code
+    private static final LinkedHashSet<String> extraCompilationJarPaths = new LinkedHashSet<>(); // additioanl jars that are needed for compiling JLuaVM java code
 
     public static void includeContainingJarDuringCompilation(Class<?> clazz) {
         var uri = clazz.getProtectionDomain().getCodeSource().getLocation();
@@ -74,17 +71,11 @@ public class DelayedJavaCompiler {
         try {
             URI virtualJarUri = virtualJarPath.toURI();
 
-            try {
-                var jarName = new File(virtualJarUri.getPath()).getName().split("\\.")[0];
-                for (var entry : javaClasspath.split(";")) {
-                    if (entry.contains(jarName) || extraCompilationJarPaths.stream().anyMatch(entry::contains)) {
-                        newClasspathEntries.add(entry);
-                    }
+            var jarName = new File(virtualJarUri.getPath()).getName().split("\\.")[0];
+            for (var entry : javaClasspath.split(";")) {
+                if (entry.contains(jarName) || extraCompilationJarPaths.stream().anyMatch(entry::contains)) {
+                    newClasspathEntries.add(entry);
                 }
-            } catch (SecurityException e) {
-                System.err.println("Getting JAR name is not allowed");
-            } catch (Exception e) {
-                System.err.println("Some other exception occurred: " + e);
             }
             // scheme will be 'union' in some cases, so if it is an actual disk file path,
             // we add it to the classpath to support running it in such environments.
