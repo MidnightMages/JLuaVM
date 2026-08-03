@@ -58,23 +58,28 @@ public class DelayedJavaCompiler {
         if (compiler == null)
             throw new DelayedJavaCompilationException("No compiler was provided by ToolProvider.getSystemJavaCompiler(). Make sure the jdk.compiler module is available.");
 
-        List<String> options = new ArrayList<>();
-        StringBuilder classpath = new StringBuilder();
-        String cp = System.getProperty("java.class.path");
-        String mp = System.getProperty("jdk.module.path");
-        if (cp != null && !"".equals(cp)) {
-            classpath.append(cp);
-        }
-        if (mp != null && !"".equals(mp)) {
-            classpath.append(mp);
-        }
+        String javaClasspath = System.getProperty("java.class.path");
+//        String mp = System.getProperty("jdk.module.path");
 
-        // this is needed for compilation to work in some production environments  as otherwise some already
+        var newClasspathEntries = new ArrayList<String>();
+        // this is needed for compilation to work as otherwise some already
         // compiled classes will not be able to be referenced when compiling java code that we emit during lua compilation
         var virtualJarPath = DelayedJavaCompiler.class.getProtectionDomain().getCodeSource().getLocation();
         try {
             URI virtualJarUri = virtualJarPath.toURI();
 
+            try {
+                var jarName = new File(virtualJarUri.getPath()).getName().split("\\.")[0];
+                for (var entry : javaClasspath.split(";")) {
+                    if (entry.contains(jarName)) {
+                        newClasspathEntries.add(entry);
+                    }
+                }
+            } catch (SecurityException e) {
+                System.err.println("Getting JAR name is not allowed");
+            } catch (Exception e) {
+                System.err.println("Some other exception occurred: " + e);
+            }
             // scheme will be 'union' in some cases, so if it is an actual disk file path,
             // we add it to the classpath to support running it in such environments.
             if (virtualJarUri.getScheme().equals("union")) {
@@ -94,15 +99,19 @@ public class DelayedJavaCompiler {
                 // if it is a .jar path, add it to the classpath
                 String normalizedJarDiskPathString = normalizedJarDiskPath.toString().replace('\\', '/');
                 if (normalizedJarDiskPathString.endsWith(".jar")) {
-                    classpath.append(File.pathSeparator).append(normalizedJarDiskPathString);
+                    newClasspathEntries.add(normalizedJarDiskPathString);
+                } else if (normalizedJarDiskPathString.endsWith("/resources/main")) { // needed for in-IDE runs
+                    newClasspathEntries.add(normalizedJarDiskPathString.replace("resources/main", "classes/java/main"));
                 }
             }
         } catch (URISyntaxException e) {
             throw new InternalLuaLoadingError(e);
         }
 
+        List<String> options = new ArrayList<>();
         options.add("-classpath");
-        options.add(classpath.toString());
+        var compilationClasspath = String.join(";", newClasspathEntries);
+        options.add(compilationClasspath);
 
         ClassFileManager fileManager = new ClassFileManager(compiler.getStandardFileManager(null, null, null));
         StringWriter out = new StringWriter();
