@@ -25,8 +25,7 @@ public class LuaVM_RT extends LuaVM {
 
     @SuppressWarnings("unchecked")
     public static <T extends LuaUserData> LUDTypeDescriptor<T> getDescriptor(Class<T> udType) {
-        DelayedJavaCompiler.includeContainingJarDuringCompilation(udType);
-        return (LUDTypeDescriptor<T>) ALL_THE_DESCRIPTORS.computeIfAbsent(udType, k -> LUDTypeDescriptor.buildDescriptor(k));
+        return (LUDTypeDescriptor<T>) ALL_THE_DESCRIPTORS.computeIfAbsent(udType, LUDTypeDescriptor::buildDescriptor);
     }
 
     public static boolean isDescriptorAvailable(Class<? extends LuaUserData> udType) {
