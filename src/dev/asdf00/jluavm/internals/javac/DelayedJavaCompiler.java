@@ -31,10 +31,13 @@ import java.util.function.Supplier;
  */
 public class DelayedJavaCompiler {
     private static final LinkedHashSet<String> extraCompilationJarPaths = new LinkedHashSet<>(); // additioanl jars that are needed for compiling JLuaVM java code
+    private static final LinkedHashSet<Class<?>> alreadyResolvedClasses = new LinkedHashSet<>();
 
     public static void includeContainingJarDuringCompilation(Class<?> clazz) {
-        var uri = clazz.getProtectionDomain().getCodeSource().getLocation();
-        extraCompilationJarPaths.add(new File(uri.getPath()).getName().split("\\.")[0]);
+        if (alreadyResolvedClasses.add(clazz)) {
+            var uri = clazz.getProtectionDomain().getCodeSource().getLocation();
+            extraCompilationJarPaths.add(new File(uri.getPath()).getName().split("\\.")[0]);
+        }
     }
 
     private static final ExecutorService compilationPool = new ThreadPoolExecutor(1, 4,
