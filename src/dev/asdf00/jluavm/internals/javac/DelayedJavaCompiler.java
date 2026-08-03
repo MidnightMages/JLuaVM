@@ -33,6 +33,12 @@ import java.util.function.Supplier;
  * License Version 2.0 with the source code available at <a href="https://github.com/jOOQ/jOOR">jOOR on Github</a>.
  */
 public class DelayedJavaCompiler {
+    private static final ArrayList<String> extraCompilationJarPaths = new ArrayList<>(); // additioanl jars that are needed for compiling JLuaVM java code
+
+    public static void includeContainingJarDuringCompilation(Class<?> clazz) {
+        var uri = clazz.getProtectionDomain().getCodeSource().getLocation();
+        extraCompilationJarPaths.add(new File(uri.getPath()).getName().split("\\.")[0]);
+    }
 
     private static final ExecutorService compilationPool = new ThreadPoolExecutor(1, 4,
             2, TimeUnit.MINUTES, new LinkedBlockingQueue<>());
@@ -71,7 +77,7 @@ public class DelayedJavaCompiler {
             try {
                 var jarName = new File(virtualJarUri.getPath()).getName().split("\\.")[0];
                 for (var entry : javaClasspath.split(";")) {
-                    if (entry.contains(jarName)) {
+                    if (entry.contains(jarName) || extraCompilationJarPaths.stream().anyMatch(entry::contains)) {
                         newClasspathEntries.add(entry);
                     }
                 }
