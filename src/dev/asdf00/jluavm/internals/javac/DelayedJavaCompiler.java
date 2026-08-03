@@ -14,10 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -33,6 +30,15 @@ import java.util.function.Supplier;
  * License Version 2.0 with the source code available at <a href="https://github.com/jOOQ/jOOR">jOOR on Github</a>.
  */
 public class DelayedJavaCompiler {
+    private static final LinkedHashSet<String> extraCompilationJarPaths = new LinkedHashSet<>(); // additioanl jars that are needed for compiling JLuaVM java code
+    private static final LinkedHashSet<Class<?>> alreadyResolvedClasses = new LinkedHashSet<>();
+
+    public static void includeContainingJarDuringCompilation(Class<?> clazz) {
+        if (alreadyResolvedClasses.add(clazz)) {
+            var uri = clazz.getProtectionDomain().getCodeSource().getLocation();
+            extraCompilationJarPaths.add(new File(uri.getPath()).getName().split("\\.")[0]);
+        }
+    }
 
     private static final ExecutorService compilationPool = new ThreadPoolExecutor(1, 4,
             2, TimeUnit.MINUTES, new LinkedBlockingQueue<>());
@@ -58,23 +64,22 @@ public class DelayedJavaCompiler {
         if (compiler == null)
             throw new DelayedJavaCompilationException("No compiler was provided by ToolProvider.getSystemJavaCompiler(). Make sure the jdk.compiler module is available.");
 
-        List<String> options = new ArrayList<>();
-        StringBuilder classpath = new StringBuilder();
-        String cp = System.getProperty("java.class.path");
-        String mp = System.getProperty("jdk.module.path");
-        if (cp != null && !"".equals(cp)) {
-            classpath.append(cp);
-        }
-        if (mp != null && !"".equals(mp)) {
-            classpath.append(mp);
-        }
+        String javaClasspath = System.getProperty("java.class.path");
+//        String mp = System.getProperty("jdk.module.path");
 
-        // this is needed for compilation to work in some production environments  as otherwise some already
+        var newClasspathEntries = new ArrayList<String>();
+        // this is needed for compilation to work as otherwise some already
         // compiled classes will not be able to be referenced when compiling java code that we emit during lua compilation
         var virtualJarPath = DelayedJavaCompiler.class.getProtectionDomain().getCodeSource().getLocation();
         try {
             URI virtualJarUri = virtualJarPath.toURI();
 
+            var jarName = new File(virtualJarUri.getPath()).getName().split("\\.")[0];
+            for (var entry : javaClasspath.split(";")) {
+                if (entry.contains(jarName) || extraCompilationJarPaths.stream().anyMatch(entry::contains)) {
+                    newClasspathEntries.add(entry);
+                }
+            }
             // scheme will be 'union' in some cases, so if it is an actual disk file path,
             // we add it to the classpath to support running it in such environments.
             if (virtualJarUri.getScheme().equals("union")) {
@@ -94,15 +99,19 @@ public class DelayedJavaCompiler {
                 // if it is a .jar path, add it to the classpath
                 String normalizedJarDiskPathString = normalizedJarDiskPath.toString().replace('\\', '/');
                 if (normalizedJarDiskPathString.endsWith(".jar")) {
-                    classpath.append(File.pathSeparator).append(normalizedJarDiskPathString);
+                    newClasspathEntries.add(normalizedJarDiskPathString);
+                } else if (normalizedJarDiskPathString.endsWith("/resources/main")) { // needed for in-IDE runs
+                    newClasspathEntries.add(normalizedJarDiskPathString.replace("resources/main", "classes/java/main"));
                 }
             }
         } catch (URISyntaxException e) {
             throw new InternalLuaLoadingError(e);
         }
 
+        List<String> options = new ArrayList<>();
         options.add("-classpath");
-        options.add(classpath.toString());
+        var compilationClasspath = String.join(";", newClasspathEntries);
+        options.add(compilationClasspath);
 
         ClassFileManager fileManager = new ClassFileManager(compiler.getStandardFileManager(null, null, null));
         StringWriter out = new StringWriter();

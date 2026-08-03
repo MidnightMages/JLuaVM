@@ -174,6 +174,7 @@ public final class LUDTypeDescriptor<T extends LuaUserData> {
 
     @SuppressWarnings("unchecked")
     public static <T extends LuaUserData> LUDTypeDescriptor<T> buildDescriptor(Class<T> type) {
+        DelayedJavaCompiler.includeContainingJarDuringCompilation(type);
         var companion = buildCompanion(type);
         try {
             var rawFuncs = (Map<String, LLVaMultiFunction>) companion.getField("functions").get(null);

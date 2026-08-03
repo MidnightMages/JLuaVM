@@ -3,6 +3,7 @@ package dev.asdf00.jluavm.internals;
 import dev.asdf00.jluavm.LuaVM;
 import dev.asdf00.jluavm.api.functions.ApiFunctionRegistry;
 import dev.asdf00.jluavm.api.userdata.LuaUserData;
+import dev.asdf00.jluavm.internals.javac.DelayedJavaCompiler;
 import dev.asdf00.jluavm.runtime.types.AbstractGeneratedLuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaJavaApiFunction;
@@ -24,7 +25,7 @@ public class LuaVM_RT extends LuaVM {
 
     @SuppressWarnings("unchecked")
     public static <T extends LuaUserData> LUDTypeDescriptor<T> getDescriptor(Class<T> udType) {
-        return (LUDTypeDescriptor<T>) ALL_THE_DESCRIPTORS.computeIfAbsent(udType, k -> LUDTypeDescriptor.buildDescriptor(k));
+        return (LUDTypeDescriptor<T>) ALL_THE_DESCRIPTORS.computeIfAbsent(udType, LUDTypeDescriptor::buildDescriptor);
     }
 
     public static boolean isDescriptorAvailable(Class<? extends LuaUserData> udType) {
