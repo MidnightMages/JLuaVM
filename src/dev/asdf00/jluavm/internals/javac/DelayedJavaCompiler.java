@@ -45,21 +45,21 @@ public class DelayedJavaCompiler {
 
     public static class AsyncCompilationResult {
         private final Supplier<JavaCompiler.CompilationTask> task;
-        private final String outputClassName;
+        private final BatchCompilationInput[] input;
         private final ClassFileManager fileManager;
         private final StringWriter compilationOutput;
-        private final String javaSourceCode;
 
-        private AsyncCompilationResult(Supplier<JavaCompiler.CompilationTask> task, String outputClassName, ClassFileManager fileManager, StringWriter compilationOutput, String javaSourceCode) {
+        private AsyncCompilationResult(Supplier<JavaCompiler.CompilationTask> task, BatchCompilationInput[] input,
+                                       ClassFileManager fileManager, StringWriter compilationOutput
+        ) {
             this.task = task;
-            this.outputClassName = outputClassName;
+            this.input = input;
             this.fileManager = fileManager;
             this.compilationOutput = compilationOutput;
-            this.javaSourceCode = javaSourceCode;
         }
     }
 
-    public static AsyncCompilationResult compileAndLoadAsync(String className, String javaSourceCode) throws DelayedJavaCompilationException {
+    public static AsyncCompilationResult compileAndLoadAsync(BatchCompilationInput[] inputs) throws DelayedJavaCompilationException {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         if (compiler == null)
             throw new DelayedJavaCompilationException("No compiler was provided by ToolProvider.getSystemJavaCompiler(). Make sure the jdk.compiler module is available.");
@@ -116,135 +116,148 @@ public class DelayedJavaCompiler {
         ClassFileManager fileManager = new ClassFileManager(compiler.getStandardFileManager(null, null, null));
         StringWriter out = new StringWriter();
         Supplier<JavaCompiler.CompilationTask> taskProvider = () ->
-                compiler.getTask(out, fileManager, null, options, null, List.of(new CharSequenceJavaFileObject(className, javaSourceCode)));
-        return new AsyncCompilationResult(taskProvider, className, fileManager, out, javaSourceCode);
+                compiler.getTask(out, fileManager, null, options, null,
+                        Arrays.stream(inputs).map(x -> new CharSequenceJavaFileObject(x.className, x.javaSourceCode)).toList());
+
+        return new AsyncCompilationResult(taskProvider, inputs, fileManager, out);
     }
 
-    public static Class<?> finishCompilation(AsyncCompilationResult res, ByteArrayClassLoader target) throws DelayedJavaCompilationException {
-        var fileManager = res.fileManager;
-        var compilationOutput = res.compilationOutput;
-        var className = res.outputClassName;
+    public static class BatchCompilationInput {
+        public String className;
+        public String javaSourceCode;
 
-        try {
-            var cacheResult = PersistentJavaCompilationCache.isCacheActive() ? PersistentJavaCompilationCache.getFromCacheOrNull(res.javaSourceCode) : null;
-            if (cacheResult != null) {
-                target.addClassData(className, cacheResult);
-                return target.loadClass(className);
-            } else {
-                var task = res.task.get();
-                task.call();
-                if (fileManager.isEmpty()) {
-                    throw new DelayedJavaCompilationException("JIC Compilation error: " + compilationOutput);
-                }
-                var compilationResult = fileManager.classes();
-                target.addClassData(compilationResult);
-
-                // check cache assumptions
-                if (compilationResult.size() != 1)
-                    throw new RuntimeException("Expected there to be exactly one source file, but there were %s.".formatted(compilationResult.size()));
-
-                if (!compilationResult.keySet().iterator().next().equals(className))
-                    throw new RuntimeException("Class name to be added to cache differed unexpectedly");
-
-                if (PersistentJavaCompilationCache.isCacheActive()) {
-                    // save to cache
-                    var valueToCache = compilationResult.get(className);
-                    PersistentJavaCompilationCache.addToCache(res.javaSourceCode, valueToCache);
-                }
-            }
-            return fileManager.loadAndReturnMainClass(className, target);
-        } catch (DelayedJavaCompilationException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new DelayedJavaCompilationException("Error while compiling " + className, e);
+        public BatchCompilationInput(String className, String javaSourceCode) {
+            this.className = className;
+            this.javaSourceCode = javaSourceCode;
         }
     }
 
+    public static Class<?>[] finishCompilation(AsyncCompilationResult res, ByteArrayClassLoader target) throws DelayedJavaCompilationException {
+        var fileManager = res.fileManager;
+        var compilationOutput = res.compilationOutput;
+        var classNames = Arrays.stream(res.input).map(x->x.className).toArray(String[]::new);
+
+        //            var cacheResult = PersistentJavaCompilationCache.isCacheActive() ? PersistentJavaCompilationCache.getFromCacheOrNull(res.javaSourceCode) : null;
+//            if (cacheResult != null) {
+//                target.addClassData(className, cacheResult);
+//                return target.loadClass(className);
+//            } else {
+        var task = res.task.get();
+        task.call();
+
+        if (fileManager.isEmpty()) {
+            throw new DelayedJavaCompilationException("JIC Compilation error: " + compilationOutput);
+        }
+        var compilationResult = fileManager.classes();
+        target.addClassData(compilationResult);
+
+        // check cache assumptions
+//        if (compilationResult.size() != 1)
+//            throw new RuntimeException("Expected there to be exactly one source file, but there were %s.".formatted(compilationResult.size()));
+
+        if (!compilationResult.keySet().equals(new HashSet<>(List.of(classNames))))
+            throw new RuntimeException("Class name to be added to cache differed unexpectedly");
+
+//                if (PersistentJavaCompilationCache.isCacheActive()) {
+//                    // save to cache
+//                    var valueToCache = compilationResult.get(className);
+//                    PersistentJavaCompilationCache.addToCache(res.javaSourceCode, valueToCache);
+//                }
+//            }
+        return Arrays.stream(classNames).map(x -> {
+            try {
+                return fileManager.loadAndReturnMainClass(x, target);
+            } catch (Exception e) {
+                throw new DelayedJavaCompilationException("Error while compiling " + x, e);
+            }
+        }).toArray(Class[]::new);
+    }
+
     public static class CompilationWorkItem {
-        private final ByteArrayClassLoader target;
         private final String className;
         private final String content;
 
-        public CompilationWorkItem(ByteArrayClassLoader target, String className, String content) {
-            this.target = target;
+        public CompilationWorkItem(String className, String content) {
             this.className = className;
             this.content = content;
         }
     }
 
     public static Class<?> compileAndLoad(ByteArrayClassLoader target, String className, String content) throws DelayedJavaCompilationException {
-        var res = compileAndLoadAsync(className, content);
-        return finishCompilation(res, target);
+        var res = compileAndLoadAsync(new BatchCompilationInput[]{new BatchCompilationInput(className, content)});
+        return finishCompilation(res, target)[0];
     }
 
-    public static Class<?>[] compileAndLoad(CompilationWorkItem[] itemsToCompile) throws DelayedJavaCompilationException {
-        var tasks = new AsyncCompilationResult[itemsToCompile.length];
-        var largestSize = -1;
-        var largestIndex = -1;
-        for (int i = 0; i < itemsToCompile.length; i++) {
-            var e = itemsToCompile[i];
-            tasks[i] = compileAndLoadAsync(e.className, e.content);
-            var currentSize = e.content.length();
-            if (currentSize > largestSize) {
-                largestSize = currentSize;
-                largestIndex = i;
-            }
-        }
+    public static Class<?>[] compileAndLoad(ByteArrayClassLoader target, BatchCompilationInput[] itemsToCompile) throws DelayedJavaCompilationException {
+        var res = compileAndLoadAsync(itemsToCompile);
+        return finishCompilation(res, target);
 
-        final Object monitor = new Object();
-        AtomicReference<Exception> lastException = new AtomicReference<>();
-        AtomicInteger remainingTasks = new AtomicInteger(itemsToCompile.length - 1); // start at -1 because we will manually complete one task
-        var queueResult = new Class<?>[itemsToCompile.length];
-        for (int i = 0; i < tasks.length; i++) {
-            if (i != largestIndex) {
-                final int i_copy = i;
-                compilationPool.submit(() -> {
-                    Class<?> taskRes;
-                    try {
-                        taskRes = finishCompilation(tasks[i_copy], itemsToCompile[i_copy].target);
-                        synchronized (queueResult) {
-                            queueResult[i_copy] = taskRes;
-                        }
-                    } catch (Exception ex) {
-                        lastException.set(ex);
-                        synchronized (monitor) {
-                            monitor.notifyAll();
-                        }
-                    }
-                    if (remainingTasks.decrementAndGet() == 0) {
-                        synchronized (monitor) {
-                            monitor.notifyAll();
-                        }
-                    }
-
-                });
-            }
-        }
-
-        var syncRes = finishCompilation(tasks[largestIndex], itemsToCompile[largestIndex].target);
-        synchronized (monitor) {
-            boolean wasInterrupted = false;
-            // swallow interrupts vm exit and wait anyway
-            while (remainingTasks.get() != 0) {
-                try {
-                    monitor.wait(500);
-                } catch (InterruptedException e) {
-                    wasInterrupted = true;
-                }
-            }
-            if (wasInterrupted) {
-                // restore interrupted state
-                Thread.currentThread().interrupt();
-            }
-        }
-
-        var exceptionCopy = lastException.get();
-        if (exceptionCopy != null)
-            throw new RuntimeException(exceptionCopy);
-
-        queueResult[largestIndex] = syncRes;
-
-        return queueResult;
+//        var largestSize = -1;
+//        var largestIndex = -1;
+//        for (int i = 0; i < itemsToCompile.length; i++) {
+//            var e = itemsToCompile[i];
+//            tasks[i] =
+//            var currentSize = e.content.length();
+//            if (currentSize > largestSize) {
+//                largestSize = currentSize;
+//                largestIndex = i;
+//            }
+//        }
+//
+//        final Object monitor = new Object();
+//        AtomicReference<Exception> lastException = new AtomicReference<>();
+//        AtomicInteger remainingTasks = new AtomicInteger(itemsToCompile.length - 1); // start at -1 because we will manually complete one task
+//        var queueResult = new Class<?>[itemsToCompile.length];
+//        for (int i = 0; i < tasks.length; i++) {
+//            if (i != largestIndex) {
+//                final int i_copy = i;
+//                compilationPool.submit(() -> {
+//                    Class<?> taskRes;
+//                    try {
+//                        taskRes = finishCompilation(tasks[i_copy], itemsToCompile[i_copy].target);
+//                        synchronized (queueResult) {
+//                            queueResult[i_copy] = taskRes;
+//                        }
+//                    } catch (Exception ex) {
+//                        lastException.set(ex);
+//                        synchronized (monitor) {
+//                            monitor.notifyAll();
+//                        }
+//                    }
+//                    if (remainingTasks.decrementAndGet() == 0) {
+//                        synchronized (monitor) {
+//                            monitor.notifyAll();
+//                        }
+//                    }
+//
+//                });
+//            }
+//        }
+//
+//        var syncRes = finishCompilation(tasks[largestIndex], itemsToCompile[largestIndex].target);
+//        synchronized (monitor) {
+//            boolean wasInterrupted = false;
+//            // swallow interrupts vm exit and wait anyway
+//            while (remainingTasks.get() != 0) {
+//                try {
+//                    monitor.wait(500);
+//                } catch (InterruptedException e) {
+//                    wasInterrupted = true;
+//                }
+//            }
+//            if (wasInterrupted) {
+//                // restore interrupted state
+//                Thread.currentThread().interrupt();
+//            }
+//        }
+//
+//        var exceptionCopy = lastException.get();
+//        if (exceptionCopy != null)
+//            throw new RuntimeException(exceptionCopy);
+//
+//        queueResult[largestIndex] = syncRes;
+//
+//        return queueResult;
     }
 
     private static final class JavaFileObject extends SimpleJavaFileObject {
