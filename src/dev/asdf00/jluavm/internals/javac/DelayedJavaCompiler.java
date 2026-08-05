@@ -2,6 +2,7 @@ package dev.asdf00.jluavm.internals.javac;
 
 import dev.asdf00.jluavm.exceptions.DelayedJavaCompilationException;
 import dev.asdf00.jluavm.exceptions.loading.InternalLuaLoadingError;
+import dev.asdf00.jluavm.runtime.utils.RTUtils;
 
 import javax.tools.*;
 import java.io.ByteArrayOutputStream;
@@ -15,12 +16,7 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.Semaphore;
 import java.util.function.Supplier;
 
 /**
@@ -40,211 +36,207 @@ public class DelayedJavaCompiler {
         }
     }
 
-    private static final ExecutorService compilationPool = new ThreadPoolExecutor(1, 4,
-            2, TimeUnit.MINUTES, new LinkedBlockingQueue<>());
+    private static final Object compilationSignaller = new Object();
+    private static final Semaphore currentlyCompiling_sem = new Semaphore(1);
+    private static final HashSet<String> currentlyCompiling = new HashSet<>(); // java source code
 
-    public static class AsyncCompilationResult {
-        private final Supplier<JavaCompiler.CompilationTask> task;
-        private final String outputClassName;
-        private final ClassFileManager fileManager;
-        private final StringWriter compilationOutput;
-        private final String javaSourceCode;
-
-        private AsyncCompilationResult(Supplier<JavaCompiler.CompilationTask> task, String outputClassName, ClassFileManager fileManager, StringWriter compilationOutput, String javaSourceCode) {
-            this.task = task;
-            this.outputClassName = outputClassName;
-            this.fileManager = fileManager;
-            this.compilationOutput = compilationOutput;
-            this.javaSourceCode = javaSourceCode;
-        }
+    public static Class<?> compileAndLoad(ByteArrayClassLoader target, String className, String content) throws DelayedJavaCompilationException {
+        return compileAndLoad(target, new CompilationWorkItem[]{new CompilationWorkItem(className, content)})[0];
     }
 
-    public static AsyncCompilationResult compileAndLoadAsync(String className, String javaSourceCode) throws DelayedJavaCompilationException {
-        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        if (compiler == null)
-            throw new DelayedJavaCompilationException("No compiler was provided by ToolProvider.getSystemJavaCompiler(). Make sure the jdk.compiler module is available.");
-
-        String javaClasspath = System.getProperty("java.class.path");
-//        String mp = System.getProperty("jdk.module.path");
-
-        var newClasspathEntries = new ArrayList<String>();
-        // this is needed for compilation to work as otherwise some already
-        // compiled classes will not be able to be referenced when compiling java code that we emit during lua compilation
-        var virtualJarPath = DelayedJavaCompiler.class.getProtectionDomain().getCodeSource().getLocation();
+    public static Class<?>[] compileAndLoad(ByteArrayClassLoader target, CompilationWorkItem[] itemsToCompile) throws DelayedJavaCompilationException {
+        final Class<?>[] rv = new Class[itemsToCompile.length];
+        final byte[][] alreadyCachedItems = new byte[itemsToCompile.length][]; // cache items we already managed to grab
+        final ArrayList<Integer> itemsWeWillBeCompiling = new ArrayList<>(); // ids of things we need to compile; access value by indexing itemsToCompile[...]
+        final ArrayList<Integer> itemIdsThatNeedToBeCompiledBeforeItsOurTurn = new ArrayList<>(); // things we need to wait for to finish
         try {
-            URI virtualJarUri = virtualJarPath.toURI();
-
-            var jarName = new File(virtualJarUri.getPath()).getName().split("\\.")[0];
-            for (var entry : javaClasspath.split(";")) {
-                if (entry.contains(jarName) || extraCompilationJarPaths.stream().anyMatch(entry::contains)) {
-                    newClasspathEntries.add(entry);
+            currentlyCompiling_sem.acquire();
+            // check what we need to compile and mark it as compiling
+            for (int i = 0; i < itemsToCompile.length; i++) {
+                var cacheItem = PersistentJavaCompilationCache.isCacheActive() ? PersistentJavaCompilationCache.getFromCacheOrNull(itemsToCompile[i].javaSourceCode) : null;
+                if (cacheItem == null) { // need to compile
+                    // only add to currentlyCompiling if the PersistentJavaCompilationCache is enabled
+                    var alreadyCompiling = PersistentJavaCompilationCache.isCacheActive() && !currentlyCompiling.add(itemsToCompile[i].javaSourceCode);
+                    if (!alreadyCompiling) { // we are compiling this one, so no need to wait
+                        itemsWeWillBeCompiling.add(i);
+                    } else { // someone else is compiling this, so we need to wait for that to finish before starting our compilation
+                        itemIdsThatNeedToBeCompiledBeforeItsOurTurn.add(i);
+                    }
+                } else { // already compiled --> use cache
+                    alreadyCachedItems[i] = cacheItem;
                 }
             }
-            // scheme will be 'union' in some cases, so if it is an actual disk file path,
-            // we add it to the classpath to support running it in such environments.
-            if (virtualJarUri.getScheme().equals("union")) {
-                var jarDiskPath = virtualJarUri
-                        .getPath()
-                        .replaceAll("(#|%23)\\d+!/$", "")  // remove the trailing '#NUMBER!/'
-                        .trim();
-
-                // trim leading / on windows, e.g. /C:/something/something.jar
-                Path normalizedJarDiskPath;
-                try {
-                    normalizedJarDiskPath = Paths.get(jarDiskPath);
-                } catch (InvalidPathException ignored) {
-                    normalizedJarDiskPath = Paths.get(jarDiskPath.substring(1));
-                }
-
-                // if it is a .jar path, add it to the classpath
-                String normalizedJarDiskPathString = normalizedJarDiskPath.toString().replace('\\', '/');
-                if (normalizedJarDiskPathString.endsWith(".jar")) {
-                    newClasspathEntries.add(normalizedJarDiskPathString);
-                } else if (normalizedJarDiskPathString.endsWith("/resources/main")) { // needed for in-IDE runs
-                    newClasspathEntries.add(normalizedJarDiskPathString.replace("resources/main", "classes/java/main"));
-                }
-            }
-        } catch (URISyntaxException e) {
-            throw new InternalLuaLoadingError(e);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } finally {
+            currentlyCompiling_sem.release();
         }
 
-        List<String> options = new ArrayList<>();
-        options.add("-classpath");
-        var compilationClasspath = String.join(";", newClasspathEntries);
-        options.add(compilationClasspath);
 
-        ClassFileManager fileManager = new ClassFileManager(compiler.getStandardFileManager(null, null, null));
-        StringWriter out = new StringWriter();
-        Supplier<JavaCompiler.CompilationTask> taskProvider = () ->
-                compiler.getTask(out, fileManager, null, options, null, List.of(new CharSequenceJavaFileObject(className, javaSourceCode)));
-        return new AsyncCompilationResult(taskProvider, className, fileManager, out, javaSourceCode);
-    }
+        while (!itemIdsThatNeedToBeCompiledBeforeItsOurTurn.isEmpty()) {
+            try {
+                synchronized (compilationSignaller) {
+                    compilationSignaller.wait(100);
+                    try {
+                        currentlyCompiling_sem.acquire();
+                        for (int i = itemIdsThatNeedToBeCompiledBeforeItsOurTurn.size() - 1; i >= 0; i--) {
+                            // if the compilation has finished, grab the result and make sure it exists
+                            var j = itemIdsThatNeedToBeCompiledBeforeItsOurTurn.get(i);
+                            var srcCode = itemsToCompile[j].javaSourceCode;
+                            if (!currentlyCompiling.contains(srcCode)) {
+                                itemIdsThatNeedToBeCompiledBeforeItsOurTurn.remove(i); // at this point compilation either failed and will fail again, or succeeded
+                                var justNowCompiledItem = PersistentJavaCompilationCache.getFromCacheOrNull(srcCode);
+                                if (justNowCompiledItem == null)
+                                    throw new DelayedJavaCompilationException("We would try to attempt to compile something that already failed earlier and thus will fail again.");
 
-    public static Class<?> finishCompilation(AsyncCompilationResult res, ByteArrayClassLoader target) throws DelayedJavaCompilationException {
-        var fileManager = res.fileManager;
-        var compilationOutput = res.compilationOutput;
-        var className = res.outputClassName;
-
-        try {
-            var cacheResult = PersistentJavaCompilationCache.isCacheActive() ? PersistentJavaCompilationCache.getFromCacheOrNull(res.javaSourceCode) : null;
-            if (cacheResult != null) {
-                target.addClassData(className, cacheResult);
-                return target.loadClass(className);
-            } else {
-                var task = res.task.get();
-                task.call();
-                if (fileManager.isEmpty()) {
-                    throw new DelayedJavaCompilationException("JIC Compilation error: " + compilationOutput);
+                                alreadyCachedItems[j] = justNowCompiledItem;
+                            }
+                        }
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    } finally {
+                        currentlyCompiling_sem.release();
+                    }
                 }
-                var compilationResult = fileManager.classes();
-                target.addClassData(compilationResult);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
 
-                // check cache assumptions
-                if (compilationResult.size() != 1)
-                    throw new RuntimeException("Expected there to be exactly one source file, but there were %s.".formatted(compilationResult.size()));
-
-                if (!compilationResult.keySet().iterator().next().equals(className))
-                    throw new RuntimeException("Class name to be added to cache differed unexpectedly");
-
-                if (PersistentJavaCompilationCache.isCacheActive()) {
-                    // save to cache
-                    var valueToCache = compilationResult.get(className);
-                    PersistentJavaCompilationCache.addToCache(res.javaSourceCode, valueToCache);
+        // load cached classes
+        if (PersistentJavaCompilationCache.isCacheActive())
+            for (int i = 0; i < itemsToCompile.length; i++) {
+                var bytes = alreadyCachedItems[i];
+                if (bytes != null) {
+                    String cName = itemsToCompile[i].className;
+                    target.addClassData(cName, bytes);
+                    assert rv[i] == null;
+                    try {
+                        rv[i] = target.loadClass(cName);
+                    } catch (ClassNotFoundException e) {
+                        throw new RuntimeException(e);
+                    }
                 }
             }
-            return fileManager.loadAndReturnMainClass(className, target);
-        } catch (DelayedJavaCompilationException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new DelayedJavaCompilationException("Error while compiling " + className, e);
+
+        // ==========================================================================================
+        // PERFORM ACTUAL COMPILATION
+        //
+        if (!itemsWeWillBeCompiling.isEmpty()) { // if theres nothing to compile then we can skip this whole block and are done
+            JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+            if (compiler == null)
+                throw new DelayedJavaCompilationException("No compiler was provided by ToolProvider.getSystemJavaCompiler(). Make sure the jdk.compiler module is available.");
+
+            String javaClasspath = System.getProperty("java.class.path");
+//            String mp = System.getProperty("jdk.module.path");
+
+            var newClasspathEntries = new ArrayList<String>();
+            // this is needed for compilation to work as otherwise some already
+            // compiled classes will not be able to be referenced when compiling java code that we emit during lua compilation
+            var virtualJarPath = DelayedJavaCompiler.class.getProtectionDomain().getCodeSource().getLocation();
+            try {
+                URI virtualJarUri = virtualJarPath.toURI();
+
+                var jarName = new File(virtualJarUri.getPath()).getName().split("\\.")[0];
+                for (var entry : javaClasspath.split(";")) {
+                    if (entry.contains(jarName) || extraCompilationJarPaths.stream().anyMatch(entry::contains)) {
+                        newClasspathEntries.add(entry);
+                    }
+                }
+                // scheme will be 'union' in some cases, so if it is an actual disk file path,
+                // we add it to the classpath to support running it in such environments.
+                if (virtualJarUri.getScheme().equals("union")) {
+                    var jarDiskPath = virtualJarUri
+                            .getPath()
+                            .replaceAll("(#|%23)\\d+!/$", "")  // remove the trailing '#NUMBER!/'
+                            .trim();
+
+                    // trim leading / on windows, e.g. /C:/something/something.jar
+                    Path normalizedJarDiskPath;
+                    try {
+                        normalizedJarDiskPath = Paths.get(jarDiskPath);
+                    } catch (InvalidPathException ignored) {
+                        normalizedJarDiskPath = Paths.get(jarDiskPath.substring(1));
+                    }
+
+                    // if it is a .jar path, add it to the classpath
+                    String normalizedJarDiskPathString = normalizedJarDiskPath.toString().replace('\\', '/');
+                    if (normalizedJarDiskPathString.endsWith(".jar")) {
+                        newClasspathEntries.add(normalizedJarDiskPathString);
+                    } else if (normalizedJarDiskPathString.endsWith("/resources/main")) { // needed for in-IDE runs
+                        newClasspathEntries.add(normalizedJarDiskPathString.replace("resources/main", "classes/java/main"));
+                    }
+                }
+            } catch (URISyntaxException e) {
+                throw new InternalLuaLoadingError(e);
+            }
+
+            List<String> options = new ArrayList<>();
+            options.add("-classpath");
+            var compilationClasspath = String.join(";", newClasspathEntries);
+            options.add(compilationClasspath);
+
+            ClassFileManager fileManager = new ClassFileManager(compiler.getStandardFileManager(null, null, null));
+            StringWriter out = new StringWriter();
+            Supplier<JavaCompiler.CompilationTask> taskProvider = () ->
+                    compiler.getTask(out, fileManager, null, options, null,
+                            itemsWeWillBeCompiling.stream().map(i -> itemsToCompile[i]).map(x -> new CharSequenceJavaFileObject(x.className, x.javaSourceCode)).toList());
+
+            taskProvider.get().call();
+
+            if (fileManager.isEmpty()) {
+                throw new DelayedJavaCompilationException("JIC Compilation error: " + out);
+            }
+
+            // load compiled classes
+            var compilationResult = fileManager.classes();
+            target.addClassData(compilationResult); // is threadsafe
+
+            try {  // tell other threads that we are done compiling stuff
+                currentlyCompiling_sem.acquire();
+                for (int nowCompiledItemId : itemsWeWillBeCompiling) {
+                    var srcCode = itemsToCompile[nowCompiledItemId].javaSourceCode;
+
+                    var className = itemsToCompile[nowCompiledItemId].className;
+                    var classBytes = compilationResult.get(className);
+                    if (classBytes == null)
+                        throw new RuntimeException("a class we compiled somehow wasnt returned?");
+                    assert rv[nowCompiledItemId] == null;
+                    try {
+                        rv[nowCompiledItemId] = fileManager.loadAndReturnMainClass(className, target);
+                    } catch (ClassNotFoundException e) {
+                        throw new DelayedJavaCompilationException("Error while compiling " + className, e);
+                    }
+
+                    if (PersistentJavaCompilationCache.isCacheActive()) {
+                        PersistentJavaCompilationCache.addToCache(srcCode, classBytes);
+                        var ok = currentlyCompiling.remove(srcCode);
+                        assert ok;
+                    }
+                }
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            } finally {
+                currentlyCompiling_sem.release();
+                synchronized (compilationSignaller) {
+                    compilationSignaller.notifyAll();
+                }
+            }
         }
+
+        if (RTUtils.indexOf(rv, null) != -1)
+            throw new DelayedJavaCompilationException("At least one returned class entry was null??");
+        return rv;
     }
 
     public static class CompilationWorkItem {
-        private final ByteArrayClassLoader target;
-        private final String className;
-        private final String content;
+        public String className;
+        public String javaSourceCode;
 
-        public CompilationWorkItem(ByteArrayClassLoader target, String className, String content) {
-            this.target = target;
+        public CompilationWorkItem(String className, String javaSourceCode) {
             this.className = className;
-            this.content = content;
+            this.javaSourceCode = javaSourceCode;
         }
-    }
-
-    public static Class<?> compileAndLoad(ByteArrayClassLoader target, String className, String content) throws DelayedJavaCompilationException {
-        var res = compileAndLoadAsync(className, content);
-        return finishCompilation(res, target);
-    }
-
-    public static Class<?>[] compileAndLoad(CompilationWorkItem[] itemsToCompile) throws DelayedJavaCompilationException {
-        var tasks = new AsyncCompilationResult[itemsToCompile.length];
-        var largestSize = -1;
-        var largestIndex = -1;
-        for (int i = 0; i < itemsToCompile.length; i++) {
-            var e = itemsToCompile[i];
-            tasks[i] = compileAndLoadAsync(e.className, e.content);
-            var currentSize = e.content.length();
-            if (currentSize > largestSize) {
-                largestSize = currentSize;
-                largestIndex = i;
-            }
-        }
-
-        final Object monitor = new Object();
-        AtomicReference<Exception> lastException = new AtomicReference<>();
-        AtomicInteger remainingTasks = new AtomicInteger(itemsToCompile.length - 1); // start at -1 because we will manually complete one task
-        var queueResult = new Class<?>[itemsToCompile.length];
-        for (int i = 0; i < tasks.length; i++) {
-            if (i != largestIndex) {
-                final int i_copy = i;
-                compilationPool.submit(() -> {
-                    Class<?> taskRes;
-                    try {
-                        taskRes = finishCompilation(tasks[i_copy], itemsToCompile[i_copy].target);
-                        synchronized (queueResult) {
-                            queueResult[i_copy] = taskRes;
-                        }
-                    } catch (Exception ex) {
-                        lastException.set(ex);
-                        synchronized (monitor) {
-                            monitor.notifyAll();
-                        }
-                    }
-                    if (remainingTasks.decrementAndGet() == 0) {
-                        synchronized (monitor) {
-                            monitor.notifyAll();
-                        }
-                    }
-
-                });
-            }
-        }
-
-        var syncRes = finishCompilation(tasks[largestIndex], itemsToCompile[largestIndex].target);
-        synchronized (monitor) {
-            boolean wasInterrupted = false;
-            // swallow interrupts vm exit and wait anyway
-            while (remainingTasks.get() != 0) {
-                try {
-                    monitor.wait(500);
-                } catch (InterruptedException e) {
-                    wasInterrupted = true;
-                }
-            }
-            if (wasInterrupted) {
-                // restore interrupted state
-                Thread.currentThread().interrupt();
-            }
-        }
-
-        var exceptionCopy = lastException.get();
-        if (exceptionCopy != null)
-            throw new RuntimeException(exceptionCopy);
-
-        queueResult[largestIndex] = syncRes;
-
-        return queueResult;
     }
 
     private static final class JavaFileObject extends SimpleJavaFileObject {
@@ -279,17 +271,17 @@ public class DelayedJavaCompiler {
         }
 
         @Override
-        public JavaFileObject getJavaFileForOutput(JavaFileManager.Location location, String className, JavaFileObject.Kind kind, FileObject sibling) {
+        public synchronized JavaFileObject getJavaFileForOutput(JavaFileManager.Location location, String className, JavaFileObject.Kind kind, FileObject sibling) {
             JavaFileObject result = new JavaFileObject(className, kind);
             fileObjectMap.put(className, result);
             return result;
         }
 
-        public boolean isEmpty() {
+        public synchronized boolean isEmpty() {
             return fileObjectMap.isEmpty();
         }
 
-        public LinkedHashMap<String, byte[]> classes() {
+        public synchronized LinkedHashMap<String, byte[]> classes() {
             if (classes == null) {
                 classes = new LinkedHashMap<>();
                 for (Map.Entry<String, JavaFileObject> entry : fileObjectMap.entrySet()) {
@@ -299,7 +291,7 @@ public class DelayedJavaCompiler {
             return classes;
         }
 
-        public Class<?> loadAndReturnMainClass(String mainClassName, ClassLoader ldr) throws Exception {
+        public synchronized Class<?> loadAndReturnMainClass(String mainClassName, ClassLoader ldr) throws ClassNotFoundException {
             Class<?> result = null;
             for (var clName : fileObjectMap.keySet()) {
                 Class<?> c = ldr.loadClass(clName);

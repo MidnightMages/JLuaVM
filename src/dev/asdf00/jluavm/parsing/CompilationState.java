@@ -143,11 +143,10 @@ public final class CompilationState {
         var workItems = new DelayedJavaCompiler.CompilationWorkItem[functionJavaCode.size()];
         for (int i = 0; i < workItems.length; i++) {
             var clsDef = functionJavaCode.get(i);
-            workItems[i] = new DelayedJavaCompiler.CompilationWorkItem(new LuaFunctionClassLoader(AbstractGeneratedLuaFunction.class.getClassLoader()),
-                    COMPILED_CLASSES_MODULE_PREFIX + clsDef.x(), clsDef.y());
+            workItems[i] = new DelayedJavaCompiler.CompilationWorkItem(COMPILED_CLASSES_MODULE_PREFIX + clsDef.x(), clsDef.y());
         }
 
-        var compiledClasses = DelayedJavaCompiler.compileAndLoad(workItems);
+        var compiledClasses = DelayedJavaCompiler.compileAndLoad(new LuaFunctionClassLoader(AbstractGeneratedLuaFunction.class.getClassLoader()), workItems);
         var jClasses = (Class<? extends AbstractGeneratedLuaFunction>[]) new Class<?>[functionJavaCode.size()];
         if (jClasses.length != compiledClasses.length)
             throw new InternalLuaLoadingError("Some compiled classes were dropped, somehow.");
