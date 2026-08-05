@@ -140,10 +140,10 @@ public final class CompilationState {
     @SuppressWarnings("unchecked")
     public Constructor<? extends AbstractGeneratedLuaFunction>[] loadAndLinkAllClasses() throws InternalLuaLoadingError {
         // compile and load generated classes
-        var workItems = new DelayedJavaCompiler.BatchCompilationInput[functionJavaCode.size()];
+        var workItems = new DelayedJavaCompiler.CompilationWorkItem[functionJavaCode.size()];
         for (int i = 0; i < workItems.length; i++) {
             var clsDef = functionJavaCode.get(i);
-            workItems[i] = new DelayedJavaCompiler.BatchCompilationInput(COMPILED_CLASSES_MODULE_PREFIX + clsDef.x(), clsDef.y());
+            workItems[i] = new DelayedJavaCompiler.CompilationWorkItem(COMPILED_CLASSES_MODULE_PREFIX + clsDef.x(), clsDef.y());
         }
 
         var compiledClasses = DelayedJavaCompiler.compileAndLoad(new LuaFunctionClassLoader(AbstractGeneratedLuaFunction.class.getClassLoader()), workItems);

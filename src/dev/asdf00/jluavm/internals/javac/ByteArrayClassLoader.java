@@ -12,16 +12,16 @@ public abstract class ByteArrayClassLoader extends ClassLoader {
     }
 
     @Override
-    protected Class<?> findClass(String name) throws ClassNotFoundException {
+    protected synchronized Class<?> findClass(String name) throws ClassNotFoundException {
         byte[] bytes = classes.get(name);
         return bytes == null ? super.findClass(name) : defineClass(name, bytes, 0, bytes.length);
     }
 
-    public void addClassData(Map<String, byte[]> classes) {
+    public synchronized void addClassData(Map<String, byte[]> classes) {
         this.classes.putAll(classes);
     }
 
-    public void addClassData(String className, byte[] classData) {
+    public synchronized void addClassData(String className, byte[] classData) {
         this.classes.put(className, classData);
     }
 }
