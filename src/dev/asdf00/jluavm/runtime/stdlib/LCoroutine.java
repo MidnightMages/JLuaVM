@@ -78,43 +78,17 @@ public class LCoroutine {
                 }));
 
         registry.register(COROUTINE_PREFIX + "isyieldable",
-                new LuaJavaApiFunction(registry) {
-                    @Override
-                    public void invoke(LuaVM_RT vm, LuaObject[] stackFrame, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
-                        if (resume != -1) {
-                            throw new InternalLuaRuntimeError("unknown resume point " + resume);
-                        }
-                        vm.registerLocals(1);
-                        LuaObject[] args = stackFrame[0].asArray();
-                        Coroutine co;
-                        if (args.length < 1) {
-                            co = vm.getCurrentCoroutine();
-                        } else {
-                            LuaObject maybeCo = args[0];
-                            if (!maybeCo.isThread()) {
-                                vm.error(funcArgTypeError("coroutine.isyieldable", 0, maybeCo, "thread"));
-                                return;
-                            }
-                            co = maybeCo.asCoroutine();
-                        }
-                        vm.returnValue(LuaObject.of(co.isYieldable));
+                AtomicLuaFunction.vaForOneResult(registry, (vm,args) -> {
+                    if (args.length == 0 || args[0].isNil()) {
+                        return LuaObject.of(vm.getCurrentCoroutine().isYieldable);
                     }
-
-                    @Override
-                    public int getMaxLocalsSize() {
-                        return 1;
+                    var maybeCo = args[0];
+                    if (!maybeCo.isThread()) {
+                        vm.error(funcArgTypeError("coroutine.isyieldable", 0, maybeCo, "thread"));
+                        return null;
                     }
-
-                    @Override
-                    public int getArgCount() {
-                        return 1;
-                    }
-
-                    @Override
-                    public boolean hasParamsArg() {
-                        return true;
-                    }
-                });
+                    return LuaObject.of(maybeCo.asCoroutine().isYieldable);
+                }));
 
         registry.register(COROUTINE_PREFIX + "resume",
                 new LuaJavaApiFunction(registry) {
