@@ -2999,4 +2999,22 @@ public class VmTest extends BaseVmTest {
                 return test(1,2,3)
                 """, LuaObject.of(2));
     }
+
+    @Test
+    void coroutineResumeWithTimeout() {
+        loadAssertSuccessAndRv("""
+                local run = true
+                local co = coroutine.create(function()
+                    while run do end
+                    return 123
+                end)
+                                
+                local yieldedOnItsOwn = coroutine.resumeWithTimeout(co, 0.5)
+                assert(not yieldedOnItsOwn)
+                local yieldedOnItsOwn2, res = coroutine.resumeWithTimeout(co, 0.5)
+                assert(yieldedOnItsOwn2)
+                assert(res == 123)
+                return res + 1
+                """, LuaObject.of(124));
+    }
 }
