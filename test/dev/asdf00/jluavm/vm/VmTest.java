@@ -3009,10 +3009,10 @@ public class VmTest extends BaseVmTest {
                     return 123
                 end)
                                 
-                local yieldedOnItsOwn = coroutine.resumeWithTimeout(co, 0.5)
-                assert(not yieldedOnItsOwn)
-                local yieldedOnItsOwn2, res = coroutine.resumeWithTimeout(co, 0.5)
-                assert(yieldedOnItsOwn2)
+                local state = coroutine.resumeWithTimeout(co, 0.5)
+                assert(state == "preempted")
+                local state2, res = coroutine.resumeWithTimeout(co, 0.5)
+                assert(state2 == true)
                 assert(res == 123)
                 return res + 1
                 """, LuaObject.of(124));
