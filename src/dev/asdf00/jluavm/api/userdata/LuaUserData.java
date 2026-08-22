@@ -32,6 +32,26 @@ public interface LuaUserData {
     }
 
     /**
+     * {@code vm.listUDKeys} returns a list of readable / writable keys inside the userdata object.
+     * This cannot cover entries hidden behind {@link LuaUserData#luaGeneralGet(LuaObject)}.
+     * Thus, any fields that are implemented via such a general-get function can be supplied here and will show up in {@code vm.listUDKeys}.
+     * Keys that are read-write need to be supplied in {@link LuaUserData#getExtraWritableUdKeys()} too.
+     */
+    default String[] getExtraReadableUdKeys() {
+        return new String[]{};
+    }
+
+    /**
+     * {@code vm.listUDKeys} returns a list of readable / writable keys inside the userdata object.
+     * This cannot cover entries hidden behind {@link LuaUserData#luaGeneralGet(LuaObject)}.
+     * Thus, any fields that are implemented via such a general-set function can be supplied here and will show up in {@code vm.listUDKeys}.
+     * Keys that are read-write need to be supplied in {@link LuaUserData#getExtraReadableUdKeys()} too.
+     */
+    default String[] getExtraWritableUdKeys() {
+        return new String[]{};
+    }
+
+    /**
      * This guard method is called each time a name of this object is accessed by LUA. This could be a SET operation, in
      * which case the name of the target field/property is passed as an argument as well as the value which will be
      * assigned. On the other hand, this could be a GET operation requesting the value of a field/property or a method
