@@ -24,7 +24,7 @@ public class LVmLib {
         registry.register(VM_LIB_PREFIX + "listUDKeys",
                 AtomicLuaFunction.forOneResult(registry, (vm, userDataObj) -> {
                     if (!userDataObj.isUserData())
-                        throw new LuaJavaError("Second argument must be of type userdata but was %s.".formatted(userDataObj.getTypeAsString()));
+                        throw new LuaJavaError("Argument must be of type userdata but was %s.".formatted(userDataObj.getTypeAsString()));
 
                     var udObject = (LuaUserData) userDataObj.refVal;
                     var udClass = udObject.getClass();
