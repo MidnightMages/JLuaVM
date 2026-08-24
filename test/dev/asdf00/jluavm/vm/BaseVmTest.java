@@ -1,6 +1,7 @@
 package dev.asdf00.jluavm.vm;
 
 import dev.asdf00.jluavm.LuaVM;
+import dev.asdf00.jluavm.api.functions.AtomicLuaFunction;
 import dev.asdf00.jluavm.exceptions.LuaLoadingException;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import org.junit.jupiter.api.Assertions;
@@ -25,7 +26,11 @@ public abstract class BaseVmTest {
 
     protected static void loadAssertSuccessAndRv(String code, LuaObject[] expectedRets) {
         for (var expanded : expandOptions(code)) {
-            var vm = LuaVM.builder().rootFunc(expanded).build();
+            var vm = LuaVM.builder()
+                    .rootFunc(expanded)
+                    .modifyEnv(t -> t.set("debugPrint", AtomicLuaFunction.forZeroResults(null,
+                                    (ignoredVm, elem) -> System.out.println(elem)).obj()))
+                    .build();
             var res = vm.run();
             assertEquals(LuaVM.VmResult.of(LuaVM.VmRunState.SUCCESS, expectedRets), res);
         }

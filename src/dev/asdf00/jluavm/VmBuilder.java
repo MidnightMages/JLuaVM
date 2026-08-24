@@ -10,8 +10,11 @@ import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.StateDeserializer;
 import dev.asdf00.jluavm.utils.Quadruple;
+import dev.asdf00.jluavm.utils.Quintuple;
+import dev.asdf00.jluavm.utils.Tuple;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -137,9 +140,9 @@ public class VmBuilder {
 
     public static class DeserializedVmBuilder {
         VmBuilder parent;
-        Quadruple<Coroutine, Coroutine, Boolean, Boolean> state;
+        Quintuple<Coroutine, Coroutine, Boolean, Boolean, List<Tuple<Long, LuaObject>>> state;
 
-        DeserializedVmBuilder(VmBuilder parent, Quadruple<Coroutine, Coroutine, Boolean, Boolean> state) {
+        DeserializedVmBuilder(VmBuilder parent, Quintuple<Coroutine, Coroutine, Boolean, Boolean, List<Tuple<Long, LuaObject>>> state) {
             this.parent = parent;
             this.state = state;
         }

@@ -10,9 +10,7 @@ import dev.asdf00.jluavm.runtime.types.AbstractGeneratedLuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaHashMap;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
-import dev.asdf00.jluavm.utils.ByteArrayReader;
-import dev.asdf00.jluavm.utils.Quadruple;
-import dev.asdf00.jluavm.utils.Tuple;
+import dev.asdf00.jluavm.utils.*;
 
 import java.lang.reflect.Constructor;
 import java.nio.charset.StandardCharsets;
@@ -25,13 +23,18 @@ public class StateDeserializer {
      * @return a pair of coroutines, the first one being the root coroutine, the second one being the current coroutine
      * of the given state. Additionally, the isErroring flag of the vm state is returned.
      */
-    public static Quadruple<Coroutine, Coroutine, Boolean, Boolean> deserialize(Map<String, ApiFunctionRegistry> registries, byte[] rawState, Object additionalData) {
+    public static Quintuple<Coroutine, Coroutine, Boolean, Boolean, List<Tuple<Long, LuaObject>>> deserialize(Map<String, ApiFunctionRegistry> registries, byte[] rawState, Object additionalData) {
         var reader = new ByteArrayReader(rawState);
         if (reader.readInt() != LuaVM_RT.STATE_SERIALIZATION_VERSION) {
             throw new IllegalArgumentException("mismatch in serialization version");
         }
         int rootCoIdx = reader.readInt();
         int curCoIdx = reader.readInt();
+        int ppSize = reader.readInt();
+        var ppIdxs = new ArrayList<Tuple<Long, Integer>>();
+        for (int i = 0; i < ppSize; i++) {
+            ppIdxs.add(new Tuple<>(reader.readLong(), reader.readInt()));
+        }
         boolean isErroring = reader.readBool();
         boolean stopRequested = reader.readBool();
         var objs = new LuaObject[reader.readInt()];
@@ -188,7 +191,7 @@ public class StateDeserializer {
             delayed[i] = null;
         }
 
-        ArrayList<Tuple<Coroutine, LuaObject>> finalResolution = new ArrayList<>();
+        ArrayList<Triple<Coroutine, LuaObject, LuaObject>> finalResolution = new ArrayList<>();
         for (int i = 0; i < objs.length; i++) {
             if (delayed[i] == null || objs[i].type == LuaObject.Types.USERDATA) {
                 continue;
@@ -204,6 +207,11 @@ public class StateDeserializer {
 
         for (var fr : finalResolution) {
             fr.x().yieldTo = fr.y().asCoroutine();
+            fr.x().resumePreempted = fr.z().asCoroutine();
+        }
+        List<Tuple<Long, LuaObject>> plannedPreemptions = new ArrayList<>(ppIdxs.size());
+        for (var pp : ppIdxs) {
+            plannedPreemptions.add(new Tuple<>(pp.x(), objs[pp.y()]));
         }
 
         // resolve userdata last
@@ -227,7 +235,7 @@ public class StateDeserializer {
             action.run();
         }
 
-        return new Quadruple<>(objs[rootCoIdx].asCoroutine(), objs[curCoIdx].asCoroutine(), isErroring, stopRequested);
+        return new Quintuple<>(objs[rootCoIdx].asCoroutine(), objs[curCoIdx].asCoroutine(), isErroring, stopRequested, plannedPreemptions);
     }
 
     // =================================================================================================================

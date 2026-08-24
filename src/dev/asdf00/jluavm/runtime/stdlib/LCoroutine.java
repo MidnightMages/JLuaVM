@@ -1,16 +1,17 @@
 package dev.asdf00.jluavm.runtime.stdlib;
 
 import dev.asdf00.jluavm.api.functions.ApiFunctionRegistry;
-import dev.asdf00.jluavm.runtime.types.LuaJavaApiFunction;
+import dev.asdf00.jluavm.api.functions.AtomicLuaFunction;
 import dev.asdf00.jluavm.api.functions.MixedStateFunctionRegistry;
 import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
 import dev.asdf00.jluavm.internals.Coroutine;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
-import dev.asdf00.jluavm.api.functions.AtomicLuaFunction;
+import dev.asdf00.jluavm.runtime.types.LuaJavaApiFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 
 import java.util.Arrays;
+import java.util.LinkedList;
 
 import static dev.asdf00.jluavm.runtime.utils.RTUtils.funcArgTypeError;
 import static dev.asdf00.jluavm.runtime.utils.RTUtils.funcBadArgError;
@@ -78,7 +79,7 @@ public class LCoroutine {
                 }));
 
         registry.register(COROUTINE_PREFIX + "isyieldable",
-                AtomicLuaFunction.vaForOneResult(registry, (vm,args) -> {
+                AtomicLuaFunction.vaForOneResult(registry, (vm, args) -> {
                     if (args.length == 0 || args[0].isNil()) {
                         return LuaObject.of(vm.getCurrentCoroutine().isYieldable);
                     }
@@ -103,8 +104,8 @@ public class LCoroutine {
                                 return;
                             }
                             Coroutine co = maybeCo.asCoroutine();
-                            if (co.state != Coroutine.State.SUSPENDED && co.state != Coroutine.State.CREATED) {
-                                vm.error(funcBadArgError("coroutine.resume", 0, "coroutine to resume must be in 'suspended' state!"));
+                            if (!co.state.resumable) {
+                                vm.error(funcBadArgError("coroutine.resume", 0, "coroutine to resume must be in 'suspended' or 'preempted_resumable' state!"));
                                 return;
                             }
                             stackFrame[1] = maybeCo;
@@ -114,6 +115,66 @@ public class LCoroutine {
                             Coroutine exited = stackFrame[1].asCoroutine();
                             if (exited.rootFail) {
                                 vm.returnValue(LuaObject.FALSE, exited.rootReturned.length > 0 ? exited.rootReturned[0] : LuaObject.nil());
+                            } else {
+                                // coroutine.yield stores the values to be returned by resume (by abuse of field) into exited.rootReturned
+                                // even though they are not actual return values of the root function
+                                var flattened = new LuaObject[exited.rootReturned.length + 1];
+                                flattened[0] = LuaObject.of(true);
+                                System.arraycopy(exited.rootReturned, 0, flattened, 1, exited.rootReturned.length);
+                                vm.returnValue(flattened);
+                            }
+                        } else {
+                            throw new InternalLuaRuntimeError("unknown resume point " + resume);
+                        }
+                    }
+
+                    @Override
+                    public int getMaxLocalsSize() {
+                        return 2;
+                    }
+
+                    @Override
+                    public int getArgCount() {
+                        return 1;
+                    }
+
+                    @Override
+                    public boolean hasParamsArg() {
+                        return true;
+                    }
+                });
+
+        registry.register(COROUTINE_PREFIX + "resumeWithTimeout",
+                new LuaJavaApiFunction(registry) {
+                    @Override
+                    public void invoke(LuaVM_RT vm, LuaObject[] stackFrame, int resume, LuaObject[] expressionStack, LuaObject[] returned) {
+                        if (resume == -1) {
+                            vm.registerLocals(2);
+                            LuaObject[] args = stackFrame[0].asArray();
+                            LuaObject maybeCo = args.length > 0 ? args[0] : null;
+                            if (maybeCo == null || !maybeCo.isThread()) {
+                                vm.error(funcArgTypeError("coroutine.resumeWithTimeout", 0, maybeCo, "thread"));
+                                return;
+                            }
+                            Coroutine co = maybeCo.asCoroutine();
+                            if (!co.state.resumable) {
+                                vm.error(funcBadArgError("coroutine.resumeWithTimeout", 0, "coroutine to resume must be in 'suspended' or 'preempted_resumable' state!"));
+                                return;
+                            }
+                            LuaObject timeout = args.length > 1 ? args[1] : null;
+                            if (timeout == null || !timeout.isNumber()) {
+                                vm.error(funcArgTypeError("coroutine.resumeWithTimeout", 1, maybeCo, "number"));
+                                return;
+                            }
+                            stackFrame[1] = maybeCo;
+                            LuaObject[] passDown = args.length >= 3 ? Arrays.copyOfRange(args, 2, args.length) : Singletons.EMPTY_LUA_OBJ_ARRAY;
+                            setupResume(vm, co, passDown, timeout.asDouble());
+                        } else if (resume == 0) {
+                            Coroutine exited = stackFrame[1].asCoroutine();
+                            if (exited.rootFail) {
+                                vm.returnValue(LuaObject.FALSE, exited.rootReturned.length > 0 ? exited.rootReturned[0] : LuaObject.nil());
+                            } else if (exited.state == Coroutine.State.PREEMPTED_RESUMABLE) {
+                                vm.returnValue(LuaObject.of("preempted"));
                             } else {
                                 // coroutine.yield stores the values to be returned by resume (by abuse of field) into exited.rootReturned
                                 // even though they are not actual return values of the root function
@@ -167,7 +228,7 @@ public class LCoroutine {
                         return null;
                     }
                     final var co = Coroutine.create(func.getFunc());
-                    return LuaObject.of(registry.getFunction("$inner.coroutine.wrap",  LuaObject.of(co)));
+                    return LuaObject.of(registry.getFunction("$inner.coroutine.wrap", LuaObject.of(co)));
                 }));
 
         registry.register(COROUTINE_PREFIX + "yield",
@@ -188,6 +249,13 @@ public class LCoroutine {
                             co.state = Coroutine.State.SUSPENDED;
                             // abuse rootReturned to pass return values of corresponding resume call
                             co.rootReturned = stackFrame[0].asArray();
+                            // reset timeout state
+                            if (co.preemptAt >= 0) {
+                                co.preemptAt = -1;
+                                co.resumePreempted = null;
+                                vm.unregisterPreemption(co);
+                            }
+                            // install parent coroutine
                             vm.setCoroutine(co.yieldTo);
                         } else if (resume == 0) {
                             // resume puts the return values of the yield into the returned array
@@ -215,6 +283,11 @@ public class LCoroutine {
     }
 
     private static void setupResume(LuaVM_RT vm, Coroutine co, LuaObject[] passDown) {
+        setupResume(vm, co, passDown, -1);
+    }
+
+    private static void setupResume(LuaVM_RT vm, Coroutine co, LuaObject[] passDown, double timeout) {
+        long timeAt = System.currentTimeMillis() + (long) (timeout * 1000);
         var cur = vm.getCurrentCoroutine();
         // hack our own resume value
         cur.luaCallStack.peek().getTopFrame().resume = 0;
@@ -222,15 +295,61 @@ public class LCoroutine {
         cur.state = Coroutine.State.BLOCKED;
         // retain link to resuming coroutine
         co.yieldTo = cur;
-        boolean isFresh = co.state == Coroutine.State.CREATED;
-        // install new coroutine
-        vm.setCoroutine(co);
-        if (isFresh) {
-            // this coroutine has never been run before, we need to pass the arguments as true arguments to the root function
-            LuaVM_RT.packArgsInto(co.luaCallStack.peek().locals, co.rootFunc, passDown);
+
+        // setup timeout
+        if (timeout >= 0) {
+            co.preemptAt = timeAt;
+            vm.registerPreemption(co, timeAt);
+        }
+
+        // if this coroutine was preempted we need extended setup
+        if (co.resumePreempted != null) {
+            if (passDown.length > 0) {
+                vm.error(LuaObject.of("cannot resume previously preempted coroutine with arguments!"));
+                return;
+            }
+            // restore states between co and the actual resume target
+            if (co != co.resumePreempted) {
+                var worklist = new LinkedList<Coroutine>();
+                for (var c = co.resumePreempted.yieldTo; c != cur; c = c.yieldTo) {
+                    // not the target, not cur, something in between, but in the wrong order
+                    worklist.addFirst(c);
+                }
+                for (var c : worklist) {
+                    // now in the correct order
+                    c.state = Coroutine.State.BLOCKED;
+                    if (c != co && c.preemptAt >= 0) {
+                        // this was resumed with timeout
+                        vm.registerPreemption(c, c.preemptAt);
+                    }
+                }
+            }
+            // setup state for the actually resumed coroutine
+            var c = co.resumePreempted;
+            c.state = Coroutine.State.RUNNING;
+            if (c != co && c.preemptAt >= 0) {
+                // this is not the currently resumed coroutine and was resumed with timeout
+                vm.registerPreemption(c, c.preemptAt);
+            }
+            // clear resume with timeout state of current coroutine if this is not with timeout
+            if (timeout < 0) {
+                co.resumePreempted = null;
+                co.preemptAt = -1;
+            }
+            // do not touch the frame, but install the new coroutine
+            vm.setCoroutine(c);
+
         } else {
-            // this coroutine has yielded, so we pass the given arguments as return values of the yield call
-            co.luaCallStack.peek().getTopFrame().rvals = passDown;
+            if (co.state == Coroutine.State.CREATED) {
+                // this coroutine has never been run before, we need to pass the arguments as true arguments to the root function
+                LuaVM_RT.packArgsInto(co.luaCallStack.peek().locals, co.rootFunc, passDown);
+
+            } else {
+                // this coroutine has yielded, so we pass the given arguments as return values of the yield call
+                co.luaCallStack.peek().getTopFrame().rvals = passDown;
+            }
+            // install new coroutine
+            vm.setCoroutine(co);
         }
     }
 
