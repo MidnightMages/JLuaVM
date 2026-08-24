@@ -4,7 +4,6 @@ import dev.asdf00.jluavm.LuaVM;
 import dev.asdf00.jluavm.api.functions.ApiFunctionRegistry;
 import dev.asdf00.jluavm.api.userdata.LuaUserData;
 import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
-import dev.asdf00.jluavm.internals.javac.DelayedJavaCompiler;
 import dev.asdf00.jluavm.runtime.types.AbstractGeneratedLuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaJavaApiFunction;
@@ -130,6 +129,7 @@ public class LuaVM_RT extends LuaVM {
             return new VmResult(co.rootFail ? VmRunState.EXECUTION_ERROR : VmRunState.SUCCESS, co.rootReturned);
         }
     }
+
     @Override
     public byte[] serialize(Object additionalData) {
         ArrayList<byte[]> serialData = new ArrayList<>();
@@ -168,8 +168,8 @@ public class LuaVM_RT extends LuaVM {
 
     private SortedMap<Long, Coroutine> plannedPreemptions = new TreeMap<>();
     private Map<Coroutine, Long> plannedPreemptionsReverse = new HashMap<>();
-    private long nextPreemptionTime;
-    private Coroutine nextPreemptionCoroutine;
+    private long nextPreemptionTime = -1;
+    private Coroutine nextPreemptionCoroutine = null;
 
     private void execLoop() {
         for (; ; ) {
@@ -187,6 +187,9 @@ public class LuaVM_RT extends LuaVM {
         // for now, just give the host a chance to run code at such safepoints
         triggerEvent(HookType.SAFEPOINT_REACHED);
         tryPreempt();
+        if (Thread.interrupted()) {
+            throw new Error("interrupted");
+        }
     }
 
     private void tryPreempt() {
@@ -209,7 +212,7 @@ public class LuaVM_RT extends LuaVM {
             throw new InternalLuaRuntimeError("we should preempt a coroutine, but did not find target");
         }
         // we found it
-        plannedPreemptions.remove(plannedPreemptionsReverse.remove(curCo));
+        unregisterPreemption(curCo);
         curCo.preemptAt = -1;
         curCo.state = Coroutine.State.PREEMPTED_RESUMABLE;
         curCo.resumePreempted = currentCoroutine;
@@ -334,9 +337,20 @@ public class LuaVM_RT extends LuaVM {
     public void registerPreemption(Coroutine co, long targetTime) {
         plannedPreemptions.put(targetTime, co);
         plannedPreemptionsReverse.put(co, targetTime);
-        if (targetTime <= nextPreemptionTime) {
+        if (nextPreemptionTime < 0 || targetTime <= nextPreemptionTime) {
             nextPreemptionCoroutine = co;
             nextPreemptionTime = targetTime;
+        }
+    }
+
+    public void unregisterPreemption(Coroutine co) {
+        plannedPreemptions.remove(plannedPreemptionsReverse.remove(co));
+        if (plannedPreemptions.isEmpty()) {
+            nextPreemptionCoroutine = null;
+            nextPreemptionTime = -1;
+        } else {
+            nextPreemptionTime = plannedPreemptions.lastKey();
+            nextPreemptionCoroutine = plannedPreemptions.get(nextPreemptionTime);
         }
     }
 
@@ -409,7 +423,7 @@ public class LuaVM_RT extends LuaVM {
         LuaObject[] VADestArray = null;
 
         // if we process varargs that are not the last one, unpack it into just the first one as we need to drop the extra ones
-        for (int i = 0; i < args.length-1; i++) {
+        for (int i = 0; i < args.length - 1; i++) {
             if (args[i].isArray())
                 args[i] = args[i].asArray()[0];
         }
