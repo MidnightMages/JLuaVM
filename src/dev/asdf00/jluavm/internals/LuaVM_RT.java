@@ -12,6 +12,8 @@ import dev.asdf00.jluavm.runtime.utils.LFunc;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 import dev.asdf00.jluavm.utils.ByteArrayBuilder;
 import dev.asdf00.jluavm.utils.Quadruple;
+import dev.asdf00.jluavm.utils.Quintuple;
+import dev.asdf00.jluavm.utils.Tuple;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -71,12 +73,15 @@ public class LuaVM_RT extends LuaVM {
     /**
      * Create LuaVM from serialized state
      */
-    public LuaVM_RT(Map<String, ApiFunctionRegistry> registries, Quadruple<Coroutine, Coroutine, Boolean, Boolean> state) {
+    public LuaVM_RT(Map<String, ApiFunctionRegistry> registries, Quintuple<Coroutine, Coroutine, Boolean, Boolean, List<Tuple<Long, LuaObject>>> state) {
         this(registries, state.w().rootFunc);
         rootCoroutine = state.w();
         currentCoroutine = state.x();
         isErroring = state.y();
         requestedStop = state.z();
+        for (var plannedPreemption : state.a()) {
+            registerPreemption(plannedPreemption.y().asCoroutine(), plannedPreemption.x());
+        }
 
         luaCallStack = currentCoroutine.luaCallStack;
         curFuncFrame = luaCallStack.peek();
@@ -138,8 +143,13 @@ public class LuaVM_RT extends LuaVM {
         var bb = new ByteArrayBuilder(serialData.stream().mapToInt(a -> a.length + 4).sum() + 4 * 4);
         bb.append(STATE_SERIALIZATION_VERSION)
                 .append(mappedObjs.get(rootCoroutine.selfLuaObject))
-                .append(curCoIdx)
-                .append(isErroring)
+                .append(curCoIdx);
+        bb.append(plannedPreemptions.size());
+        for (var entry : plannedPreemptions.entrySet()) {
+            bb.append(entry.getKey().longValue())
+                    .append(LuaObject.of(entry.getValue().selfLuaObject).serialize(serialData, mappedObjs, additionalData));
+        }
+        bb.append(isErroring)
                 .append(requestedStop)
                 .append(serialData.size());
         for (int i = 0; i < serialData.size(); i++) {

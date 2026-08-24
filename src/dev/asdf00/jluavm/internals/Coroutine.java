@@ -4,6 +4,7 @@ import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.utils.ByteArrayBuilder;
 import dev.asdf00.jluavm.utils.ByteArrayReader;
+import dev.asdf00.jluavm.utils.Triple;
 import dev.asdf00.jluavm.utils.Tuple;
 
 import java.util.*;
@@ -51,6 +52,7 @@ public final class Coroutine {
         isYieldable = true;
         yieldTo = null;
         selfLuaObject = LuaObject.of(this);
+        resumePreempted = null;
     }
 
     public static Coroutine create(LuaFunction rootFunc) {
@@ -72,7 +74,11 @@ public final class Coroutine {
                 .append(isYieldable)
                 .append(yieldTo == null
                         ? -1 // null
-                        : yieldTo.selfLuaObject.serialize(serialData, mappedObjs, additionalData));
+                        : yieldTo.selfLuaObject.serialize(serialData, mappedObjs, additionalData))
+                .append(resumePreempted == null
+                        ? -1 // null
+                        : resumePreempted.selfLuaObject.serialize(serialData, mappedObjs, additionalData))
+                .append(preemptAt);
 
         for (int i = 0; i < luaCallStack.size(); i++) {
             var functionFrameBytes = luaCallStack.get(i).serialize(serialData, mappedObjs, additionalData);
@@ -80,7 +86,7 @@ public final class Coroutine {
         }
     }
 
-    public static Tuple<Coroutine, LuaObject> deserialize(LuaObject[] objs, LuaObject self, ByteArrayReader rdr) {
+    public static Triple<Coroutine, LuaObject, LuaObject> deserialize(LuaObject[] objs, LuaObject self, ByteArrayReader rdr) {
         LuaFunction func = objs[rdr.readInt()].getFunc();
         boolean fail = rdr.readBool();
         LuaObject[] returned = maybeNull(objs, rdr.readInt(), LuaObject::asArray);
@@ -88,11 +94,14 @@ public final class Coroutine {
         boolean isYieldable = rdr.readBool();
         // this coroutine might not exist yet, we return the corresponding lua object in a tuple to resolve later
         LuaObject yieldTo = maybeNull(objs, rdr.readInt());
+        LuaObject resumePreempted = maybeNull(objs, rdr.readInt());
+        long preemptAt = rdr.readLong();
         // still to read: stack
 
         Coroutine co = new Coroutine(func, new Stack<>(), fail, returned, state);
         co.isYieldable = isYieldable;
         co.selfLuaObject = self;
+        co.preemptAt = preemptAt;
 
         // construct stack
         while (rdr.remaining() > 0) {
@@ -101,6 +110,6 @@ public final class Coroutine {
             co.luaCallStack.push(FunctionCallFrame.deserialize(objs, fRead));
         }
 
-        return new Tuple<>(co, yieldTo);
+        return new Triple<>(co, yieldTo, resumePreempted);
     }
 }
