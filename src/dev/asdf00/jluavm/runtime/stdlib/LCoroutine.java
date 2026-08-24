@@ -11,6 +11,7 @@ import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 
 import java.util.Arrays;
+import java.util.LinkedList;
 
 import static dev.asdf00.jluavm.runtime.utils.RTUtils.funcArgTypeError;
 import static dev.asdf00.jluavm.runtime.utils.RTUtils.funcBadArgError;
@@ -103,8 +104,8 @@ public class LCoroutine {
                                 return;
                             }
                             Coroutine co = maybeCo.asCoroutine();
-                            if (co.state != Coroutine.State.SUSPENDED && co.state != Coroutine.State.CREATED) {
-                                vm.error(funcBadArgError("coroutine.resume", 0, "coroutine to resume must be in 'suspended' state!"));
+                            if (!co.state.resumable) {
+                                vm.error(funcBadArgError("coroutine.resume", 0, "coroutine to resume must be in 'suspended' or 'preempted_resumable' state!"));
                                 return;
                             }
                             stackFrame[1] = maybeCo;
@@ -215,6 +216,10 @@ public class LCoroutine {
     }
 
     private static void setupResume(LuaVM_RT vm, Coroutine co, LuaObject[] passDown) {
+        setupResume(vm, co, passDown, -1);
+    }
+
+    private static void setupResume(LuaVM_RT vm, Coroutine co, LuaObject[] passDown, long timeout) {
         var cur = vm.getCurrentCoroutine();
         // hack our own resume value
         cur.luaCallStack.peek().getTopFrame().resume = 0;
@@ -222,6 +227,48 @@ public class LCoroutine {
         cur.state = Coroutine.State.BLOCKED;
         // retain link to resuming coroutine
         co.yieldTo = cur;
+
+        // setup timeout
+        if (timeout >= 0) {
+            co.preemptAt = timeout;
+            vm.registerPreemption(co, timeout);
+        }
+
+        // if this coroutine was preempted we need extended setup
+        if (co.resumePreempted != null) {
+            if (passDown.length > 0) {
+                vm.error(LuaObject.of("cannot resume previously preempted coroutine with arguments!"));
+                return;
+            }
+            // restore states between co and the actual resume target
+            if (co != co.resumePreempted) {
+                var worklist = new LinkedList<Coroutine>();
+                for (var c = co.resumePreempted.resumePreempted; c != cur; c = c.yieldTo) {
+                    // not the target, not cur, something in between, but in the wrong order
+                    worklist.addFirst(c);
+                }
+                for (var c : worklist) {
+                    // now in the correct order
+                    c.state = Coroutine.State.BLOCKED;
+                    if (c.preemptAt >= 0) {
+                        // this was resumed with timeout
+                        vm.registerPreemption(c, c.preemptAt);
+                    }
+                }
+            }
+            // setup state for the actually resumed coroutine
+            // TODO fucked for only one coroutine
+            var c = co.resumePreempted;
+            c.state = Coroutine.State.RUNNING;
+            if (c.preemptAt >= 0) {
+                // this was resumed with timeout
+                vm.registerPreemption(c, c.preemptAt);
+            }
+            // clear resume with timeout state of current coroutine
+            co.resumePreempted = null;
+            co.preemptAt = -1;
+        }
+
         boolean isFresh = co.state == Coroutine.State.CREATED;
         // install new coroutine
         vm.setCoroutine(co);

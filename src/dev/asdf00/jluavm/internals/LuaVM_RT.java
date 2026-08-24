@@ -3,6 +3,7 @@ package dev.asdf00.jluavm.internals;
 import dev.asdf00.jluavm.LuaVM;
 import dev.asdf00.jluavm.api.functions.ApiFunctionRegistry;
 import dev.asdf00.jluavm.api.userdata.LuaUserData;
+import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
 import dev.asdf00.jluavm.internals.javac.DelayedJavaCompiler;
 import dev.asdf00.jluavm.runtime.types.AbstractGeneratedLuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
@@ -165,6 +166,11 @@ public class LuaVM_RT extends LuaVM {
     private Stack<FunctionCallFrame> luaCallStack;
     private FunctionCallFrame curFuncFrame;
 
+    private SortedMap<Long, Coroutine> plannedPreemptions = new TreeMap<>();
+    private Map<Coroutine, Long> plannedPreemptionsReverse = new HashMap<>();
+    private long nextPreemptionTime;
+    private Coroutine nextPreemptionCoroutine;
+
     private void execLoop() {
         for (; ; ) {
             isErroring = false;
@@ -180,6 +186,34 @@ public class LuaVM_RT extends LuaVM {
     private void safepoint() {
         // for now, just give the host a chance to run code at such safepoints
         triggerEvent(HookType.SAFEPOINT_REACHED);
+        tryPreempt();
+    }
+
+    private void tryPreempt() {
+        long spTime = System.currentTimeMillis();
+        if (nextPreemptionCoroutine == null || spTime < nextPreemptionTime) {
+            return;
+        }
+        // we be preemptin'
+        Coroutine curCo = currentCoroutine;
+        while (nextPreemptionCoroutine != curCo && curCo != null) {
+            // transitive preemption
+            curCo.state = Coroutine.State.PREEMPTED_BLOCKED;
+            if (curCo.preemptAt >= 0) {
+                // we need to remove that from the next preemptions
+                plannedPreemptions.remove(plannedPreemptionsReverse.remove(curCo));
+            }
+            curCo = curCo.yieldTo;
+        }
+        if (curCo == null) {
+            throw new InternalLuaRuntimeError("we should preempt a coroutine, but did not find target");
+        }
+        // we found it
+        plannedPreemptions.remove(plannedPreemptionsReverse.remove(curCo));
+        curCo.preemptAt = -1;
+        curCo.state = Coroutine.State.PREEMPTED_RESUMABLE;
+        curCo.resumePreempted = currentCoroutine;
+        setCoroutine(curCo.yieldTo);
     }
 
     // =================================================================================================================
@@ -295,6 +329,15 @@ public class LuaVM_RT extends LuaVM {
 
     public Coroutine getCurrentCoroutine() {
         return currentCoroutine;
+    }
+
+    public void registerPreemption(Coroutine co, long targetTime) {
+        plannedPreemptions.put(targetTime, co);
+        plannedPreemptionsReverse.put(co, targetTime);
+        if (targetTime <= nextPreemptionTime) {
+            nextPreemptionCoroutine = co;
+            nextPreemptionTime = targetTime;
+        }
     }
 
     // =================================================================================================================

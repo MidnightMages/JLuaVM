@@ -12,16 +12,20 @@ import static dev.asdf00.jluavm.runtime.utils.StateDeserializer.maybeNull;
 
 public final class Coroutine {
     public enum State {
-        CREATED("suspended"),
-        RUNNING("running"),
-        SUSPENDED("suspended"),
-        BLOCKED("normal"),
-        DEAD("dead");
+        CREATED("suspended", true),
+        RUNNING("running", false),
+        SUSPENDED("suspended", true),
+        BLOCKED("normal", false),
+        DEAD("dead", false),
+        PREEMPTED_RESUMABLE("preempted_resumable", true),
+        PREEMPTED_BLOCKED("preempted_blocked", false);
 
         public final String luaName;
+        public final boolean resumable;
 
-        State(String luaName) {
+        State(String luaName, boolean resumable) {
             this.luaName = luaName;
+            this.resumable = resumable;
         }
     }
 
@@ -34,6 +38,9 @@ public final class Coroutine {
     public boolean isYieldable;
     public Coroutine yieldTo;
     public LuaObject selfLuaObject;
+
+    public Coroutine resumePreempted;
+    public long preemptAt = -1;
 
     private Coroutine(LuaFunction rootFunc, Stack<FunctionCallFrame> luaCallStack, boolean rootFail, LuaObject[] rootReturned, State state) {
         this.rootFunc = rootFunc;
