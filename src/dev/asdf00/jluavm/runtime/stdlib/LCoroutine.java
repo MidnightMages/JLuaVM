@@ -163,7 +163,7 @@ public class LCoroutine {
                             }
                             LuaObject timeout = args.length > 1 ? args[1] : null;
                             if (timeout == null || !timeout.isNumber()) {
-                                vm.error(funcArgTypeError("coroutine.resumeWithTimeout", 1, maybeCo, "number"));
+                                vm.error(funcArgTypeError("coroutine.resumeWithTimeout", 1, timeout, "number"));
                                 return;
                             }
                             stackFrame[1] = maybeCo;
