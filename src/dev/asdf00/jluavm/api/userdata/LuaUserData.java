@@ -32,9 +32,9 @@ public interface LuaUserData {
     }
 
     /**
-     * {@code vm.listUDKeys} returns a list of readable / writable keys inside the userdata object.
+     * {@code vm.listUdKeys} returns a list of readable / writable keys inside the userdata object.
      * This cannot cover entries hidden behind {@link LuaUserData#luaGeneralGet(LuaObject)}.
-     * Thus, any fields that are implemented via such a general-get function can be supplied here and will show up in {@code vm.listUDKeys}.
+     * Thus, any fields that are implemented via such a general-get function can be supplied here and will show up in {@code vm.listUdKeys}.
      * Keys that are read-write need to be supplied in {@link LuaUserData#getExtraWritableUdKeys()} too.
      */
     default String[] getExtraReadableUdKeys() {
@@ -42,9 +42,9 @@ public interface LuaUserData {
     }
 
     /**
-     * {@code vm.listUDKeys} returns a list of readable / writable keys inside the userdata object.
+     * {@code vm.listUdKeys} returns a list of readable / writable keys inside the userdata object.
      * This cannot cover entries hidden behind {@link LuaUserData#luaGeneralGet(LuaObject)}.
-     * Thus, any fields that are implemented via such a general-set function can be supplied here and will show up in {@code vm.listUDKeys}.
+     * Thus, any fields that are implemented via such a general-set function can be supplied here and will show up in {@code vm.listUdKeys}.
      * Keys that are read-write need to be supplied in {@link LuaUserData#getExtraReadableUdKeys()} too.
      */
     default String[] getExtraWritableUdKeys() {

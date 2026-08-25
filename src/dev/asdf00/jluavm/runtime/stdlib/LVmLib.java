@@ -21,7 +21,7 @@ public class LVmLib {
         registry.register(VM_LIB_PREFIX + "pause",
                 AtomicLuaFunction.forZeroResults(registry, LuaVM::requestStop));
 
-        registry.register(VM_LIB_PREFIX + "listUDKeys",
+        registry.register(VM_LIB_PREFIX + "listUdKeys",
                 AtomicLuaFunction.forOneResult(registry, (vm, userDataObj) -> {
                     if (!userDataObj.isUserData())
                         throw new LuaJavaError("Argument must be of type userdata but was %s.".formatted(userDataObj.getTypeAsString()));
