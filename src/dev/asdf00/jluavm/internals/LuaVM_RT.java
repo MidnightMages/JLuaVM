@@ -55,7 +55,7 @@ public class LuaVM_RT extends LuaVM {
     public static final int ERROR_LOOP_GRACE_CNT = 256;
     public static final int MAX_LUA_STACK_SIZE = 1024 * 1024;
 
-    public static final int STATE_SERIALIZATION_VERSION = 0;
+    public static final int STATE_SERIALIZATION_VERSION = 1;
 
     public LuaVM_RT() {
         luaCallStack = new Stack<>();
