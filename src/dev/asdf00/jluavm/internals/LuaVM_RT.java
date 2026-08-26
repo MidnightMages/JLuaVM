@@ -197,9 +197,6 @@ public class LuaVM_RT extends LuaVM {
         // for now, just give the host a chance to run code at such safepoints
         triggerEvent(HookType.SAFEPOINT_REACHED);
         tryPreempt();
-        if (Thread.interrupted()) {
-            throw new Error("interrupted");
-        }
     }
 
     private void tryPreempt() {
