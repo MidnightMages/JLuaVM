@@ -207,7 +207,7 @@ public class StateDeserializer {
 
         for (var fr : finalResolution) {
             fr.x().yieldTo = fr.y().asCoroutine();
-            fr.x().resumePreempted = fr.z().asCoroutine();
+            fr.x().resumePreempted = fr.z() == null ? null : fr.z().asCoroutine();
         }
         List<Tuple<Long, LuaObject>> plannedPreemptions = new ArrayList<>(ppIdxs.size());
         for (var pp : ppIdxs) {
