@@ -3047,4 +3047,9 @@ public class VmTest extends BaseVmTest {
                         return res + 1
                         """, LuaObject.of(124));
     }
+
+    @Test
+    void tonumberError() {
+        loadAssertSuccessAndRv("return tonumber(\"aaa\")", LuaObject.NIL);
+    }
 }

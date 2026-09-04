@@ -5,6 +5,7 @@ import dev.asdf00.jluavm.api.functions.AtomicLuaFunction;
 import dev.asdf00.jluavm.api.functions.MixedStateFunctionRegistry;
 import dev.asdf00.jluavm.exceptions.InternalLuaRuntimeError;
 import dev.asdf00.jluavm.exceptions.LuaLoadingException;
+import dev.asdf00.jluavm.exceptions.loading.LuaLexerException;
 import dev.asdf00.jluavm.internals.LuaVM_RT;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaJavaApiFunction;
@@ -170,11 +171,15 @@ public class LGlobal {
             if (!x.isString())
                 return LuaObject.NIL;
 
-            var cstr = x.coerceToNumber();
-            if (cstr == null)
-                return LuaObject.NIL;
+            try {
+                var cstr = x.coerceToNumber();
+                if (cstr == null)
+                    return LuaObject.NIL;
 
-            return cstr.isDouble() ? LuaObject.of(cstr.dVal()) : LuaObject.of(cstr.lVal());
+                return cstr.isDouble() ? LuaObject.of(cstr.dVal()) : LuaObject.of(cstr.lVal());
+            } catch (LuaLexerException ignored) {
+                return LuaObject.NIL;
+            }
         }));
 
         registry.register("$inner.ipairs",
