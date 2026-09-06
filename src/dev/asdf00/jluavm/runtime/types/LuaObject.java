@@ -715,6 +715,8 @@ public final class LuaObject {
         // actual parsing
         try {
             var charsRaw = this.asString().strip();
+            if (charsRaw.length() <= 0)
+                throw new LuaLexerException(new Position(0, 0, 0), "stripped input string cannot be empty");
             if (charsRaw.equals(STRING_LONG_MIN_VALUE)) {
                 markWord |= 0b10;
                 dVal = -1;
