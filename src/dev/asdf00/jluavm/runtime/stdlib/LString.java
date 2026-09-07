@@ -24,7 +24,7 @@ import static dev.asdf00.jluavm.runtime.utils.RTUtils.funcArgTypeError;
 public class LString {
 
     // see Formatter#FORMAT_SPECIFIER;
-    private static final Pattern JAVA_STRING_FORMAT_SPECIFIERS = Pattern.compile("%(\\d+\\$)?([-#+ 0,(\\<]*)?(\\d+)?(\\.\\d+)?([tT])?([a-zA-Z%])");
+    private static final Pattern JAVA_STRING_FORMAT_SPECIFIERS = Pattern.compile("%(\\d+\\$)?([-#+ 0,(\\<]+)?(\\d+)?(\\.\\d+)?([tT])?([a-zA-Z%])");
     private static final Pattern LUA_QFMT = Pattern.compile("(^|[^%])%q");
 
     private static final String STRING_PREFIX = "string.";
@@ -324,9 +324,9 @@ public class LString {
                                         case NIL -> "nil";
                                         case STRING ->
                                             // do the necessary escapes
-                                                elem.getString().replaceAll("\\\\", "\\\\")
-                                                        .replaceAll("\n", "\\\n")
-                                                        .replaceAll("\"", "\\\"");
+                                                "\"" + elem.getString().replaceAll("\\\\", "\\\\")
+                                                        .replaceAll("\n", "\\\\\n")
+                                                        .replaceAll("\"", "\\\\\"") + "\"";
                                         case DOUBLE -> {
                                             if (elem.isNaN()) {
                                                 yield "NaN";
@@ -349,7 +349,7 @@ public class LString {
                                         default -> elem.asString();
                                     };
                                 }
-                            }));
+                            }, 1));
                         } catch (IllegalFormatException e) {
                             vm.error(LuaObject.of(e.getMessage()));
                             return null;
@@ -1180,12 +1180,16 @@ public class LString {
         }
     }
 
-    private static String smartReplace(String text, Pattern pattern, Function<Matcher, String> match) {
+    private static String smartReplace(String text, Pattern pattern, Function<Matcher, String> match, int... keepGroups) {
         int lastIndex = 0;
         StringBuilder output = new StringBuilder();
         Matcher matcher = pattern.matcher(text);
         while (matcher.find()) {
-            output.append(text, lastIndex, matcher.start()).append(match.apply(matcher));
+            output.append(text, lastIndex, matcher.start());
+            for (int g : keepGroups) {
+                output.append(matcher.group(g));
+            }
+            output.append(match.apply(matcher));
             lastIndex = matcher.end();
         }
         if (lastIndex < text.length()) {

@@ -3058,7 +3058,6 @@ public class VmTest extends BaseVmTest {
         loadAssertSuccessAndRv("""
                 return string.format("A%qB", "test\\"hehe\\nnewline!")""", LuaObject.of("""
                 A"test\\"hehe\\
-                newline!"B
-                """));
+                newline!"B"""));
     }
 }
