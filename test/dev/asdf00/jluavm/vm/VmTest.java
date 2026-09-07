@@ -3052,4 +3052,13 @@ public class VmTest extends BaseVmTest {
     void tonumberError() {
         loadAssertSuccessAndRv("return tonumber(\"aaa\")", LuaObject.NIL);
     }
+
+    @Test
+    void stringFormatPercentQ() {
+        loadAssertSuccessAndRv("""
+                return string.format("A%qB", "test\\"hehe\\nnewline!")""", LuaObject.of("""
+                A"test\\"hehe\\
+                newline!"B
+                """));
+    }
 }
