@@ -500,6 +500,9 @@ public class Lexer {
             // return the number
             // 2^63 is the first number that does not fit into a lua integer
             var consumedStr = consumed.toString();
+            if (consumedStr.isBlank())
+                throw new LuaLexerException(globalStartPos, "number cannot be a blank string");
+
             var numberSize = Double.parseDouble(consumedStr);
             if (numberSize < Long.MAX_VALUE * 1.5d) { // if it definitely parsable in an unsigned manner, parse it as unsigned, then check the exact size
                 var ulong = Long.parseUnsignedLong(consumedStr);
