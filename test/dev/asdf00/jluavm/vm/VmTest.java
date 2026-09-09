@@ -3068,17 +3068,20 @@ public class VmTest extends BaseVmTest {
 
     @Test
     void tailcall() {
-        loadAssertSuccessAndRv("""
-                local iterCnt = 0
-                local function tailcall()
-                    if iterCnt > 10 then
-                        return "ok"
-                    else
-                        iterCnt = iterCnt + 1
-                        return tailcall()
+        assertTimeoutPreemptively(Duration.ofSeconds(10), () -> {
+            loadAssertSuccessAndRv("""
+                    local iterCnt = 0
+                    local function tailcall()
+                        if iterCnt > 10 then
+                            return "ok"
+                        else
+                            iterCnt = iterCnt + 1
+                            return tailcall()
+                        end
                     end
-                end
-                return tailcall()
-                """, LuaObject.of("ok"));
+                    return tailcall()
+                    """, LuaObject.of("ok"));
+                    }
+        );
     }
 }
