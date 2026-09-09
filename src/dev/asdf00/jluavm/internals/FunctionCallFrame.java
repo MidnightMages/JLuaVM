@@ -95,6 +95,7 @@ public final class FunctionCallFrame extends AbstractCallStackFrame {
         }
         init();
         Arrays.fill(locals, null);
+        scopes.clear();
     }
 
     public LuaObject getNextClosable() {
