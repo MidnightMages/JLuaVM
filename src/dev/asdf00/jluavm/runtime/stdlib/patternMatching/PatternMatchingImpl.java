@@ -196,7 +196,7 @@ public class PatternMatchingImpl {
         }
 
         // Try to match with maximum reptitions
-        while (i > 0) {
+        while (i >= 0) {
             var res = match(ms, s.substring(i), ep.substring(1));
             if (res != null) {
                 return res;

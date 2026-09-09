@@ -1008,4 +1008,21 @@ public class PatternMatchingTest extends BaseVmTest {
                 test=>es|s;;
                 """));
     }
+
+
+    @Test
+    void gsubWhitespaceRemoval() {
+        loadAssertSuccessAndRv("""
+                local x = "\\n"
+                return (">>"..(string.gsub(x,"[%s]+","")).."<<")
+                """, new LuaObject[]{LuaObject.of(">><<")});
+    }
+
+    @Test
+    void gsubWhitespaceRemoval2() {
+        loadAssertSuccessAndRv("""
+                local x = "\\n "
+                return (">>"..(string.gsub(x,"[%s]+","")).."<<")
+                """, new LuaObject[]{LuaObject.of(">><<")});
+    }
 }
