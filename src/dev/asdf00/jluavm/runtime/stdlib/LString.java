@@ -329,12 +329,12 @@ public class LString {
                                                         .replaceAll("\"", "\\\\\"") + "\"";
                                         case DOUBLE -> {
                                             if (elem.isNaN()) {
-                                                yield "NaN";
+                                                yield "(0/0)";
                                             }
                                             // do bithacks to represent it as a lua hexfloat
                                             long bits = Double.doubleToRawLongBits(elem.asDouble());
                                             if (Double.isInfinite(elem.asDouble())) {
-                                                yield bits < 0 ? "-Infinity" : "Infinity";
+                                                yield bits < 0 ? "-1e9999" : "1e9999";
                                             }
                                             // TODO check if we need subnormals
                                             long mantissa = bits & ((1L << 52) - 1);
