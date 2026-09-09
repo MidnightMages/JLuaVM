@@ -493,6 +493,8 @@ public class PatternMatchingImpl {
 
     public static ExtendedMatchResult lua_match_extended(String s, String pattern, int startIndex, boolean isPlainSearch) {
         assert startIndex >= 0;
+        if (startIndex != 0 && pattern.length() > 0 && pattern.charAt(0) == '^')
+            return new ExtendedMatchResult(new LuaObject[]{LuaObject.nil()}, new FindResult(false, -9, -9, null));
         FindResult resRaw = find(s.substring(startIndex), pattern, isPlainSearch);
         FindResult res = resRaw.adjustForStartIndex(startIndex);
 

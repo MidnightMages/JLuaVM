@@ -1025,4 +1025,33 @@ public class PatternMatchingTest extends BaseVmTest {
                 return (">>"..(string.gsub(x,"[%s]+","")).."<<")
                 """, new LuaObject[]{LuaObject.of(">><<")});
     }
+
+    @Test
+    void gsubWhitespaceRemoval3() {
+        loadAssertSuccessAndRv("""
+                local x = "\\na abc"
+                return (">>"..(string.gsub(x,"[%s]+","")).."<<")
+                """, new LuaObject[]{LuaObject.of(">>aabc<<")});
+    }
+    @Test
+    void gsubWhitespaceRemoval4() {
+        loadAssertSuccessAndRv("""
+                local x = " some thing \\nhe he ! "
+                return string.gsub(x,"^[%s]*", ""):gsub("[%s]*$", "")
+                """, new LuaObject[]{LuaObject.of("some thing \nhe he !"), LuaObject.of(1)});
+    }
+    @Test
+    void gsubWhitespaceRemoval4_1() {
+        loadAssertSuccessAndRv("""
+                local x = " some thing \\nhe he ! "
+                return string.gsub(x,"^[%s]*", "")
+                """, new LuaObject[]{LuaObject.of("some thing \nhe he ! "), LuaObject.of(1)});
+    }
+    @Test
+    void gsubWhitespaceRemoval4_2() {
+        loadAssertSuccessAndRv("""
+                local x = " some thing \\nhe he ! "
+                return string.gsub(x, "[%s]*$", "")
+                """, new LuaObject[]{LuaObject.of(" some thing \nhe he !"), LuaObject.of(1)});
+    }
 }
