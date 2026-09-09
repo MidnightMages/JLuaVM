@@ -3065,4 +3065,20 @@ public class VmTest extends BaseVmTest {
                 A"test\\"hehe\\
                 newline!"B"""));
     }
+
+    @Test
+    void tailcall() {
+        loadAssertSuccessAndRv("""
+                local iterCnt = 0
+                local function tailcall()
+                    if iterCnt > 10 then
+                        return "ok"
+                    else
+                        iterCnt = iterCnt + 1
+                        return tailcall()
+                    end
+                end
+                return tailcall()
+                """, LuaObject.of("ok"));
+    }
 }
