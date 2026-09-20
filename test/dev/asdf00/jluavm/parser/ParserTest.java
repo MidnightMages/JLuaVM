@@ -256,4 +256,20 @@ public class ParserTest {
                 end
                 """));
     }
+
+    @Test
+    void complexComments() {
+        parse("""
+                --A comment
+                --[[
+                this is a comment
+                ]]
+                --[=[
+                this is a comment
+                ]=]
+                --[[
+                this is an evil but valid comment[[
+                ]]
+                """);
+    }
 }
