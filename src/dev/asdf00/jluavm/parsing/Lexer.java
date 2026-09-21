@@ -63,6 +63,46 @@ public class Lexer {
                     }
                     advance();  // remove "]]" from stream
                     advance();
+                } else if (cur == '[' && input.peek() == '=') { // either a special multiline comment or a single line comment, depending on if = is followed by [
+                    advance(); // consume [
+                    assert cur == '=';
+                    int numberOfOpeningEqualSigns = 0;
+                    while (cur == '=') {
+                        numberOfOpeningEqualSigns++;
+                        advance(); // consume as many = as possible
+                    }
+
+                    if (cur == '[') { // if this is [, then this is a genuine --[=========[ comment
+                        // in this case we need to consume all chars until we see ]=========]
+                        int currentEqualSignCount = -1; // -1 means we havent ] yet
+                        boolean commentIsFinished = false;
+                        while (!commentIsFinished) {
+                            switch (cur) {
+                                case ']' -> {
+                                    if (currentEqualSignCount == numberOfOpeningEqualSigns) { // we have consumed enough
+                                        commentIsFinished = true;
+                                        break;
+                                    }
+                                    currentEqualSignCount = 0; // otherwise we start a new one
+                                }
+                                case '=' -> {
+                                    if (currentEqualSignCount >= 0) // only increment the count if we are currently after a ] symbol
+                                        currentEqualSignCount++;
+                                }
+                                case CEOF -> throw new LuaLexerException(input.pos(), "Unexpected EOF in multi line comment");
+                                default -> currentEqualSignCount = -1; // this marker was invalid, so indicate that we arent inside one
+                            }
+                            advance();
+                        }
+                    } else { // else this is a single line comment, so use same code as in that case.
+                        // single line comment
+                        while (cur != '\n' && cur != CEOF) {
+                            advance();
+                        }
+                        if (cur != CEOF) {
+                            advance();
+                        }
+                    }
                 } else {
                     // single line comment
                     while (cur != '\n' && cur != CEOF) {
@@ -518,10 +558,10 @@ public class Lexer {
 
     private static boolean isIdentStart(char c) {
         return c != CEOF && (c == '_' |
-                ((((1 << Character.UPPERCASE_LETTER) |
-                        (1 << Character.LOWERCASE_LETTER) |
-                        (1 << Character.TITLECASE_LETTER))
-                        >> Character.getType(c)) & 1) != 0);
+                             ((((1 << Character.UPPERCASE_LETTER) |
+                                (1 << Character.LOWERCASE_LETTER) |
+                                (1 << Character.TITLECASE_LETTER))
+                               >> Character.getType(c)) & 1) != 0);
     }
 
     private static boolean isIdentContination(char c) {
