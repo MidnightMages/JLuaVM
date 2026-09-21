@@ -61,7 +61,7 @@ public class VmTest extends BaseVmTest {
                 if §true|false§ then
                 a,a.b = {},7 else
                 a.b,a = 7,{} end
-                
+                                
                 local rv = ""
                 for _,i in ipairs({1,2,3}) do
                     rv = rv .. tostring(c[i])..","
@@ -116,14 +116,14 @@ public class VmTest extends BaseVmTest {
                 function f2(a) rv=rv.."f2;"; return 1.2 end
                 function g(a) rv=rv.."g;"; return 2 end
                 function h(a) rv=rv.."h;"; return 3 end
-                
+                                
                 a = {}
                 setmetatable(a,a)
                 a["__newindex"] = function(k,v,a)
                     rv = rv.."mt_"..tostring(v).."="..tostring(a)..";"
                     rawset(k,v,a)
                 end
-                
+                                
                 a_orig = a
                 a.a,a.a,a.a,a,a = f(1),f1(1),f2(1), g(1), h(1)
                 rv2 = rv.."|"..tostring(a).."|"..tostring(a_orig.a)
@@ -137,14 +137,14 @@ public class VmTest extends BaseVmTest {
                 function f2(a) rv=rv.."f2;"; return 1.2 end
                 function g(a) rv=rv.."g;"; return 2 end
                 function h(a) rv=rv.."h;"; return 3 end
-                
+                                
                 a = {}
                 setmetatable(a,a)
                 a["__newindex"] = function(k,v,a)
                     rv = rv.."mt_"..tostring(v).."="..tostring(a)..";"
                     --rawset(k,v,a)
                 end
-                
+                                
                 a_orig = a
                 a.a,a.a,a.a,a,a = f(1),f1(1),f2(1), g(1), h(1)
                 rv2 = rv.."|"..tostring(a).."|"..tostring(a_orig.a)
@@ -180,7 +180,7 @@ public class VmTest extends BaseVmTest {
                     ::dest::
                     print(1)
                 end
-                
+                                
                 print("ok!")
                 """, LuaSemanticException.class);
 
@@ -351,7 +351,7 @@ public class VmTest extends BaseVmTest {
                     local b <close> = a
                     local c <close> = a
                 end
-                
+                                
                 return rv""", LuaObject.of("closing;closing;"));
 
         loadAssertSuccessAndRv("""
@@ -369,20 +369,20 @@ public class VmTest extends BaseVmTest {
         loadAssertSuccessAndRv("""
                 rv = ""
                 print = function(a) rv = rv .. tostring(a)..";" end
-                
+                                
                 i = 0
                 function f(x)
                     print("fval"..tostring(x))
                     i=i+1
                     return i>2
                 end
-                
+                                
                 function getMt()
                    local t = {["__close"]=function() print("closing") end, ["name"]="a table"}
                    setmetatable(t,t)
                    return t
                 end
-                
+                                
                 repeat
                     print("iter")
                     local a <close> = getMt()
@@ -390,7 +390,7 @@ public class VmTest extends BaseVmTest {
                 until f(a.name)
                 print("c")
                 print("done")
-                
+                                
                 return rv
                 """, LuaObject.of("iter;b;fvala table;closing;iter;b;fvala table;closing;iter;b;fvala table;closing;c;done;"));
 
@@ -638,7 +638,7 @@ public class VmTest extends BaseVmTest {
                 function _EXT.number.toRoman(int)
                   return romanConst[int]
                 end
-                
+                                
                 print(5:toRoman() .. " guys")
                 local myInt = ("III":toNum() + tostring("II":toNum()))
                 print(myInt:toRoman())
@@ -844,7 +844,7 @@ public class VmTest extends BaseVmTest {
     void pseudoRandomNumberGenerator() {
         var code = """
                 local seed = 123
-                
+                                
                 local function randomNumber()
                     local a = 1664525
                     local c = 1013904223
@@ -852,12 +852,12 @@ public class VmTest extends BaseVmTest {
                     seed = (a * seed + c) % m
                     return seed / m
                 end
-                
+                                
                 local result = ""
                 for i = 1, 3 do
                     result = result .. "," .. tostring(randomNumber())
                 end
-                
+                                
                 return result
                 """;
 
@@ -892,7 +892,7 @@ public class VmTest extends BaseVmTest {
                     end
                     return decimal
                 end
-                
+                                
                 return tostring(binaryToDecimal("101010"))
                 """, LuaObject.of("42.0"));
     }
@@ -943,7 +943,7 @@ public class VmTest extends BaseVmTest {
         loadAssertSuccessAndRv("""
                 local function merge(arr, low, high, left, right)
                     local i, j, k = 1, 1, 1
-                
+                                
                     while i <= left and j <= right do
                         if low[i] <= high[j] then
                             arr[k] = low[i]
@@ -954,30 +954,30 @@ public class VmTest extends BaseVmTest {
                         end
                         k = k + 1
                     end
-                
+                                
                     while i <= left do
                         arr[k] = low[i]
                         i = i + 1
                         k = k + 1
                     end
-                
+                                
                     while j <= right do
                         arr[k] = high[j]
                         j = j + 1
                         k = k + 1
                     end
                 end
-                
+                                
                 local function mergeSort(arr, n)
                     if n < 2 then
                         return
                     end
-                
+                                
                     local low, high = {}, {}
                     local mid = math.floor(n / 2)
                     local left = mid
                     local right = n - mid
-                
+                                
                     -- split the array into left and right
                     for i = 1, left do
                         table.insert(low, arr[i])
@@ -985,16 +985,16 @@ public class VmTest extends BaseVmTest {
                     for i = 1, right do
                         table.insert(high, arr[i + left])
                     end
-                
+                                
                     mergeSort(low, left)
                     mergeSort(high, right)
                     merge(arr, low, high, left, right)
                 end
-                
+                                
                 local array = {58, 75, -58, 73, -46, 77, 78, -87, 38, 71}
                 local n = #array
                 mergeSort(array, n)
-                
+                                
                 local result = ""
                 for i = 1, n do
                     result = result .. tostring(array[i]) .. ";"
@@ -1186,7 +1186,7 @@ public class VmTest extends BaseVmTest {
                     local u = (t % 2 == 0 and t / 2 or t * 3)
                     return x .. y .. z .. s .. u
                 end
-                
+                                
                 return test()
                 """, LuaObject.of("-21bbab-86206.0"));
     }
@@ -1243,7 +1243,7 @@ public class VmTest extends BaseVmTest {
                     local res = ((x + u) > 0 and v .. w or p)
                     return x .. u .. v .. w .. res
                 end
-                
+                                
                 return test()
                 """, LuaObject.of("20++++nnpnn++++nnpnn"));
     }
@@ -1306,12 +1306,12 @@ public class VmTest extends BaseVmTest {
                         coroutine.yield()
                     end
                 end)
-                
+                                
                 coroutine.resume(co)
                 coroutine.resume(co)
                 coroutine.resume(co)
                 coroutine.resume(co)
-                
+                                
                 return x
                 """, LuaObject.of(3));
     }
@@ -1338,7 +1338,7 @@ public class VmTest extends BaseVmTest {
                         end
                     end)
                 end
-                
+                                
                 out = ""
                 for n in range(1, 10, 2) do
                     out = out .. n
@@ -1390,7 +1390,7 @@ public class VmTest extends BaseVmTest {
                     })
                     return t
                 end
-                
+                                
                 local t = infiniteTableGenerator()
                 return t[5] .. t[100] .. t["abc"]
                 """, LuaObject.of("5100abc"));
@@ -1401,22 +1401,22 @@ public class VmTest extends BaseVmTest {
         loadAssertSuccess("""
                 local Node = {}
                 Node.__index = Node
-                
+                                
                 function Node:new(name)
                     local instance = setmetatable({}, self)
                     instance.name = name
                     instance.children = {}
                     return instance
                 end
-                
+                                
                 function Node:addChild(child)
                     table.insert(self.children, child)
                 end
-                
+                                
                 local parent = Node:new("parent")
                 local child1 = Node:new("child1")
                 local child2 = Node:new("child2")
-                
+                                
                 parent:addChild(child1)
                 parent:addChild(child2)
                 """);
@@ -1428,12 +1428,12 @@ public class VmTest extends BaseVmTest {
                 local sandboxEnv = {
                     math = {abs = math.abs},
                 }
-                
+                                
                 local script = [[
                     local x = -25
                     return math.abs(x)
                 ]]
-                
+                                
                 local sandbox = load(script, "sandbox", "t", sandboxEnv)
                 ret = sandbox()
                 return ret
@@ -1445,27 +1445,27 @@ public class VmTest extends BaseVmTest {
         loadAssertSuccessAndRv("""
                 local Chain = {}
                 Chain.__index = Chain
-                
+                                
                 function Chain:new(value)
                     local instance = setmetatable({}, self)
                     instance.value = value
                     return instance
                 end
-                
+                                
                 function Chain:add(x)
                     self.value = self.value + x
                     return self
                 end
-                
+                                
                 function Chain:subtract(x)
                     self.value = self.value - x
                     return self
                 end
-                
+                                
                 function Chain:result()
                     return self.value
                 end
-                
+                                
                 local chain = Chain:new(10)
                 return chain:add(5):subtract(3):add(2):result()
                 """, LuaObject.of(14));
@@ -1639,7 +1639,7 @@ public class VmTest extends BaseVmTest {
                     end
                     return count
                 end
-                
+                                
                 return whileLoop()
                 """, LuaObject.of(1000000));
     }
@@ -1765,7 +1765,7 @@ public class VmTest extends BaseVmTest {
                     end
                     return recursion(n - 1)
                 end
-                
+                                
                 return recursion(1000000)
                 """, LuaObject.of(0));
     }
@@ -1794,11 +1794,11 @@ public class VmTest extends BaseVmTest {
                 local function func1()
                   func2()
                 end
-                
+                                
                 local function func2()
                   func1()
                 end
-                
+                                
                 func1()
                 """);
     }
@@ -1837,29 +1837,29 @@ public class VmTest extends BaseVmTest {
     void randomCode3() {
         loadAssertSuccessAndRv("""
                 local a, b, c = 0, "hello", 42
-                
+                                
                 local function f(x)
                     return (x % 2 == 0) and (x + b:len()) or (x - c)
                 end
-                
+                                
                 local x = f(c)
                 local y = (function() return (x - c) end)()
-                
+                                
                 local z = (y > 10 and y / 2) or (y * 2)
-                
+                                
                 local function g(a, b)
                     return (a + b) / 3
                 end
-                
+                                
                 local result = g(z, b:len())
-                
+                                
                 local h = function(n)
                     for i = 1, n do
                         if i == math.ceil(result) then return "final" end
                     end
                     return "ignored"
                 end
-                
+                                
                 return h(c % 7 + b:len())
                 """, LuaObject.of("final"));
     }
@@ -2426,7 +2426,7 @@ public class VmTest extends BaseVmTest {
         loadAssertSuccessAndRv("""
                 rv = ""
                 function log(x) rv = rv..";"..tostring(x) end
-                
+                                
                 a = 0
                 t = setmetatable({}, {["__add"] = function()
                     log("a_"..tostring(a));
@@ -2452,7 +2452,7 @@ public class VmTest extends BaseVmTest {
                 _G["test"] = 123
                 local f = load("%s[\\"test2\\"] = 1234; return 1", "name", "t", {})()
                 assert(f == 1, "return value is wrong")
-                
+                                
                 return _G["test"], _G["test2"]
                 """;
         loadAssertSuccessAndRv(code.formatted("_ENV"), new LuaObject[]{LuaObject.of(123), LuaObject.NIL}); // _ENV does get set automatically -> no error
@@ -2661,7 +2661,7 @@ public class VmTest extends BaseVmTest {
     void simpleOopCall() {
         loadAssertSuccessAndRv("""
                 local t = {name = "test"}
-                
+                                
                 rv = ""
                 function t:get()
                     rv = rv .. "get:"..self.name..";"
@@ -2832,11 +2832,11 @@ public class VmTest extends BaseVmTest {
                   __index = _G,
                   __metatable = "NOPE"
                 })
-                
+                                
                 f, err = load([[
                   return "load->mt:"..tostring(getmetatable(_G))
                   ]],"inner", "t")
-                
+                                
                 assert(f)
                 rv="real->mt:"..getmetatable(_G)
                 rv=rv..";"..f()
@@ -2851,7 +2851,7 @@ public class VmTest extends BaseVmTest {
                 local function print(text)
                     printStream = printStream..text.."\\n"
                 end
-                
+                                
                 local test = {a = "this"}
                 function test:check(self, x)
                     if self ~= nil then
@@ -2862,7 +2862,7 @@ public class VmTest extends BaseVmTest {
                 end
                 test:check({a = "other"})
                 test:check()
-                
+                                
                 return printStream
                 """, LuaObject.of("other\nnil\n"));
     }
@@ -3013,7 +3013,7 @@ public class VmTest extends BaseVmTest {
                             while run do end
                             return 123
                         end)
-                        
+                                                
                         local state = coroutine.resumeWithTimeout(co, 0.5)
                         assert(state == "preempted", "preemption unsuccessful")
                         run = false
@@ -3027,25 +3027,25 @@ public class VmTest extends BaseVmTest {
 
     @Test
     void coroutineTransitiveResumeWithTimeout() {
-                loadAssertSuccessAndRv("""
-                        local run = true
-                        local co = coroutine.create(function()
-                            while run do 
-                            end
-                            return 123
-                        end)
-                        local inbetween = coroutine.create(function()
-                            return table.pack(coroutine.resume(co))[2]
-                        end)
-                        
-                        local state = coroutine.resumeWithTimeout(inbetween, 0.1)
-                        assert(state == "preempted", "preemption unsuccessful")
-                        run = false
-                        local state2, res = coroutine.resumeWithTimeout(inbetween, 0.5)
-                        assert(state2 == true, "return unsuccessful")
-                        assert(res == 123)
-                        return res + 1
-                        """, LuaObject.of(124));
+        loadAssertSuccessAndRv("""
+                local run = true
+                local co = coroutine.create(function()
+                    while run do 
+                    end
+                    return 123
+                end)
+                local inbetween = coroutine.create(function()
+                    return table.pack(coroutine.resume(co))[2]
+                end)
+                                        
+                local state = coroutine.resumeWithTimeout(inbetween, 0.1)
+                assert(state == "preempted", "preemption unsuccessful")
+                run = false
+                local state2, res = coroutine.resumeWithTimeout(inbetween, 0.5)
+                assert(state2 == true, "return unsuccessful")
+                assert(res == 123)
+                return res + 1
+                """, LuaObject.of(124));
     }
 
     @Test
@@ -3069,19 +3069,28 @@ public class VmTest extends BaseVmTest {
     @Test
     void tailcall() {
         assertTimeoutPreemptively(Duration.ofSeconds(10), () -> {
-            loadAssertSuccessAndRv("""
-                    local iterCnt = 0
-                    local function tailcall()
-                        if iterCnt > 10 then
-                            return "ok"
-                        else
-                            iterCnt = iterCnt + 1
+                    loadAssertSuccessAndRv("""
+                            local iterCnt = 0
+                            local function tailcall()
+                                if iterCnt > 10 then
+                                    return "ok"
+                                else
+                                    iterCnt = iterCnt + 1
+                                    return tailcall()
+                                end
+                            end
                             return tailcall()
-                        end
-                    end
-                    return tailcall()
-                    """, LuaObject.of("ok"));
-                    }
+                            """, LuaObject.of("ok"));
+                }
         );
+    }
+
+    @Test
+    void complexComment2() {
+        loadAssertSuccessAndRv("""
+                local a=123--[=[
+                this is a comment
+                ]=]return a;
+                """, LuaObject.of(123));
     }
 }
