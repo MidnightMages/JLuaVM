@@ -6,6 +6,7 @@ import dev.asdf00.jluavm.exceptions.loading.InternalLuaLoadingError;
 import dev.asdf00.jluavm.parsing.CompilationState;
 import dev.asdf00.jluavm.parsing.Parser;
 import dev.asdf00.jluavm.parsing.ir.IRFunction;
+import dev.asdf00.jluavm.parsing.ir.ast.AST;
 import dev.asdf00.jluavm.runtime.types.AbstractGeneratedLuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
@@ -90,7 +91,7 @@ public abstract class LuaVM {
             synchronized (COMPILATION_CACHE_LOCK_OBJ) {
                 cachedCtor = COMPILATION_CACHE.getOrDefault(code, null);
                 if (cachedCtor == null) {
-                    IRFunction rootFunc = new Parser(code).parse();
+                    AST rootFunc = new Parser(code).parse();
                     var javaIntermediateCode = new CompilationState(new Supplier<>() {
                         private int cnt = 0;
 
@@ -117,12 +118,9 @@ public abstract class LuaVM {
         if (_ENV == null) {
             throw new InternalLuaLoadingError("got invalid _ENV");
         }
-        var unit = compile(code);
-        try {
-            return unit[unit.length - 1].newInstance(chunkName, 0, LuaObject.box(_ENV), Singletons.EMPTY_LUA_OBJ_ARRAY);
-        } catch (ReflectiveOperationException e) {
-            throw new InternalLuaLoadingError(e);
-        }
+        AST rootFunc = new Parser(code).parse();
+
+        // TODO build Lua function from AST
     }
 
     public void triggerEvent(HookType hookType) {
@@ -273,9 +271,9 @@ public abstract class LuaVM {
         @Override
         public String toString() {
             return "VmResult[" +
-                    "state=" + state +
-                    ", returnVars=" + Arrays.toString(returnVars).replace("\\", "\\\\").replace("\n", "\\n") +
-                    ']';
+                   "state=" + state +
+                   ", returnVars=" + Arrays.toString(returnVars).replace("\\", "\\\\").replace("\n", "\\n") +
+                   ']';
         }
     }
 

@@ -1,26 +1,26 @@
 package dev.asdf00.jluavm.parsing;
 
-import dev.asdf00.jluavm.exceptions.LuaLoadingException;
-import dev.asdf00.jluavm.exceptions.loading.InternalLuaLoadingError;
 import dev.asdf00.jluavm.exceptions.loading.LuaParserException;
-import dev.asdf00.jluavm.exceptions.loading.LuaSemanticException;
-import dev.asdf00.jluavm.parsing.container.*;
-import dev.asdf00.jluavm.parsing.ir.*;
-import dev.asdf00.jluavm.parsing.ir.controlflow.*;
-import dev.asdf00.jluavm.parsing.ir.operations.*;
-import dev.asdf00.jluavm.parsing.ir.values.*;
+import dev.asdf00.jluavm.parsing.LocalVariable.LocalVariableAccessor;
+import dev.asdf00.jluavm.parsing.container.Position;
+import dev.asdf00.jluavm.parsing.container.Token;
+import dev.asdf00.jluavm.parsing.container.TokenType;
+import dev.asdf00.jluavm.parsing.ir.ast.AST;
+import dev.asdf00.jluavm.parsing.ir.ast.AST.*;
+import dev.asdf00.jluavm.runtime.utils.Singletons;
 import dev.asdf00.jluavm.utils.Triple;
 import dev.asdf00.jluavm.utils.Tuple;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Stack;
 
+import static dev.asdf00.jluavm.parsing.Lexer.STARTING_POS;
 import static dev.asdf00.jluavm.parsing.container.TokenType.*;
 
 public final class Parser {
-    private final SymTable symTab;
+    private final SymbolTable symTab;
     private final Lexer lexer;
     private TokenType ltok = EOF;  // TokenType of la
     private Token cur;  // current token
@@ -28,13 +28,15 @@ public final class Parser {
     private Token lla;  // lookahead token 2
 
     public Parser(String input) {
-        symTab = new SymTable();
+        symTab = new SymbolTable();
         lexer = new Lexer(input);
     }
 
-    // =================================================================================================================
-    //           UTIL METHODS        UTIL METHODS        UTIL METHODS        UTIL METHODS        UTIL METHODS
-    // =================================================================================================================
+    /*-
+     * =================================================================================================================
+     *           UTIL METHODS        UTIL METHODS        UTIL METHODS        UTIL METHODS        UTIL METHODS
+     * =================================================================================================================
+     */
 
     private void check(TokenType type) {
         if (ltok != type) {
@@ -54,49 +56,31 @@ public final class Parser {
         return cur.type() == RBRAK || cur.type() == IDENT;
     }
 
-    private SpecificVarInfo define(Token ident, int attributes) {
-        return symTab.add(ident, (attributes & 1) == 1, (attributes & 2) == 2);
-    }
-
-    private SpecificVarInfo defineInternal(String name) {
-        return defineInternal(name, 0);
-    }
-
-    private SpecificVarInfo defineInternal(String name, int attributes) {
-        return define(new Token(IDENT, cur.pos(), name), attributes);
-    }
-
-    private Node genAccess(Position pos, SpecificVarInfo info, String ident) {
-        if (info != null) {
-            return new LocalAccessNode(pos, info);
+    private AST genAccess(Position pos, LocalVariableAccessor accessor, String ident) {
+        if (accessor != null) {
+            return new LocalAccessNode(pos, accessor);
         }
-        // lookup local definition for _ENV
-        var env = symTab.get("_ENV");
-        if (env != null) {
-            // we index the local _ENV value
-            return new DeRefNode(pos, new LocalAccessNode(pos, env), ConstantNode.ofIdent(pos, ident));
+        if ("_ENV".equals(ident)) {
+            return new EnvAccessNode(pos);
+        }
+        return new IndexedAccessNode(pos, getEnv(pos), ConstantNode.ofIdent(pos, ident));
+    }
+
+    private AST getEnv(Position pos) {
+        if (symTab.isEnvRedeclared()) {
+            return new LocalAccessNode(pos, symTab.findLocal("_ENV"));
         } else {
-            if ("_ENV".equals(ident)) {
-                // here we access _ENV itself
-                return new EnvAccessNode(pos);
-            } else {
-                // this seems to be a global value, therefore we index the environment
-                return new DeRefNode(pos, new EnvAccessNode(pos), ConstantNode.ofIdent(pos, ident));
-            }
+            return new EnvAccessNode(pos);
         }
     }
 
-    private Node getEnv(Position pos) {
-        // lookup local definition for _ENV
-        var env = symTab.get("_ENV");
-        return env == null ? new EnvAccessNode(pos) : new LocalAccessNode(pos, env);
-    }
+    /*-
+     * =================================================================================================================
+     *    PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING
+     * =================================================================================================================
+     */
 
-    // =================================================================================================================
-    //    PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING
-    // =================================================================================================================
-
-    public IRFunction parse() throws LuaLoadingException {
+    public AST parse() throws LuaParserException {
         cur = null;
         la = lexer.next();
         lla = lexer.next();
@@ -104,154 +88,158 @@ public final class Parser {
         return Chunk();
     }
 
-    private IRFunction Chunk() {
-        Position _pos = la.pos();
-        symTab.enterFunctionScope(true);
-        var tdot = new Token(TDOT, _pos, "...");
-        symTab.add(tdot, false, false);
-        var innerStats = Block();
-        int maxLocalCnt = symTab.getMaxFuncLocals();
-        VarScope scp = symTab.exitScope();
+    private AST Chunk() {
+        symTab.openFunctionScope(true);
+        var block = Block();
+        var arguments = new ArrayList<LocalVariableAccessor>();
+        symTab.closeFunctionScope(arguments, null);
         check(EOF);
-        return new IRFunction(_pos, innerStats.toArray(Node[]::new), scp.getLocalsCount(), scp.getClosableCount(), maxLocalCnt, 1, true, scp.getBoxedParameterIndices());
+        return new FunctionDefNode(new Position(0, 0, 0), true,
+                Singletons.EMPTY_LOCAL_ACCESSOR_ARRAY, true, arguments.toArray(LocalVariableAccessor[]::new), block);
     }
 
-    private ArrayList<Node> Block() {
-        var statements = new ArrayList<Node>();
+    private AST Block() {
+        Position _pos = cur == null ? STARTING_POS : cur.pos();
+        var statements = new ArrayList<AST>();
         while (STAT_START.contains(ltok)) {
-            Node s = Stat();
+            AST s = Stat();
             if (s != null) {
-                statements.add(s);
+                if (s instanceof BlockNode b && !b.isLexicalBlock()) {
+                    Collections.addAll(statements, b.statements());
+                } else {
+                    statements.add(s);
+                }
             }
         }
         if (ltok == RETURN) {
             scan();
             Position pos = cur.pos();
-            Node[] returnValues;
+            AST[] returnValues;
             if (EXP_START.contains(ltok)) {
                 returnValues = ExpList();
             } else {
-                returnValues = new Node[0];
+                returnValues = new AST[0];
             }
             if (ltok == SEMICOLON) {
                 scan();
             }
-            if (symTab.getCurFuncClosableCnt() == 0 && returnValues.length == 1 && returnValues[0] instanceof FunctionCallNode tailCall) {
-                statements.add(new TailCallNode(pos, tailCall));
-            } else {
-                statements.add(new ReturnNode(pos, returnValues, symTab.getCurFuncClosableCnt()));
-            }
+            // TODO check for tailcalls on the last return value
+            statements.add(new ReturnNode(pos, returnValues));
         }
-        return statements;
+        if (statements.size() == 1 /* TODO && !hasClosableVars */) {
+            return statements.get(0);
+        } else {
+            // TODO add closing statements
+            return new BlockNode(_pos, true, statements.toArray(AST[]::new));
+        }
     }
 
-    private static final EnumSet<TokenType> STAT_START = EnumSet.of(SEMICOLON, IDENT, LPAR, DCOLON, BREAK, GOTO, DO, WHILE, REPEAT, IF, FOR, FUNCTION, LOCAL);
+    private static final EnumSet<TokenType> STAT_START = EnumSet.of(SEMICOLON, IDENT, LPAR, DCOLON, BREAK, GOTO, DO, WHILE, REPEAT, IF, FOR, FUNCTION, LOCAL,
+            NIL, FALSE, TRUE, NUMERAL, LITERAL_STRING, LBRAC);
 
-    private Node Stat() {
-        Node statement;
+    private AST Stat() {
+        AST statement;
         Position _pos = la.pos();
         switch (ltok) {
             case SEMICOLON -> {
                 // nop
                 scan();
-                statement = null;
+                statement = new NopNode(_pos);
             }
             case BREAK -> {
                 scan();
                 symTab.labelNotLast();
-                var bNode = symTab.generateBreakNode(_pos);
-                if (bNode == null) {
-                    throw new LuaSemanticException(cur.pos(), "'break' is not inside a loop");
+                if (!symTab.isInsideLoop()) {
+                    throw new LuaParserException(_pos, "'break' is not inside a loop");
                 }
-                statement = bNode;
+                statement = new GotoNode(_pos, symTab.resolveBreak());
             }
             case GOTO -> {
                 scan();
                 symTab.labelNotLast();
                 check(IDENT);
-                statement = symTab.generateGoto(cur);
+                statement = new GotoNode(_pos, symTab.resolveJump(cur.stVal()));
             }
             case DCOLON -> {
                 // label
                 scan();
                 check(IDENT);
-                statement = symTab.generateLabel(cur);
+                statement = new LabelNode(_pos, symTab.declareJumpLabel(cur.stVal()));
                 check(DCOLON);
             }
             case DO -> {
                 scan();
                 symTab.labelNotLast();
-                symTab.enterPlainScope(true);
-                var innerStats = Block();
+                symTab.openBlockScope();
+                statement = Block();
+                symTab.closeScope();
                 check(END);
-                VarScope scp = symTab.exitScope();
-                statement = new DoEndNode(_pos, innerStats.toArray(Node[]::new), scp.getPrevFunctionLocalsCount(), scp.getLocalsCount(), scp.getClosableCount());
             }
             case WHILE -> {
                 scan();
                 symTab.labelNotLast();
-                Node entryCond = Exp();
+                AST entryCond = Exp();
                 check(DO);
-                symTab.enterLoopScope();
-                var innerStats = Block();
+                symTab.openLoopScope();
+                AST body = Block();
+                var breakLabelBox = new AST.JumpDestinationNode[1];
+                symTab.closeLoopScope(breakLabelBox); // close loop scope
                 check(END);
-                VarScope scp = symTab.exitScope();
-                statement = new IfNode(_pos, entryCond, new IRBlock(_pos, innerStats.toArray(Node[]::new), entryCond, scp.baseIdx, true,
-                        scp.getLocalsCount(), scp.getClosableCount()));
+                statement = new WhileNode(_pos, entryCond, body, breakLabelBox[0]);
             }
             case REPEAT -> {
                 scan();
                 symTab.labelNotLast();
-                symTab.enterLoopScope();
-                var innerStats = Block();
+                symTab.openLoopScope();
+                AST body = Block();
                 check(UNTIL);
-                Node exitCond = Exp();
-                VarScope scp = symTab.exitScope();
-                statement = new PlainInnerBlockNode(_pos, new IRBlock(_pos, innerStats.toArray(Node[]::new), exitCond, scp.baseIdx, false,
-                        scp.getLocalsCount(), scp.getClosableCount()));
+                Position exitPos = cur.pos();
+                AST exitCond = Exp();
+                var breakLabelBox = new AST.JumpDestinationNode[1];
+                symTab.closeLoopScope(breakLabelBox); // close loop scope
+                statement = new WhileNode(_pos,
+                        ConstantNode.ofBoolean(_pos, true),
+                        BlockNode.append(body, new IfNode(exitPos, exitCond, new GotoNode(exitPos, breakLabelBox[0]))),
+                        breakLabelBox[0]);
             }
             case IF -> {
                 scan();
                 symTab.labelNotLast();
-                Node condition = Exp();
+                AST condition = Exp();
                 check(THEN);
-                symTab.enterPlainScope(false);
-                Position thenBPos = cur.pos();
-                var thenBlock = Block();
-                VarScope thenScp = symTab.exitScope();
-                var elifConds = new ArrayList<Node>();
-                var elifBlocks = new ArrayList<ArrayList<Node>>();
-                var elifPoses = new ArrayList<Position>();
-                var elifScps = new ArrayList<VarScope>();
+                symTab.openBlockScope();
+                Position thenPos = cur.pos();
+                AST thenBlock = Block();
+                symTab.closeScope();
+                var elifs = new Stack<Triple<Position, AST, AST>>();
                 while (ltok == ELSEIF) {
                     scan();
-                    var elifCond = Exp();
-                    elifConds.add(elifCond);
+                    Position elifPos = cur.pos();
+                    AST elifCond = Exp();
                     check(THEN);
-                    symTab.enterPlainScope(false);
-                    elifPoses.add(cur.pos());
-                    var elifBlock = Block();
-                    elifBlocks.add(elifBlock);
-                    elifScps.add(symTab.exitScope());
+                    symTab.openBlockScope();
+                    AST elifBlock = Block();
+                    symTab.closeScope();
+                    elifs.push(new Triple<>(elifPos, elifCond, elifBlock));
                 }
-                Position elsePos = null;
-                ArrayList<Node> elseBlock = null;
-                VarScope elseScp = VarScope.EMPTY_DUMMY;
+                AST elseBlock = null;
                 if (ltok == ELSE) {
                     scan();
-                    symTab.enterPlainScope(false);
-                    elsePos = cur.pos();
+                    symTab.openBlockScope();
                     elseBlock = Block();
-                    elseScp = symTab.exitScope();
+                    symTab.closeScope();
                 }
                 check(END);
-                IRBlock[] elifs = new IRBlock[elifBlocks.size()];
-                for (int i = 0; i < elifs.length; i++) {
-                    elifs[i] = new IRBlock(elifPoses.get(i), elifBlocks.get(i).toArray(Node[]::new), elifScps.get(i).baseIdx, elifScps.get(i).getLocalsCount(), elifScps.get(i).getClosableCount());
+                // nest else-ifs properly
+                AST nestedElse = elseBlock;
+                while (!elifs.isEmpty()) {
+                    var elif = elifs.pop();
+                    nestedElse = new IfNode(elif.x(), elif.y(), elif.z(), nestedElse);
                 }
-                statement = new IfNode(_pos, condition, new IRBlock(thenBPos, thenBlock.toArray(Node[]::new), thenScp.baseIdx, thenScp.getLocalsCount(), thenScp.getClosableCount()),
-                        elifConds.toArray(Node[]::new), elifs,
-                        elseBlock == null ? null : new IRBlock(elsePos, elseBlock.toArray(Node[]::new), thenScp.baseIdx, elseScp.getLocalsCount(), elseScp.getClosableCount()));
+                // overwrite original elseBlock
+                elseBlock = nestedElse;
+                // create node
+                statement = new IfNode(_pos, condition, thenBlock, elseBlock);
             }
             case FOR -> {
                 scan();
@@ -259,121 +247,185 @@ public final class Parser {
                 check(IDENT);
                 Token ctrlToken = cur;
                 if (ltok == ASSIGN) {
-                    Position cvarPos = cur.pos();
                     scan();
                     // numerical for
-                    symTab.enterPlainScope(true);
-                    Position setupPos = cur.pos();
-                    SpecificVarInfo internalControlVar = defineInternal("$internalControlVar$");
+                    symTab.openBlockScope();
+                    LocalVariableAccessor _internalControl = symTab.declareLocal("$internalControl$");
                     // start
-                    Node initialValue = Exp();
+                    AST initialValue = Exp();
                     check(COMMA);
                     // end
-                    Node upperBound = Exp();
+                    AST upperBound = Exp();
                     Position ubPos = la.pos();
-                    SpecificVarInfo ubVar = defineInternal("$upperBound$");
-                    Node step;
-                    SpecificVarInfo stepVar;
-                    //noinspection IfStatementWithIdenticalBranches
+                    LocalVariableAccessor _upperBound = symTab.declareLocal("$upperBound$");
+                    AST step;
+                    LocalVariableAccessor _step = symTab.declareLocal("$step$");
                     if (ltok == COMMA) {
                         scan();
                         // step
                         step = Exp();
-                        stepVar = defineInternal("$step$");
                     } else {
                         // default step width is 1
-                        step = ConstantNode.ofLong(ubPos, 1);
-                        stepVar = defineInternal("$step$");
+                        step = ConstantNode.ofInteger(ubPos, 1);
                     }
-                    symTab.enterLoopScope();
-                    SpecificVarInfo controlVar = define(ctrlToken, 0);
+                    symTab.openLoopScope();
+                    LocalVariableAccessor actualCtrlVar = symTab.declareLocal(ctrlToken.stVal(), 0);
                     check(DO);
                     Position bpos = cur.pos();
-                    var innerStats = Block();
-                    VarScope innerLoopScp = symTab.exitScope();
-                    VarScope outerLoopScp = symTab.exitScope();
+                    AST body = Block();
+                    var breakLabelBox = new AST.JumpDestinationNode[1];
+                    symTab.closeLoopScope(breakLabelBox); // close loop scope
+                    symTab.closeScope(); // close scope of internal variables
                     check(END);
 
-                    // we need to move the value of the internal iterator to the actual local iterator variable
-                    innerStats.add(0, new AssignmentNode(bpos, true, new Node[]{new LocalAccessNode(cvarPos, controlVar)},
-                            new Node[]{new LocalAccessNode(setupPos, internalControlVar)}));
-                    // we add the for-step to the end of the internal statements
-                    // the step might break the loop if an integer addition over/under-flows and must therefore close stuff in that case
-                    innerStats.add(new StepForNode(cur.pos(), internalControlVar, stepVar, innerLoopScp.getClosableCount()));
-
-                    Node entryCondition = new LogicBinaryOpNode(setupPos, true,
-                            new LogicBinaryOpNode(setupPos, false,
-                                    new RelationalOpNode(setupPos, LT.metatableFuncNameBinary, false,
-                                            ConstantNode.ofLong(setupPos, 0),
-                                            new LocalAccessNode(setupPos, stepVar)),
-                                    new RelationalOpNode(setupPos, LE.metatableFuncNameBinary, false,
-                                            new LocalAccessNode(setupPos, internalControlVar), new LocalAccessNode(ubPos, ubVar))
-                            ),
-                            new LogicBinaryOpNode(setupPos, false,
-                                    new RelationalOpNode(setupPos, LT.metatableFuncNameBinary, true,
-                                            ConstantNode.ofLong(setupPos, 0),
-                                            new LocalAccessNode(setupPos, stepVar)),
-                                    new RelationalOpNode(setupPos, LE.metatableFuncNameBinary, true,
-                                            new LocalAccessNode(setupPos, internalControlVar), new LocalAccessNode(ubPos, ubVar))
-                            ));
-
-                    // build for-loop
-                    /*
-                     * Wrap the entire loop into a do-end, declare 3 hidden local variables, do the first for-step,
-                     * check first entry condition, then add loop-block with the same continue-condition.
+                    /*-
+                    We use Lua 5.4 semantics here. This will be constructed as:
+                        do
+                          local _internalControl = tonumber(initialValue)
+                          local _upperBound = tonumber(upperBound)
+                          local _step = tonumber(step)
+                          if _step == 0 then
+                            error("'for' step is zero")
+                          end
+                          while 0 < _step and _internalControl <= _upperBound or _step < 0 and _upperBound <= _internalControl do
+                            local ctrlVar = _internalControl
+                            do -- new scope to allow jumping to the bottom of the loop (homebrew 'continue')
+                              -- BODY
+                            end
+                            try _internalControl = stepFor(_internalControl, _step) catch break end
+                          end
+                        end
+                    'stepFor' may throw a LuaOverflowException, that is immediately caught, which causes a break.
                      */
-                    statement = new DoEndNode(_pos, new Node[]{
-                            new AssignmentNode(setupPos, true, new Node[]{new LocalAccessNode(setupPos, internalControlVar),
-                                    new LocalAccessNode(setupPos, ubVar), new LocalAccessNode(setupPos, stepVar)},
-                                    new Node[]{initialValue, upperBound, step}),
-                            new CoerceNumericForNode(cur.pos(), internalControlVar, ubVar, stepVar),
-                            new IfNode(_pos, entryCondition, new IRBlock(bpos, innerStats.toArray(Node[]::new), entryCondition, innerLoopScp.baseIdx, true,
-                                    innerLoopScp.getLocalsCount(), innerLoopScp.getClosableCount()))},
-                            outerLoopScp.getPrevFunctionLocalsCount(), outerLoopScp.getLocalsCount(), outerLoopScp.getClosableCount());
+
+                    statement = new BlockNode(_pos, true,
+                            new LocalDeclarationNode(_pos, _internalControl),
+                            new LocalDeclarationNode(_pos, _upperBound),
+                            new LocalDeclarationNode(_pos, _step),
+                            new AssignmentNode(_pos,
+                                    new LocalAccessNode(_pos, _internalControl),
+                                    new ToNumberOrFailNode(_pos, initialValue, "Bad 'for' initial value (number expected, got %s)")),
+                            new AssignmentNode(_pos,
+                                    new LocalAccessNode(_pos, _upperBound),
+                                    new ToNumberOrFailNode(_pos, upperBound, "Bad 'for' limit (number expected, got %s)")),
+                            new AssignmentNode(_pos,
+                                    new LocalAccessNode(_pos, _step),
+                                    new ToNumberOrFailNode(_pos, step, "Bad 'for' step (number expected, got %s)")),
+                            new IfNode(_pos,
+                                    new BinaryOperationNode(_pos, EQ,
+                                            new LocalAccessNode(_pos, _step),
+                                            ConstantNode.ofInteger(_pos, 0)),
+                                    new ErrorNode(_pos, ConstantNode.ofString(_pos, "'for' step is zero"))),
+                            new WhileNode(_pos,
+                                    new OrNode(_pos,
+                                            new AndNode(_pos,
+                                                    new BinaryOperationNode(_pos, LT,
+                                                            ConstantNode.ofInteger(_pos, 0),
+                                                            new LocalAccessNode(_pos, _step)),
+                                                    new BinaryOperationNode(_pos, LE,
+                                                            new LocalAccessNode(_pos, _internalControl),
+                                                            new LocalAccessNode(_pos, _upperBound))),
+                                            new AndNode(_pos,
+                                                    new BinaryOperationNode(_pos, LT,
+                                                            new LocalAccessNode(_pos, _step),
+                                                            ConstantNode.ofInteger(_pos, 0)),
+                                                    new BinaryOperationNode(_pos, LE,
+                                                            new LocalAccessNode(_pos, _upperBound),
+                                                            new LocalAccessNode(_pos, _internalControl)))),
+                                    new BlockNode(_pos, true,
+                                            new LocalDeclarationNode(ctrlToken.pos(), actualCtrlVar),
+                                            new AssignmentNode(ctrlToken.pos(), new LocalAccessNode(ctrlToken.pos(), actualCtrlVar),
+                                                    new LocalAccessNode(ctrlToken.pos(), _internalControl)),
+                                            new BlockNode(bpos, true, body),
+                                            new ForStepNode(cur.pos(), _internalControl, _step, breakLabelBox[0])),
+                                    breakLabelBox[0]));
                 } else {
                     // foreach
-                    var ltkList = new ArrayList<Token>();
-                    ltkList.add(ctrlToken);
+                    var loopVarTokens = new ArrayList<Token>();
+                    loopVarTokens.add(ctrlToken);
                     while (ltok == COMMA) {
                         scan();
                         check(IDENT);
-                        ltkList.add(cur);
+                        loopVarTokens.add(cur);
                     }
                     check(IN);
-                    symTab.enterPlainScope(true);
-                    Position setupPos = cur.pos();
-                    SpecificVarInfo internalControlVar = defineInternal("$internalControlVar$");
-                    SpecificVarInfo itrFunc = defineInternal("$iteratorFunction$");
-                    SpecificVarInfo state = defineInternal("$state$");
-                    SpecificVarInfo closing = defineInternal("$closingVariable$", 3);
-                    Node[] initials = ExpList();
-                    Node setup = new AssignmentNode(setupPos, true, new Node[]{new LocalAccessNode(setupPos, itrFunc), new LocalAccessNode(setupPos, state),
-                            new LocalAccessNode(setupPos, internalControlVar), new LocalAccessNode(setupPos, closing)}, initials);
+                    symTab.openBlockScope();
+                    LocalVariableAccessor internalControlVar = symTab.declareLocal("$internalControlVar$");
+                    LocalVariableAccessor itrFunc = symTab.declareLocal("$iteratorFunction$");
+                    LocalVariableAccessor state = symTab.declareLocal("$state$");
+                    LocalVariableAccessor closing = symTab.declareLocal("$closingVariable$", 3);
+                    AST[] initials = ExpList();
                     check(DO);
-                    final Position innerSetup = cur.pos();
-                    symTab.enterLoopScope();
+                    final Position innerSetupPos = cur.pos();
+                    symTab.openLoopScope();
                     // the first one of these is the control variable accessible to lua
-                    SpecificVarInfo[] forVals = ltkList.stream().map(t -> define(t, 0)).toArray(SpecificVarInfo[]::new);
-                    Node step = new SequenceNode(innerSetup,
-                            new AssignmentNode(innerSetup, true,
-                                    Arrays.stream(forVals).map(v -> new LocalAccessNode(innerSetup, v)).toArray(LocalAccessNode[]::new),
-                                    new Node[]{new FunctionCallNode(innerSetup,
-                                            null, null, new LocalAccessNode(innerSetup, itrFunc), new Node[]{new LocalAccessNode(innerSetup, state),
-                                            new LocalAccessNode(innerSetup, internalControlVar)})}),
-                            new AssignmentNode(innerSetup, false,
-                                    new Node[]{new LocalAccessNode(innerSetup, internalControlVar)},
-                                    new Node[]{new LocalAccessNode(innerSetup, forVals[0])}));
-                    Node entryCondition = new EqualsNode(innerSetup, new LocalAccessNode(innerSetup, internalControlVar), ConstantNode.ofNil(innerSetup));
-                    Position bpos = cur.pos();
-                    ArrayList<Node> inners = Block();
-                    inners.add(step);
-                    VarScope innerLoopScope = symTab.exitScope();
-                    IRBlock block = new IRBlock(bpos, inners.toArray(Node[]::new), entryCondition, innerLoopScope.baseIdx, false,
-                            innerLoopScope.getLocalsCount(), innerLoopScope.getClosableCount());
-                    VarScope outerClosableCnt = symTab.exitScope();
-                    statement = new DoEndNode(_pos, new Node[]{setup, step, new IfNode(_pos, new LogicNotNode(innerSetup, entryCondition), block)},
-                            outerClosableCnt.getPrevFunctionLocalsCount(), outerClosableCnt.getLocalsCount(), outerClosableCnt.getClosableCount());
+                    LocalVariableAccessor[] loopVars = loopVarTokens.stream().map(t -> symTab.declareLocal(t.stVal())).toArray(LocalVariableAccessor[]::new);
+                    AST body = Block();
+                    var breakLabelBox = new AST.JumpDestinationNode[1];
+                    symTab.closeLoopScope(breakLabelBox); // close loop scope
                     check(END);
+                    symTab.closeScope(); // hidden vars scope
+
+                    /*-
+                    This gets expanded to:
+                        do
+                          local itrFunc, state, internalControlVar, closing<close> = initials  -- as a multi assignment
+                          while true do
+                            local internalControlVar, var2, ..., varN = itrFunc(state, internalControlVar)
+                            if internalControlVar == nil then
+                              break
+                            end
+                            local var1 = internalControlVar
+                            -- BODY
+                          end
+                        end
+                     */
+
+                    var inLoopDeclarations = new LocalDeclarationNode[loopVars.length];
+                    var inLoopSetupAccesses = new LocalAccessNode[loopVars.length];
+                    for (int i = 0; i < inLoopSetupAccesses.length; i++) {
+                        inLoopDeclarations[i] = new LocalDeclarationNode(innerSetupPos, loopVars[i]);
+                        inLoopSetupAccesses[i] = new LocalAccessNode(innerSetupPos, loopVars[i]);
+                    }
+                    LocalAccessNode externalControl = inLoopSetupAccesses[0];
+                    inLoopSetupAccesses[0] = new LocalAccessNode(innerSetupPos, internalControlVar);
+
+                    statement = new BlockNode(_pos, true,
+                            new LocalDeclarationNode(_pos, itrFunc),
+                            new LocalDeclarationNode(_pos, state),
+                            new LocalDeclarationNode(_pos, internalControlVar),
+                            new LocalDeclarationNode(_pos, closing),
+                            new AssignmentNode(_pos,
+                                    new AST[]{
+                                            new LocalAccessNode(_pos, itrFunc),
+                                            new LocalAccessNode(_pos, state),
+                                            new LocalAccessNode(_pos, internalControlVar),
+                                            new LocalAccessNode(_pos, closing)
+                                    },
+                                    initials),
+                            new WhileNode(_pos,
+                                    ConstantNode.ofBoolean(_pos, true),
+                                    new BlockNode(innerSetupPos, true,
+                                            // TODO missing declarations
+                                            // here
+                                            new BlockNode(innerSetupPos, false,
+                                                    inLoopDeclarations),
+                                            new AssignmentNode(innerSetupPos,
+                                                    inLoopSetupAccesses,
+                                                    new AST[]{new FunctionCallNode(innerSetupPos,
+                                                            new LocalAccessNode(innerSetupPos, itrFunc),
+                                                            new LocalAccessNode(innerSetupPos, state),
+                                                            new LocalAccessNode(innerSetupPos, internalControlVar))}),
+                                            new IfNode(innerSetupPos,
+                                                    new BinaryOperationNode(innerSetupPos, EQ,
+                                                            inLoopSetupAccesses[0],
+                                                            ConstantNode.ofNil(innerSetupPos)),
+                                                    new GotoNode(innerSetupPos, breakLabelBox[0])),
+                                            new AssignmentNode(innerSetupPos,
+                                                    externalControl,
+                                                    inLoopSetupAccesses[0]),
+                                            body),
+                                    breakLabelBox[0]));
                 }
             }
             case FUNCTION -> {
@@ -381,28 +433,21 @@ public final class Parser {
                 symTab.labelNotLast();
                 check(IDENT);
                 Position apos = cur.pos();
-                Node access = genAccess(cur.pos(), symTab.get(cur.stVal()), cur.stVal());
+                AST access = genAccess(cur.pos(), symTab.findLocal(cur.stVal()), cur.stVal());
                 while (ltok == DOT) {
                     scan();
                     check(IDENT);
-                    access = new DeRefNode(cur.pos(), access, ConstantNode.ofIdent(cur));
+                    access = new IndexedAccessNode(cur.pos(), access, ConstantNode.of(cur));
                 }
                 boolean hasSelf = false;
                 if (ltok == COLON) {
                     scan();
                     hasSelf = true;
                     check(IDENT);
-                    access = new DeRefNode(cur.pos(), access, ConstantNode.ofIdent(cur));
+                    access = new IndexedAccessNode(cur.pos(), access, ConstantNode.of(cur));
                 }
-                if (access instanceof LocalAccessNode acNode) {
-                    var acInfo = acNode.info.baseInfo();
-                    if (acInfo.isConstant()) {
-                        throw new LuaSemanticException(cur.pos(), "Constant variable must not be written");
-                    }
-                    acInfo.setWritten();
-                }
-                var func = FuncBody(hasSelf);
-                statement = new AssignmentNode(apos, false, new Node[]{access}, new Node[]{func});
+                AST func = FuncBody(hasSelf);
+                statement = new AssignmentNode(apos, access, func);
             }
             case LOCAL -> {
                 scan();
@@ -410,17 +455,18 @@ public final class Parser {
                 if (ltok == FUNCTION) {
                     scan();
                     check(IDENT);
-                    Position tpos = cur.pos();
-                    SpecificVarInfo target = define(cur, 0);
-                    var definition = new AssignmentNode(tpos, true, new Node[]{new LocalAccessNode(tpos, target)}, new Node[]{ConstantNode.ofNil(tpos)});
-                    target.baseInfo().setWritten();
-                    var func = FuncBody(false);
-                    statement = new SequenceNode(tpos, definition, new AssignmentNode(tpos, false, new Node[]{new LocalAccessNode(tpos, target)}, new Node[]{func}));
+                    Position namePos = cur.pos();
+                    LocalVariableAccessor funcVar = symTab.declareLocal(cur.stVal());
+                    AST function = FuncBody(false);
+                    // insert a fake write to correctly apply upvalue capturing semantics
+                    funcVar.getVariable().setWritten(namePos);
+                    statement = new BlockNode(_pos, false,
+                            new LocalDeclarationNode(namePos, funcVar),
+                            new AssignmentNode(namePos, new LocalAccessNode(namePos, funcVar), function));
                 } else {
                     check(IDENT);
                     var localList = new ArrayList<Tuple<Token, Integer>>();
                     Token locVar = cur;
-                    Position apos = cur.pos();
                     int attributes = Attrib();
                     localList.add(new Tuple<>(locVar, attributes));
                     while (ltok == COMMA) {
@@ -430,22 +476,37 @@ public final class Parser {
                         attributes = Attrib();
                         localList.add(new Tuple<>(locVar, attributes));
                     }
-                    Node[] expressions;
+                    AST[] expressions;
+                    Position apos;
                     if (ltok == ASSIGN) {
                         scan();
                         apos = cur.pos();
                         expressions = ExpList();
                     } else {
-                        expressions = new Node[0];
+                        // this is a pure declaration
+                        apos = _pos;
+                        expressions = new AST[0];
                     }
-                    statement = new AssignmentNode(apos, true, localList.stream().map(t -> new LocalAccessNode(t.x().pos(), define(t.x(), t.y()))).toArray(Node[]::new), expressions);
+                    var localAccesses = new AST[localList.size()];
+                    var operations = new AST[localList.size() + 1];
+                    for (int i = 0; i < localAccesses.length; i++) {
+                        Tuple<Token, Integer> localDefinition = localList.get(i);
+                        Position lPos = localDefinition.x().pos();
+                        LocalVariableAccessor local = symTab.declareLocal(localDefinition.x().stVal(), localDefinition.y());
+                        // create declarations and pseudo accesses
+                        operations[i] = new LocalDeclarationNode(lPos, local);
+                        localAccesses[i] = new LocalAccessNode(lPos, local);
+                    }
+                    // add the assignment node
+                    operations[operations.length - 1] = new AssignmentNode(apos, localAccesses, expressions);
+                    statement = new BlockNode(_pos, false, operations);
                 }
             }
-            case IDENT, LPAR -> {
+            case IDENT, LPAR, NIL, FALSE, TRUE, NUMERAL, LITERAL_STRING, LBRAC -> {
                 symTab.labelNotLast();
                 statement = StatExp();
             }
-            default -> throw new InternalLuaLoadingError("unexpected statement start '%s'".formatted(ltok.name()));
+            default -> throw new InternalLuaParsingError("unexpected statement start '%s'".formatted(ltok.name()));
         }
         return statement;
     }
@@ -460,40 +521,36 @@ public final class Parser {
             } else if ("close".equals(cur.stVal())) {
                 rVal = 3;
             } else {
-                throw new LuaSemanticException(cur.pos(), "Only 'const' and 'close' are allowed as attributes, not '%s'!".formatted(cur.stVal()));
+                throw new LuaParserException(cur.pos(), "Only 'const' and 'close' are allowed as attributes, not '%s'!".formatted(cur.stVal()));
             }
             check(GT);
         }
         return rVal;
     }
 
-    @SuppressWarnings("unused")
-    private static final EnumSet<TokenType> DEREF_OR_FUNCCALL_START = EnumSet.of(LBRAK, DOT, COLON, LPAR, LITERAL_STRING, LBRAC);
+    // private static final EnumSet<TokenType> DEREF_OR_FUNCCALL_START = EnumSet.of(LBRAK, DOT,
+    // COLON, LPAR, LITERAL_STRING, LBRAC);
 
-    private Node StatExp() {
-        SpecificVarInfo info;
-        boolean onlyIdent;
-        Node result;
+    private AST StatExp() {
+        AST result;
         if (ltok == LPAR) {
             scan();
             result = Exp();
-            if (result instanceof FunctionCallNode fc) {
-                // function calls inside parentheses have their return values pruned to 1
-                result = new PruneToOneNode(fc);
-            }
+            // values in parentheses will be adjusted to 1
+            result = new AdjustNumberOfValuesNode(1, result);
             check(RPAR);
-            info = null;
-            onlyIdent = false;
             if (ltok == LBRAK || ltok == DOT) {
                 result = DeRef(result);
             } else {
                 result = FuncCall(result);
             }
+        } else if (ltok == IDENT) {
+            scan();
+            result = genAccess(cur.pos(), symTab.findLocal(cur.stVal()), cur.stVal());
         } else {
-            check(IDENT);
-            info = symTab.get(cur.stVal());
-            result = genAccess(cur.pos(), info, cur.stVal());
-            onlyIdent = true;
+            assert OOP_CALLABLE_LITERAL_START.contains(ltok) : "unallowed token " + ltok;
+            scan();
+            result = OopFuncCall(ConstantNode.of(cur));
         }
         loop:
         for (; ; ) {
@@ -504,37 +561,27 @@ public final class Parser {
                     break loop;
                 }
             }
-            onlyIdent = false;
         }
         if (isAssignable()) {
-            var assignTargets = new ArrayList<Node>();
+            var assignTargets = new ArrayList<AST>();
             assignTargets.add(result);
-            var qLocals = new ArrayList<Tuple<SpecificVarInfo, Boolean>>();
-            qLocals.add(new Tuple<>(info, onlyIdent));
             while (ltok == COMMA) {
                 scan();
-                var packedInfo = OopValExp();
-                assignTargets.add(packedInfo.x());
-                qLocals.add(new Tuple<>(packedInfo.y(), packedInfo.z()));
+                AST assignAccess = OopValExp();
+                assignTargets.add(assignAccess);
                 if (!isAssignable()) {
                     throw new LuaParserException(la.pos(), "Expected <%s>, got <%s>".formatted(DOT.rep, ltok.rep));
                 }
             }
             check(ASSIGN);
             Position apos = cur.pos();
-            qLocals.forEach(p -> {
-                if (p.x() != null && p.y()) {
-                    if (p.x().baseInfo().isConstant()) {
-                        throw new LuaSemanticException(cur.pos(), "Constant variable must not be written");
-                    }
-                    p.x().baseInfo().setWritten();
-                }
-            });
-            Node[] expressions = ExpList();
-            result = new AssignmentNode(apos, false, assignTargets.toArray(Node[]::new), expressions);
+            AST[] expressions = ExpList();
+            result = new AssignmentNode(apos, assignTargets.toArray(AST[]::new), expressions);
         } else {
-            if (result instanceof FunctionCallNode f) {
-                result = new FunctionStatementNode(f.sourcePos, f);
+            if (result instanceof AdjustNumberOfValuesNode adjustNode && (adjustNode.multivalue() instanceof FunctionCallNode || adjustNode.multivalue() instanceof OopCallNode)) {
+                // if a function call is a statement, we drop the return values instead of pruning
+                // them
+                result = new AdjustNumberOfValuesNode(0, adjustNode.multivalue());
             } else {
                 throw new LuaParserException(cur.pos(), "(At %s) Expected <%s>, got <%s>".formatted(cur.pos(), EQ.rep, cur.type().rep));
             }
@@ -542,9 +589,9 @@ public final class Parser {
         return result;
     }
 
-    private Triple<Node, SpecificVarInfo, Boolean> OopValExp() {
+    private AST OopValExp() {
         if (OOP_CALLABLE_LITERAL_START.contains(ltok)) {
-            Node result = OopCallableLiteral();
+            AST result = OopCallableLiteral();
             if (ltok == COLON) {
                 result = OopFuncCall(result);
                 loop:
@@ -558,31 +605,23 @@ public final class Parser {
                     }
                 }
             }
-            return new Triple<>(result, null, false);
+            return result;
         } else {
             return ValExp();
         }
     }
 
-    private Triple<Node, SpecificVarInfo, Boolean> ValExp() {
-        SpecificVarInfo info;
-        boolean onlyIdent;
-        Node result;
+    private AST ValExp() {
+        AST result;
         if (ltok == LPAR) {
             scan();
             result = Exp();
-            if (result instanceof FunctionCallNode fc) {
-                // function calls inside parentheses have their return values pruned to 1
-                result = new PruneToOneNode(fc);
-            }
+            // values in parentheses will be adjusted to 1
+            result = new AdjustNumberOfValuesNode(1, result);
             check(RPAR);
-            info = null;
-            onlyIdent = false;
         } else {
             check(IDENT);
-            info = symTab.get(cur.stVal());
-            result = genAccess(cur.pos(), info, cur.stVal());
-            onlyIdent = true;
+            result = genAccess(cur.pos(), symTab.findLocal(cur.stVal()), cur.stVal());
         }
         loop:
         for (; ; ) {
@@ -593,13 +632,12 @@ public final class Parser {
                     break loop;
                 }
             }
-            onlyIdent = false;
         }
-        return new Triple<>(result, info, onlyIdent);
+        return result;
     }
 
-    private Node DeRef(Node target) {
-        Node index;
+    private AST DeRef(AST target) {
+        AST index;
         if (ltok == LBRAK) {
             scan();
             index = Exp();
@@ -607,100 +645,108 @@ public final class Parser {
         } else {
             check(DOT);
             check(IDENT);
-            index = ConstantNode.ofIdent(cur);
+            index = ConstantNode.of(cur);
         }
-        return new DeRefNode(target.sourcePos, target, index);
+        return new IndexedAccessNode(target.pos(), target, index);
     }
 
-    private Node FuncCall(Node callable) {
-        Node object = null;
-        Node func = callable;
+    private AST FuncCall(AST callable) {
+        AST object = null;
+        AST func = callable;
         if (ltok == COLON) {
             scan();
             object = callable;
-            // code gen in FunctionCallNode relies on this being a constant ident
             check(IDENT);
-            func = ConstantNode.ofIdent(cur);
+            func = ConstantNode.of(cur);
         }
         Position pos = la.pos();
-        Node[] args = Args();
-        return new FunctionCallNode(pos, object, getEnv(pos), func, args);
+        AST[] args = Args();
+        // _ENV is passed for type extension functions on OOP calls
+        // per default, return values are adjusted to 1; this may be stripped later
+        return new AdjustNumberOfValuesNode(1, object == null
+                ? new FunctionCallNode(pos, func, args)
+                : new OopCallNode(pos, getEnv(pos), object, func, args));
     }
 
-    private Node OopFuncCall(Node callable) {
+    private AST OopFuncCall(AST object) {
         check(COLON);
-        Node object = callable;
         // code gen in FunctionCallNode relies on this being a constant ident
         check(IDENT);
-        Node func = ConstantNode.ofIdent(cur);
+        AST callable = ConstantNode.of(cur);
         Position pos = la.pos();
-        Node[] args = Args();
-        return new FunctionCallNode(pos, object, getEnv(pos), func, args);
+        AST[] args = Args();
+        // _ENV is passed for type extension functions on OOP calls
+        return new AdjustNumberOfValuesNode(pos, 1,
+                new OopCallNode(pos, getEnv(pos), object, callable, args));
     }
 
-    private Node[] ExpList() {
-        var es = new ArrayList<Node>();
-        es.add(Exp());
+    private AST[] ExpList() {
+        var expressions = new ArrayList<AST>();
+        expressions.add(Exp());
         while (ltok == COMMA) {
             scan();
-            es.add(Exp());
+            expressions.add(Exp());
         }
-        return es.toArray(Node[]::new);
+        if (!expressions.isEmpty() && expressions.getLast() instanceof AdjustNumberOfValuesNode adjustment) {
+            // in expression lists, we strip value pruning for the last value,
+            // effectively flattening the multivalue into the expression-list
+            assert adjustment.requested() == 1 : "an expression should always prune itself to exactly 1 value";
+            expressions.set(expressions.size() - 1, adjustment.multivalue());
+        }
+        return expressions.toArray(AST[]::new);
     }
 
     private static final EnumSet<TokenType> EXP_START = EnumSet.of(NIL, FALSE, TRUE, NUMERAL, LITERAL_STRING, TDOT,
             FUNCTION, LPAR, IDENT, NOT, HASH, SUB, BXOR, LBRAC);
 
-    private Node Exp() {
+    private AST Exp() {
         // or
-        var result = BinOp1();
+        AST result = BinOp1();
         while (ltok == OR) {
             scan();
             Position pos = cur.pos();
-            Node y = BinOp1();
-            result = new LogicBinaryOpNode(pos, true, result, y);
+            AST y = BinOp1();
+            result = new OrNode(pos, result, y);
         }
         return result;
     }
 
-    private Node BinOp1() {
+    private AST BinOp1() {
         // and
-        Node result = BinOp2();
+        AST result = BinOp2();
         while (ltok == AND) {
             scan();
             Position pos = cur.pos();
-            Node y = BinOp2();
-            result = new LogicBinaryOpNode(pos, false, result, y);
+            AST y = BinOp2();
+            result = new AndNode(pos, result, y);
         }
         return result;
     }
 
-    private Node BinOp2() {
+    private AST BinOp2() {
         // < > <= >= ~= ==
-        Node result = BinOp3();
+        AST result = BinOp3();
         loop:
         for (; ; ) {
             Position opPos = la.pos();
             switch (ltok) {
-                case LT, GT -> {
+                case LT, GT, LE, GE -> {
                     var op = ltok;
                     scan();
-                    Node y = BinOp3();
-                    result = new RelationalOpNode(opPos, LT.metatableFuncNameBinary, op != LT, result, y);
-                }
-                case LE, GE -> {
-                    var op = ltok;
-                    scan();
-                    Node y = BinOp3();
-                    result = new RelationalOpNode(opPos, LE.metatableFuncNameBinary, op != LE, result, y);
+                    AST y = BinOp3();
+                    result = switch (op) {
+                        case GT -> new BinaryOperationNode(opPos, LT, y, result);
+                        case GE -> new BinaryOperationNode(opPos, LE, y, result);
+                        default -> new BinaryOperationNode(opPos, op, result, y);
+                    };
                 }
                 case EQ, NE -> {
                     var op = ltok;
                     scan();
-                    Node y = BinOp3();
-                    result = new EqualsNode(opPos, result, y);
+                    AST y = BinOp3();
+                    result = new BinaryOperationNode(opPos, EQ, result, y);
                     if (op == NE) {
-                        result = new LogicNotNode(opPos, result);
+                        result = new NotNode(opPos, result);
                     }
                 }
                 default -> {
@@ -711,80 +757,77 @@ public final class Parser {
         return result;
     }
 
-    private Node BinOp3() {
+    private AST BinOp3() {
         // |
-        var result = BinOp4();
+        AST result = BinOp4();
         while (ltok == BOR) {
-            var op = ltok;
             scan();
             Position pos = cur.pos();
-            Node y = BinOp4();
-            result = BinaryOpNode.bitwise(pos, op.metatableFuncNameBinary, result, y);
+            AST y = BinOp4();
+            result = new BinaryOperationNode(pos, BOR, result, y);
         }
         return result;
     }
 
-    private Node BinOp4() {
+    private AST BinOp4() {
         // ~
-        var result = BinOp5();
+        AST result = BinOp5();
         while (ltok == BXOR) {
-            var op = ltok;
             scan();
             Position pos = cur.pos();
-            Node y = BinOp5();
-            result = BinaryOpNode.bitwise(pos, op.metatableFuncNameBinary, result, y);
+            AST y = BinOp5();
+            result = new BinaryOperationNode(pos, BXOR, result, y);
         }
         return result;
     }
 
-    private Node BinOp5() {
+    private AST BinOp5() {
         // &
-        var result = BinOp6();
+        AST result = BinOp6();
         while (ltok == BAND) {
-            var op = ltok;
             scan();
             Position pos = cur.pos();
-            Node y = BinOp6();
-            result = BinaryOpNode.bitwise(pos, op.metatableFuncNameBinary, result, y);
+            AST y = BinOp6();
+            result = new BinaryOperationNode(pos, BAND, result, y);
         }
         return result;
     }
 
-    private Node BinOp6() {
+    private AST BinOp6() {
         // << >>
-        var result = BinOp7();
+        AST result = BinOp7();
         while (ltok == SHL || ltok == SHR) {
             var op = ltok;
             scan();
             Position pos = cur.pos();
-            Node y = BinOp7();
-            result = BinaryOpNode.bitwise(pos, op.metatableFuncNameBinary, result, y);
+            AST y = BinOp7();
+            result = new BinaryOperationNode(pos, op, result, y);
         }
         return result;
     }
 
-    private Node BinOp7() {
+    private AST BinOp7() {
         // ..
-        var result = BinOp8();
+        AST result = BinOp8();
         while (ltok == DDOT) {
             scan();
             Position pos = cur.pos();
-            Node y = BinOp8();
-            result = BinaryOpNode.stringConcat(pos, result, y);
+            AST y = BinOp8();
+            result = new BinaryOperationNode(pos, DDOT, result, y);
         }
         return result;
     }
 
-    private Node BinOp8() {
+    private AST BinOp8() {
         // + -
-        var result = BinOp9();
+        AST result = BinOp9();
         for (; ; ) {
             if (ltok == ADD || ltok == SUB) {
                 var op = ltok;
                 scan();
                 Position pos = cur.pos();
-                Node y = BinOp9();
-                result = BinaryOpNode.arithmetic(pos, op.metatableFuncNameBinary, result, y);
+                AST y = BinOp9();
+                result = new BinaryOperationNode(pos, op, result, y);
             } else {
                 break;
             }
@@ -792,9 +835,9 @@ public final class Parser {
         return result;
     }
 
-    private Node BinOp9() {
+    private AST BinOp9() {
         // * / // %
-        Node result = UnOp();
+        AST result = UnOp();
         loop:
         for (; ; ) {
             switch (ltok) {
@@ -802,8 +845,8 @@ public final class Parser {
                     var op = ltok;
                     scan();
                     Position pos = cur.pos();
-                    Node y = UnOp();
-                    result = BinaryOpNode.arithmetic(pos, op.metatableFuncNameBinary, result, y);
+                    AST y = UnOp();
+                    result = new BinaryOperationNode(pos, op, result, y);
                 }
                 default -> {
                     break loop;
@@ -813,14 +856,14 @@ public final class Parser {
         return result;
     }
 
-    private Node UnOp() {
+    private AST UnOp() {
         // not # - ~
-        var opList = new Stack<Tuple<TokenType, Position>>();
+        var opList = new Stack<Tuple<Position, TokenType>>();
         loop:
         for (; ; ) {
             switch (ltok) {
                 case NOT, HASH, SUB, BXOR -> {
-                    opList.push(new Tuple<>(ltok, la.pos()));
+                    opList.push(new Tuple<>(la.pos(), ltok));
                     scan();
                 }
                 default -> {
@@ -828,107 +871,98 @@ public final class Parser {
                 }
             }
         }
-        Node result = BinOp10();
+        AST result = BinOp10();
         while (!opList.isEmpty()) {
-            var op = opList.pop();
-            result = switch (op.x()) {
-                case NOT -> new LogicNotNode(op.y(), result);
-                case HASH -> new LengthOfNode(op.y(), result);
-                case SUB -> UnaryOpNode.negate(op.y(), result);
-                case BXOR -> UnaryOpNode.invert(op.y(), result);
-                default -> throw new InternalLuaLoadingError("should not reach");
+            Tuple<Position, TokenType> op = opList.pop();
+            result = switch (op.y()) {
+                case NOT -> new NotNode(op.x(), result);
+                case HASH, SUB, BXOR -> new UnaryOperationNode(op.x(), op.y(), result);
+                default -> throw new InternalLuaParsingError("should not reach");
             };
         }
         return result;
     }
 
-    private Node BinOp10() {
+    private AST BinOp10() {
         // ^
-        Node result = TermExp();
+        AST result = TermExp();
         while (ltok == EXPONENT) {
-            var op = ltok;
             scan();
             Position pos = cur.pos();
-            Node y = TermExp();
-            result = BinaryOpNode.arithmetic(pos, op.metatableFuncNameBinary, result, y);
+            AST y = TermExp();
+            result = new BinaryOperationNode(pos, EXPONENT, result, y);
         }
         return result;
     }
 
-    private Node TermExp() {
+    private AST TermExp() {
         // constants, funcdef or ValExp
         switch (ltok) {
             case TDOT -> {
                 scan();
-                if (!symTab.paramsDefined()) {
-                    throw new LuaSemanticException(cur.pos(), "cannot use '...' outside a vararg function");
+                LocalVariableAccessor paramsArg = symTab.findLocal("...");
+                if (paramsArg == null) {
+                    throw new LuaParserException(cur.pos(), "cannot use '...' outside a vararg function");
                 }
-                return new LocalAccessNode(cur.pos(), symTab.get("..."));
+                return new AdjustNumberOfValuesNode(1, new LocalAccessNode(cur.pos(), paramsArg));
             }
             case FUNCTION -> {
                 scan();
                 return FuncBody(false);
             }
             default -> {
-                return OopValExp().x();
+                return OopValExp();
             }
         }
     }
 
     private static final EnumSet<TokenType> OOP_CALLABLE_LITERAL_START = EnumSet.of(NIL, TRUE, FALSE, NUMERAL, LITERAL_STRING, LBRAC);
 
-    private Node OopCallableLiteral() {
+    private AST OopCallableLiteral() {
         switch (ltok) {
-            case NIL -> {
+            case NIL, TRUE, FALSE, NUMERAL, LITERAL_STRING -> {
                 scan();
-                return ConstantNode.ofNil(cur.pos());
-            }
-            case TRUE, FALSE -> {
-                scan();
-                return ConstantNode.ofBool(cur.pos(), cur.type() == TRUE);
-            }
-            case NUMERAL -> {
-                scan();
-                return cur.nVal() < 0 ? ConstantNode.ofLong(cur) : ConstantNode.ofDouble(cur);
-            }
-            case LITERAL_STRING -> {
-                scan();
-                return ConstantNode.ofB64(cur);
+                return ConstantNode.of(cur);
             }
             case LBRAC -> {
                 return TableConstructor();
             }
             default -> {
-                throw new InternalLuaLoadingError("should not reach");
+                throw new InternalLuaParsingError("should not reach");
             }
         }
     }
 
-    private FunctionDefinitionNode FuncBody(boolean hasSelf) {
-        Position capPos = cur.pos();
+    private AST FuncBody(boolean hasSelf) {
         check(LPAR);
-        ArrayList<Token> ps = new ArrayList<>();
-
+        Token selfPlaceholder = null;
         if (hasSelf) {
-            ps.add(new Token(IDENT, cur.pos(), "self"));
+            selfPlaceholder = new Token(IDENT, cur.pos(), "self");
         }
+        ArrayList<Token> ps;
         if (ltok == TDOT || ltok == IDENT) {
-            ParList(ps);
+            ps = ParList();
+        } else {
+            ps = new ArrayList<>();
+        }
+        if (selfPlaceholder != null) {
+            ps.add(0, selfPlaceholder);
         }
         check(RPAR);
-        Position _pos = la.pos();
+        Position _pos = cur.pos();
         boolean hasParamsArg = !ps.isEmpty() && ps.get(ps.size() - 1).type() == TDOT;
-        symTab.enterFunctionScope(hasParamsArg);
-        SpecificVarInfo[] args = ps.stream().map(p -> define(p, 0)).toArray(SpecificVarInfo[]::new);
-        var innerStats = Block();
-        int maxLocalCnt = symTab.getMaxFuncLocals();
-        VarScope scp = symTab.exitScope();
+        symTab.openFunctionScope(hasParamsArg, ps.stream().map(tk -> tk.type() == TDOT ? "..." : tk.stVal()).toArray(String[]::new));
+        AST body = Block();
+        var arguments = new ArrayList<LocalVariableAccessor>();
+        var captures = new ArrayList<LocalVariableAccessor>();
+        symTab.closeFunctionScope(arguments, captures);
         check(END);
-        return new FunctionDefinitionNode(capPos, scp.captured.keySet().stream().map(info -> new PossiblyBoxedLocalAccessNode(capPos, info)).toArray(PossiblyBoxedLocalAccessNode[]::new),
-                new IRFunction(_pos, innerStats.toArray(Node[]::new), scp.getLocalsCount(), scp.getClosableCount(), maxLocalCnt, args.length, hasParamsArg, scp.getBoxedParameterIndices()));
+        return new FunctionDefNode(_pos, false, captures.toArray(LocalVariableAccessor[]::new),
+                hasParamsArg, arguments.toArray(LocalVariableAccessor[]::new), body);
     }
 
-    private void ParList(ArrayList<Token> parameters) {
+    private ArrayList<Token> ParList() {
+        var parameters = new ArrayList<Token>();
         if (ltok == TDOT) {
             scan();
             parameters.add(cur);
@@ -946,73 +980,91 @@ public final class Parser {
                 parameters.add(cur);
             }
         }
+        return parameters;
     }
 
     @SuppressWarnings("unused")
     private static final EnumSet<TokenType> ARGS_START = EnumSet.of(LPAR, LITERAL_STRING, LBRAC);
 
-    private Node[] Args() {
-        Node[] result;
+    private AST[] Args() {
+        AST[] result;
         if (ltok == LPAR) {
             scan();
             if (EXP_START.contains(ltok)) {
                 result = ExpList();
             } else {
-                result = new Node[0];
+                result = new AST[0];
             }
             check(RPAR);
         } else if (ltok == LITERAL_STRING) {
             scan();
-            result = new Node[]{ConstantNode.ofB64(cur)};
+            result = new AST[]{ConstantNode.of(cur)};
         } else {
-            result = new Node[]{TableConstructor()};
+            result = new AST[]{TableConstructor()};
         }
         return result;
     }
 
-    private Node TableConstructor() {
+    private AST TableConstructor() {
         check(LBRAC);
         Position tpos = cur.pos();
-        Node[] keyVals;
+        ArrayList<Tuple<AST, AST>> keyVals;
         if (ltok == RBRAC) {
             scan();
-            keyVals = new Node[0];
+            keyVals = new ArrayList<>();
         } else {
             keyVals = FieldList();
         }
-        return new ConstructedTableNode(tpos, keyVals);
+        // reorder so that the keyless args are last and have ascending integer indices
+        var keylessList = new ArrayList<Tuple<AST, AST>>();
+        for (int i = 0; i < keyVals.size(); ) {
+            var field = keyVals.get(i);
+            if (field.x() == null) {
+                keyVals.remove(i);
+                // keyless field with ascending integer key
+                keylessList.add(new Tuple<>(ConstantNode.ofInteger(field.y().pos(), keylessList.size() + 1), field.y()));
+                // incremented by removing element
+            } else {
+                // normal increment
+                i++;
+            }
+        }
+        keyVals.addAll(keylessList);
+        return new TableConstructionNode(tpos, keyVals.toArray(Tuple[]::new));
     }
 
-    private Node[] FieldList() {
-        var fieldList = new ArrayList<Node>();
-        Field(fieldList);
+    private ArrayList<Tuple<AST, AST>> FieldList() {
+        var fieldList = new ArrayList<Tuple<AST, AST>>();
+        fieldList.add(Field());
         while ((ltok == COMMA || ltok == SEMICOLON) && lla.type() != RBRAC) {
             FieldSep();
-            Field(fieldList);
+            fieldList.add(Field());
         }
         if (ltok == COMMA || ltok == SEMICOLON) {
             FieldSep();
         }
         check(RBRAC);
-        return fieldList.toArray(Node[]::new);
+        return fieldList;
     }
 
-    private void Field(ArrayList<Node> fieldList) {
+    private Tuple<AST, AST> Field() {
+        AST key, value;
         if (ltok == LBRAK) {
             scan();
-            fieldList.add(Exp());
+            key = Exp();
             check(RBRAK);
             check(ASSIGN);
-            fieldList.add(Exp());
+            value = Exp();
         } else if (ltok == IDENT && lla.type() == ASSIGN) {
             scan();
-            fieldList.add(ConstantNode.ofIdent(cur));
+            key = ConstantNode.of(cur);
             scan();  // ASSIGN
-            fieldList.add(Exp());
+            value = Exp();
         } else {
-            fieldList.add(ConstantNode.ofNull(cur.pos()));
-            fieldList.add(Exp());
+            key = null;
+            value = Exp();
         }
+        return new Tuple<>(key, value);
     }
 
     private void FieldSep() {
