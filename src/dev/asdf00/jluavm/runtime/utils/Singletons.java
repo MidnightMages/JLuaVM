@@ -1,5 +1,6 @@
 package dev.asdf00.jluavm.runtime.utils;
 
+import dev.asdf00.jluavm.parsing.LocalVariable;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 
 @SuppressWarnings("unused")
@@ -38,4 +39,7 @@ public class Singletons {
 
     // other singletons
     public static final LuaObject[] EMPTY_LUA_OBJ_ARRAY = new LuaObject[0];
+    
+    public static final Object[] EMPTY_OBJ_ARRAY = new Object[0];
+    public static final LocalVariable.LocalVariableAccessor[] EMPTY_LOCAL_ACCESSOR_ARRAY = new LocalVariable.LocalVariableAccessor[0];
 }
