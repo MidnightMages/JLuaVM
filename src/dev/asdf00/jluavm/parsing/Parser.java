@@ -80,7 +80,7 @@ public final class Parser {
      * =================================================================================================================
      */
 
-    public AST parse() throws LuaParserException {
+    public FunctionDefNode parse() throws LuaParserException {
         cur = null;
         la = lexer.next();
         lla = lexer.next();
@@ -88,7 +88,7 @@ public final class Parser {
         return Chunk();
     }
 
-    private AST Chunk() {
+    private FunctionDefNode Chunk() {
         symTab.openFunctionScope(true);
         var block = Block();
         var arguments = new ArrayList<LocalVariableAccessor>();

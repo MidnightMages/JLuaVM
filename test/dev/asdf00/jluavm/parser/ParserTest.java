@@ -1,10 +1,9 @@
 package dev.asdf00.jluavm.parser;
 
-import dev.asdf00.jluavm.exceptions.loading.LuaSemanticException;
-import dev.asdf00.jluavm.parsing.Parser;
-import dev.asdf00.jluavm.parsing.SymTable;
 import dev.asdf00.jluavm.exceptions.loading.LuaLexerException;
 import dev.asdf00.jluavm.exceptions.loading.LuaParserException;
+import dev.asdf00.jluavm.exceptions.loading.LuaSemanticException;
+import dev.asdf00.jluavm.parsing.Parser;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -12,7 +11,8 @@ import java.util.function.Supplier;
 
 import static dev.asdf00.jluavm.Constants.largeValidLuaProgram;
 import static dev.asdf00.jluavm.Util.expandOptions;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class ParserTest {
 
@@ -22,22 +22,22 @@ public class ParserTest {
         return parser;
     }
 
-    private String getSymTab(Parser parser) {
-        try {
-            var f = Parser.class.getDeclaredField("symTab");
-            f.setAccessible(true);
-            var st = (SymTable) f.get(parser);
-            f = SymTable.class.getDeclaredField("prevScope");
-            f.setAccessible(true);
-            var rscope = f.get(st);
-            var m = rscope.getClass().getDeclaredMethod("toFullString");
-            m.setAccessible(true);
-            return (String) m.invoke(rscope);
-        }
-        catch (ReflectiveOperationException e) {
-            throw new RuntimeException(e);
-        }
-    }
+//    private String getSymTab(Parser parser) {
+//        try {
+//            var f = Parser.class.getDeclaredField("symTab");
+//            f.setAccessible(true);
+//            var st = (SymTable) f.get(parser);
+//            f = SymTable.class.getDeclaredField("prevScope");
+//            f.setAccessible(true);
+//            var rscope = f.get(st);
+//            var m = rscope.getClass().getDeclaredMethod("toFullString");
+//            m.setAccessible(true);
+//            return (String) m.invoke(rscope);
+//        }
+//        catch (ReflectiveOperationException e) {
+//            throw new RuntimeException(e);
+//        }
+//    }
 
     @Test
     void simple() {
@@ -141,13 +141,13 @@ public class ParserTest {
                 "goto\ntest"
         };
         for (var s : semanticSnippets)
-            assertThrows(LuaSemanticException.class,() -> parse(s), "Testcode: " + s);
+            assertThrows(LuaSemanticException.class, () -> parse(s), "Testcode: " + s);
 
         var lexerSnippets = new String[]{
                 "::1aaa,end::"
         };
         for (var s : lexerSnippets)
-            assertThrows(LuaLexerException.class,() -> parse(s), "Testcode: " + s);
+            assertThrows(LuaLexerException.class, () -> parse(s), "Testcode: " + s);
     }
 
     @Test
@@ -166,10 +166,8 @@ public class ParserTest {
     void assertThrowsLexerOrParserException(Runnable r, Supplier<String> err) {
         try {
             r.run();
-        }
-        catch (LuaLexerException | LuaParserException ignored) {
-        }
-        catch (Exception ex) {
+        } catch (LuaLexerException | LuaParserException ignored) {
+        } catch (Exception ex) {
             Assertions.fail(err.get(), ex);
         }
     }
@@ -237,7 +235,6 @@ public class ParserTest {
                 ... = "test"
                 """), () -> "");
     }
-
 
 
     @Test

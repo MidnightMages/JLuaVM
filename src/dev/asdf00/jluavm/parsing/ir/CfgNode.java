@@ -1,0 +1,56 @@
+package dev.asdf00.jluavm.parsing.ir;
+
+import dev.asdf00.jluavm.parsing.ir.ast.AST;
+
+import java.util.ArrayList;
+
+public class CfgNode {
+    public AST block;
+
+    private CfgNode defaultSuccessor; // dont write from outside directly as this requires updating the predecessor node collection in the listed CfgNode node
+
+    public AST ifCondition;
+    private CfgNode branchingSuccessor; // dont write from outside directly as this requires updating the predecessor node collection in the listed CfgNode node
+
+    public ArrayList<CfgNode> predecessors;
+
+    public CfgNode(AST block, CfgNode defaultSuccessor, AST ifCondition, CfgNode branchingSuccessor) {
+        this.block = block;
+        if (defaultSuccessor != null)
+            setDefaultSuccessor(defaultSuccessor);
+        this.ifCondition = ifCondition;
+        if (branchingSuccessor != null)
+            setBranchingSuccessor(branchingSuccessor);
+        this.predecessors = new ArrayList<>();
+    }
+
+    public void setDefaultSuccessor(CfgNode successor) {
+        assert defaultSuccessor == null;
+        defaultSuccessor = successor;
+        successor.predecessors.add(successor);
+    }
+
+    public void setBranchingSuccessor(CfgNode successor) {
+        assert branchingSuccessor == null;
+        branchingSuccessor = successor;
+        successor.predecessors.add(branchingSuccessor);
+    }
+
+    public CfgNode getBranchingSuccessor() {
+        return branchingSuccessor;
+    }
+
+    public CfgNode getDefaultSuccessor() {
+        return defaultSuccessor;
+    }
+
+    public CfgNode getTrueIfSuccessor() {
+        assert ifCondition != null;
+        return branchingSuccessor;
+    }
+
+    public CfgNode getFalseIfSuccessor() {
+        assert ifCondition != null;
+        return defaultSuccessor;
+    }
+}
