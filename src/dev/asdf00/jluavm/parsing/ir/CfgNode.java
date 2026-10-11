@@ -5,7 +5,7 @@ import dev.asdf00.jluavm.parsing.ir.ast.AST;
 import java.util.ArrayList;
 
 public class CfgNode {
-    public AST block;
+    public ArrayList<AST> statements;
 
     private CfgNode defaultSuccessor; // dont write from outside directly as this requires updating the predecessor node collection in the listed CfgNode node
 
@@ -14,8 +14,8 @@ public class CfgNode {
 
     public ArrayList<CfgNode> predecessors;
 
-    public CfgNode(AST block, CfgNode defaultSuccessor, AST ifCondition, CfgNode branchingSuccessor) {
-        this.block = block;
+    public CfgNode(ArrayList<AST> statements, CfgNode defaultSuccessor, AST ifCondition, CfgNode branchingSuccessor) {
+        this.statements = statements;
         if (defaultSuccessor != null)
             setDefaultSuccessor(defaultSuccessor);
         this.ifCondition = ifCondition;
