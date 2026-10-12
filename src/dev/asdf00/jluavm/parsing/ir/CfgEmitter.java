@@ -1,10 +1,9 @@
 package dev.asdf00.jluavm.parsing.ir;
 
-import dev.asdf00.jluavm.parsing.container.Position;
 import dev.asdf00.jluavm.parsing.ir.ast.AST;
+import dev.asdf00.jluavm.parsing.ir.ast.Visitor;
 
 import java.util.ArrayList;
-import java.util.function.Consumer;
 
 public class CfgEmitter {
     private final AST.FunctionDefNode ast;
@@ -14,47 +13,214 @@ public class CfgEmitter {
     }
 
     public CfgNode emitCfg() {
-        return emitSingleCfgBlock(ast);
+        var visitor = new CfgVisitor();
+        ast.body().accept(visitor);
+        return visitor.finalize$();
     }
 
-    private static AST.BlockNode wrapIntoBlock(AST... ast) {
-        return new AST.BlockNode(Position.UNKNOWN, false, ast);
-    }
+    static class CfgVisitor implements Visitor {
+        public ArrayList<AST> statements = new ArrayList<>();
+        public CfgVisitor defaultSuccessor = null;
+        public AST ifCondition = null;
+        public CfgVisitor branchingSuccessor = null;
+        public CfgNode cfgNodeOfThis = new CfgNode(statements);
+        public CfgVisitor currentActualVisitor = this;
 
-    private static CfgNode emitSingleCfgBlock(AST ast) {
-        if (ast instanceof AST.BlockNode block) {
-            final var prefixStats = new ArrayList<AST>();
-            var cfgFixupActions = new ArrayList<Consumer<CfgNode>>();
-            @SuppressWarnings("unchecked")
-            Consumer<AST.BlockNode>[] processBlockRef = (Consumer<AST.BlockNode>[]) new Consumer[1];
-            Consumer<AST.BlockNode> processBlock = root -> {
-                for (var stat : root.statements()) { // dig through this set of statements until we find some nonlinear control flow
-                    if (stat instanceof AST.BlockNode n) {
-                        processBlockRef[0].accept(n);
-                    } else if (stat instanceof AST.IfNode n) {
-                        var ifCfg = emitSingleCfgBlock(n);
-                        cfgFixupActions.add(cfg -> cfg.setDefaultSuccessor(ifCfg));
-                    } else if (stat instanceof AST.WhileNode n) {
-                        throw new UnsupportedOperationException("not implemented");
-                    } else {
-                        prefixStats.add(stat);
-                    }
-                }
-            };
-            processBlockRef[0] = processBlock;
-            processBlock.accept(block);
-            var rv = new CfgNode(new AST.BlockNode(block.pos(), false, prefixStats.toArray(AST[]::new)), null, null, null);
-            for (var fixup : cfgFixupActions)
-                fixup.accept(rv);
-            return rv;
-        } else if (ast instanceof AST.IfNode ifNode) {
-            var falseBranch = ifNode.falseBody() != null ? emitSingleCfgBlock(wrapIntoBlock(ifNode.falseBody())) : null;
-            var trueBranch = ifNode.trueBody() != null ? emitSingleCfgBlock(wrapIntoBlock(ifNode.trueBody())) : null;
-            return new CfgNode(wrapIntoBlock(), falseBranch, ifNode.trueCondition(), trueBranch);
-        } else if (ast instanceof AST.FunctionDefNode fdNode) {
-            return emitSingleCfgBlock(fdNode.body());
-        } else {
-            throw new UnsupportedOperationException("missing case??");
+        private boolean isFinalized = false;
+
+        public CfgNode finalize$() {
+            if (isFinalized)
+                return cfgNodeOfThis;
+
+            isFinalized = true;
+            if (defaultSuccessor != null)
+                cfgNodeOfThis.setDefaultSuccessor(defaultSuccessor.finalize$());
+
+            if (ifCondition != null) {
+                cfgNodeOfThis.ifCondition = ifCondition;
+                assert branchingSuccessor != null;
+                cfgNodeOfThis.setBranchingSuccessor(branchingSuccessor.finalize$());
+            }
+            return cfgNodeOfThis;
+        }
+
+        @Override
+        public void visitFunctionDef(AST.FunctionDefNode n) {
+            var nestedCfg = new CfgVisitor();
+            n.body().accept(nestedCfg);
+            nestedCfg.finalize$();
+            // todo link and return it somehow
+        }
+
+        @Override
+        public void visitBlock(AST.BlockNode n) {
+            for (var stat : n.statements())
+                stat.accept(currentActualVisitor);
+        }
+
+        @Override
+        public void visitReturn(AST.ReturnNode n) {
+            statements.add(n);
+        }
+
+        @Override
+        public void visitError(AST.ErrorNode n) {
+            statements.add(n);
+        }
+
+        @Override
+        public void visitNop(AST.NopNode n) {
+            // nothing to emit
+        }
+
+        @Override
+        public void visitGoto(AST.GotoNode n) {
+            // TODO fill in
+        }
+
+        @Override
+        public void visitLabel(AST.LabelNode n) {
+            // TODO fill in
+        }
+
+        @Override
+        public void visitWhile(AST.WhileNode n) {
+            // TODO fill in
+        }
+
+        @Override
+        public void visitIf(AST.IfNode n) {
+            // represents an end to this CFG block. So write down the condition, traverse children, cook continuation
+
+            // schedule the if as follows
+            // ====================================== THIS CFG NODE ======================================
+            // -------------------------
+            // | preceeding statements |
+            // -----------+-------------
+            //            |
+            //            |
+            //            +-------(if condition is true)------> [ true body cfg node ] (branchingSuccessor)
+            //            |                                           |
+            //            |                           ■===============|===================================
+            //            |                          ||               |
+            //            V                          ||               V
+            // ------------------------------------  ||     --------------------------------------------
+            // | false body cfg (defaultSuccessor)|  ||     | stuff after the if (=successor cfg node) |
+            // -----------+------------------------  ||     --------------------------------------------
+            // ===========|==========================■
+            //            V
+            // --------------------------------------------
+            // | stuff after the if (=successor cfg node) |
+            // --------------------------------------------
+
+
+            var successorVisitor = new CfgVisitor();
+            ifCondition = n.trueCondition();
+            var trueVisitor = new CfgVisitor();
+            var falseVisitor = new CfgVisitor();
+            this.branchingSuccessor = trueVisitor;
+            trueVisitor.defaultSuccessor = successorVisitor;
+
+            this.defaultSuccessor = falseVisitor;
+            falseVisitor.defaultSuccessor = successorVisitor;
+
+            if (n.trueBody() != null) {
+                n.trueBody().accept(trueVisitor);
+            }
+            if (n.falseBody() != null)
+                n.falseBody().accept(falseVisitor);
+
+            this.currentActualVisitor = successorVisitor;
+        }
+
+        @Override
+        public void visitDeclareLocal(AST.LocalDeclarationNode n) {
+            statements.add(n);
+        }
+
+        @Override
+        public void visitAssignment(AST.AssignmentNode n) {
+            statements.add(n);
+        }
+
+        @Override
+        public void visitEnvAccess(AST.EnvAccessNode n) {
+            statements.add(n);
+        }
+
+        @Override
+        public void visitAdjustNumberOfValues(AST.AdjustNumberOfValuesNode n) {
+            statements.add(n);
+        }
+
+        @Override
+        public void visitToNumberOrFail(AST.ToNumberOrFailNode n) {
+            statements.add(n);
+        }
+
+        @Override
+        public void visitFunctionCall(AST.FunctionCallNode n) {
+            statements.add(n);
+        }
+
+        @Override
+        public void visitOopCall(AST.OopCallNode n) {
+            statements.add(n);
+        }
+
+        @Override
+        public void visitIndexedAccess(AST.IndexedAccessNode n) {
+            statements.add(n);
+        }
+
+        @Override
+        public void visitLocalAccess(AST.LocalAccessNode n) {
+            statements.add(n);
+        }
+
+        @Override
+        public void visitOr(AST.OrNode n) {
+            statements.add(n);
+        }
+
+        @Override
+        public void visitAnd(AST.AndNode n) {
+            statements.add(n);
+        }
+
+        @Override
+        public void visitNot(AST.NotNode n) {
+            statements.add(n);
+        }
+
+        @Override
+        public void visitBinaryOperation(AST.BinaryOperationNode n) {
+            statements.add(n);
+        }
+
+        @Override
+        public void visitUnaryOperation(AST.UnaryOperationNode n) {
+            statements.add(n);
+        }
+
+        @Override
+        public void visitConstant(AST.ConstantNode n) {
+            statements.add(n);
+        }
+
+        @Override
+        public void visitTableConstruction(AST.TableConstructionNode n) {
+            statements.add(n);
+        }
+
+        @Override
+        public void visitForStep(AST.ForStepNode n) {
+            statements.add(n);
+        }
+
+        @Override
+        public void visitJumpDestination(AST.JumpDestinationNode n) {
+            statements.add(n);
         }
     }
 }

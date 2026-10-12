@@ -24,16 +24,21 @@ public class CfgNode {
         this.predecessors = new ArrayList<>();
     }
 
+    public CfgNode(ArrayList<AST> statements) {
+        this.statements = statements;
+        this.predecessors = new ArrayList<>();
+    }
+
     public void setDefaultSuccessor(CfgNode successor) {
         assert defaultSuccessor == null;
         defaultSuccessor = successor;
-        successor.predecessors.add(successor);
+        successor.predecessors.add(this);
     }
 
     public void setBranchingSuccessor(CfgNode successor) {
         assert branchingSuccessor == null;
         branchingSuccessor = successor;
-        successor.predecessors.add(branchingSuccessor);
+        successor.predecessors.add(this);
     }
 
     public CfgNode getBranchingSuccessor() {
