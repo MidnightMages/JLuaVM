@@ -5,7 +5,6 @@ import dev.asdf00.jluavm.exceptions.LuaLoadingException;
 import dev.asdf00.jluavm.exceptions.loading.InternalLuaLoadingError;
 import dev.asdf00.jluavm.parsing.Parser;
 import dev.asdf00.jluavm.parsing.ir.CfgEmitter;
-import dev.asdf00.jluavm.parsing.ir.CfgNode;
 import dev.asdf00.jluavm.parsing.ir.ast.AST;
 import dev.asdf00.jluavm.runtime.types.AbstractGeneratedLuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
@@ -115,8 +114,8 @@ public abstract class LuaVM {
         if (_ENV == null) {
             throw new InternalLuaLoadingError("got invalid _ENV");
         }
-        AST.FunctionDefNode rootFunc = new Parser(code).parse();
-        CfgNode cfg = new CfgEmitter(rootFunc).emitCfg();
+        AST.FunctionDefNode ast = new Parser(code).parse();
+        var cfg = new CfgEmitter(ast).emitCfg();
         // TODO build Lua function from AST
 
 

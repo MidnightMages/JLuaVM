@@ -1,61 +1,113 @@
 package dev.asdf00.jluavm.parsing.ir;
 
+import dev.asdf00.jluavm.parsing.container.Position;
 import dev.asdf00.jluavm.parsing.ir.ast.AST;
 import dev.asdf00.jluavm.parsing.ir.ast.Visitor;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 
 public class CfgEmitter {
+    public record CfgResult(CfgNode rootFunction, CfgNode[] additionalNestedFunctions) {
+    }
+
     private final AST.FunctionDefNode ast;
 
     public CfgEmitter(AST.FunctionDefNode ast) {
         this.ast = ast;
     }
 
-    public CfgNode emitCfg() {
-        var visitor = new CfgVisitor();
+    public CfgResult emitCfg() {
+        var visitor = new CfgVisitor(null);
         ast.body().accept(visitor);
-        return visitor.finalize$();
+        var rootCfg = visitor.finalize$();
+        var extraCfgs = new LinkedHashSet<CfgNode>();
+        var toVisit = new ArrayDeque<>(visitor.nestedCfgs);
+        while (!toVisit.isEmpty()) {
+            var item = toVisit.removeFirst();
+            extraCfgs.add(item.finalize$());
+            toVisit.addAll(item.nestedCfgs);
+        }
+
+        return new CfgResult(rootCfg, extraCfgs.toArray(CfgNode[]::new)); // todo also wrap CfgNodes into a function node to store some extra info
     }
 
     static class CfgVisitor implements Visitor {
+        private final CfgVisitor rootVisitor;
+
+        private record GotoToResolve(CfgVisitor NodeGotoSitsIn, AST.JumpDestinationNode destinationNode) {
+        }
+
+        public ArrayList<CfgVisitor> nestedCfgs = new ArrayList<>();
         public ArrayList<AST> statements = new ArrayList<>();
         public CfgVisitor defaultSuccessor = null;
         public AST ifCondition = null;
         public CfgVisitor branchingSuccessor = null;
         public CfgNode cfgNodeOfThis = new CfgNode(statements);
-        public CfgVisitor currentActualVisitor = this;
+        public CfgVisitor $this = this;
+
+        private ArrayList<GotoToResolve> $rootVisitorOnly_gotosToResolveLater;
+        private HashMap<Position, CfgVisitor> $rootVisitorOnly_jumpLabels;
+
+        public CfgVisitor(CfgVisitor rootVisitor) {
+            if (rootVisitor == null) {
+                this.rootVisitor = this;
+                $rootVisitorOnly_gotosToResolveLater = new ArrayList<>();
+                $rootVisitorOnly_jumpLabels = new HashMap<>();
+            } else {
+                this.rootVisitor = rootVisitor;
+            }
+        }
+
+        private CfgVisitor newNestedCfgVisitor() {
+            return new CfgVisitor(this.rootVisitor);
+        }
+
 
         private boolean isFinalized = false;
 
         public CfgNode finalize$() {
-            if (isFinalized)
-                return cfgNodeOfThis;
+            if (!isFinalized) {
+                isFinalized = true;
+                if (defaultSuccessor != null)
+                    cfgNodeOfThis.setDefaultSuccessor(defaultSuccessor.finalize$());
 
-            isFinalized = true;
-            if (defaultSuccessor != null)
-                cfgNodeOfThis.setDefaultSuccessor(defaultSuccessor.finalize$());
-
-            if (ifCondition != null) {
-                cfgNodeOfThis.ifCondition = ifCondition;
-                assert branchingSuccessor != null;
-                cfgNodeOfThis.setBranchingSuccessor(branchingSuccessor.finalize$());
+                if (ifCondition != null) {
+                    cfgNodeOfThis.ifCondition = ifCondition;
+                    assert branchingSuccessor != null;
+                    cfgNodeOfThis.setBranchingSuccessor(branchingSuccessor.finalize$());
+                }
             }
+
+            if (rootVisitor == this) {
+                for (var g : $rootVisitorOnly_gotosToResolveLater) {
+                    var destinationCfgNode = this.$rootVisitorOnly_jumpLabels.get(g.destinationNode().pos());
+                    assert destinationCfgNode != null;
+                    assert g.NodeGotoSitsIn.defaultSuccessor == null;
+                    assert g.NodeGotoSitsIn.branchingSuccessor == null;
+                    assert g.NodeGotoSitsIn.ifCondition == null;
+                    g.NodeGotoSitsIn.cfgNodeOfThis.setDefaultSuccessor(destinationCfgNode.cfgNodeOfThis);
+                }
+                $rootVisitorOnly_gotosToResolveLater.clear();
+            }
+
             return cfgNodeOfThis;
         }
 
         @Override
         public void visitFunctionDef(AST.FunctionDefNode n) {
-            var nestedCfg = new CfgVisitor();
+            var nestedCfg = newNestedCfgVisitor();
             n.body().accept(nestedCfg);
             nestedCfg.finalize$();
-            // todo link and return it somehow
+            nestedCfgs.add(nestedCfg);
         }
 
         @Override
         public void visitBlock(AST.BlockNode n) {
             for (var stat : n.statements())
-                stat.accept(currentActualVisitor);
+                stat.accept($this);
         }
 
         @Override
@@ -75,12 +127,21 @@ public class CfgEmitter {
 
         @Override
         public void visitGoto(AST.GotoNode n) {
-            // TODO fill in
+            assert $this.defaultSuccessor == null;
+            assert $this.ifCondition == null;
+            assert $this.branchingSuccessor == null;
+            $rootVisitorOnly_gotosToResolveLater.add(new GotoToResolve($this, n.label())); // postpone the setting of '$this.defaultSuccessor'
         }
 
         @Override
         public void visitLabel(AST.LabelNode n) {
-            // TODO fill in
+            assert $this.defaultSuccessor == null;
+            assert $this.ifCondition == null;
+            assert $this.branchingSuccessor == null;
+            var continuationVisitor = newNestedCfgVisitor();
+            $this.defaultSuccessor = continuationVisitor;
+            $this = continuationVisitor;
+            rootVisitor.$rootVisitorOnly_jumpLabels.put(n.label().pos(), continuationVisitor);
         }
 
         @Override
@@ -114,14 +175,14 @@ public class CfgEmitter {
             // --------------------------------------------
 
 
-            var successorVisitor = new CfgVisitor();
+            var successorVisitor = newNestedCfgVisitor();
             ifCondition = n.trueCondition();
-            var trueVisitor = new CfgVisitor();
-            var falseVisitor = new CfgVisitor();
-            this.branchingSuccessor = trueVisitor;
+            var trueVisitor = newNestedCfgVisitor();
+            var falseVisitor = newNestedCfgVisitor();
+            $this.branchingSuccessor = trueVisitor;
             trueVisitor.defaultSuccessor = successorVisitor;
 
-            this.defaultSuccessor = falseVisitor;
+            $this.defaultSuccessor = falseVisitor;
             falseVisitor.defaultSuccessor = successorVisitor;
 
             if (n.trueBody() != null) {
@@ -130,7 +191,7 @@ public class CfgEmitter {
             if (n.falseBody() != null)
                 n.falseBody().accept(falseVisitor);
 
-            this.currentActualVisitor = successorVisitor;
+            $this.$this = successorVisitor;
         }
 
         @Override
@@ -144,82 +205,12 @@ public class CfgEmitter {
         }
 
         @Override
-        public void visitEnvAccess(AST.EnvAccessNode n) {
-            statements.add(n);
-        }
-
-        @Override
         public void visitAdjustNumberOfValues(AST.AdjustNumberOfValuesNode n) {
             statements.add(n);
         }
 
         @Override
-        public void visitToNumberOrFail(AST.ToNumberOrFailNode n) {
-            statements.add(n);
-        }
-
-        @Override
-        public void visitFunctionCall(AST.FunctionCallNode n) {
-            statements.add(n);
-        }
-
-        @Override
-        public void visitOopCall(AST.OopCallNode n) {
-            statements.add(n);
-        }
-
-        @Override
-        public void visitIndexedAccess(AST.IndexedAccessNode n) {
-            statements.add(n);
-        }
-
-        @Override
-        public void visitLocalAccess(AST.LocalAccessNode n) {
-            statements.add(n);
-        }
-
-        @Override
-        public void visitOr(AST.OrNode n) {
-            statements.add(n);
-        }
-
-        @Override
-        public void visitAnd(AST.AndNode n) {
-            statements.add(n);
-        }
-
-        @Override
-        public void visitNot(AST.NotNode n) {
-            statements.add(n);
-        }
-
-        @Override
-        public void visitBinaryOperation(AST.BinaryOperationNode n) {
-            statements.add(n);
-        }
-
-        @Override
-        public void visitUnaryOperation(AST.UnaryOperationNode n) {
-            statements.add(n);
-        }
-
-        @Override
-        public void visitConstant(AST.ConstantNode n) {
-            statements.add(n);
-        }
-
-        @Override
-        public void visitTableConstruction(AST.TableConstructionNode n) {
-            statements.add(n);
-        }
-
-        @Override
         public void visitForStep(AST.ForStepNode n) {
-            statements.add(n);
-        }
-
-        @Override
-        public void visitJumpDestination(AST.JumpDestinationNode n) {
             statements.add(n);
         }
     }
