@@ -3,57 +3,111 @@ package dev.asdf00.jluavm.parsing.ir.ast;
 import dev.asdf00.jluavm.parsing.ir.ast.AST.*;
 
 public interface Visitor {
-    void visitFunctionDef(FunctionDefNode functionDefNode);
+    default void visitFunctionDef(FunctionDefNode functionDefNode) {
+        throw new IllegalStateException("visit operation has not been defined");
+    }
 
-    void visitBlock(BlockNode blockNode);
+    default void visitBlock(BlockNode blockNode) {
+        throw new IllegalStateException("visit operation has not been defined");
+    }
 
-    void visitReturn(ReturnNode returnNode);
+    default void visitReturn(ReturnNode returnNode) {
+        throw new IllegalStateException("visit operation has not been defined");
+    }
 
-    void visitError(ErrorNode errorNode);
+    default void visitError(ErrorNode errorNode) {
+        throw new IllegalStateException("visit operation has not been defined");
+    }
 
-    void visitNop(NopNode nopNode);
+    default void visitNop(NopNode nopNode) {
+        throw new IllegalStateException("visit operation has not been defined");
+    }
 
-    void visitGoto(GotoNode gotoNode);
+    default void visitGoto(GotoNode gotoNode) {
+        throw new IllegalStateException("visit operation has not been defined");
+    }
 
-    void visitLabel(LabelNode labelNode);
+    default void visitLabel(LabelNode labelNode) {
+        throw new IllegalStateException("visit operation has not been defined");
+    }
 
-    void visitWhile(WhileNode whileNode);
+    default void visitWhile(WhileNode whileNode) {
+        throw new IllegalStateException("visit operation has not been defined");
+    }
 
-    void visitIf(IfNode ifNode);
+    default void visitIf(IfNode ifNode) {
+        throw new IllegalStateException("visit operation has not been defined");
+    }
 
-    void visitDeclareLocal(LocalDeclarationNode localDeclarationNode);
+    default void visitDeclareLocal(LocalDeclarationNode localDeclarationNode) {
+        throw new IllegalStateException("visit operation has not been defined");
+    }
 
-    void visitAssignment(AssignmentNode assignmentNode);
+    default void visitAssignment(AssignmentNode assignmentNode) {
+        throw new IllegalStateException("visit operation has not been defined");
+    }
 
-    void visitEnvAccess(EnvAccessNode envAccessNode);
+    default void visitEnvAccess(EnvAccessNode envAccessNode) {
+        throw new IllegalStateException("visit operation has not been defined");
+    }
 
-    void visitAdjustNumberOfValues(AdjustNumberOfValuesNode pruneToOneValueNode);
+    default void visitAdjustNumberOfValues(AdjustNumberOfValuesNode pruneToOneValueNode) {
+        throw new IllegalStateException("visit operation has not been defined");
+    }
 
-    void visitToNumberOrFail(ToNumberOrFailNode toNumberOrFailNode);
+    default void visitToNumberOrFail(ToNumberOrFailNode toNumberOrFailNode) {
+        throw new IllegalStateException("visit operation has not been defined");
+    }
 
-    void visitFunctionCall(FunctionCallNode functionCallNode);
+    default void visitFunctionCall(FunctionCallNode functionCallNode) {
+        throw new IllegalStateException("visit operation has not been defined");
+    }
 
-    void visitOopCall(OopCallNode oopCallNode);
+    default void visitOopCall(OopCallNode oopCallNode) {
+        throw new IllegalStateException("visit operation has not been defined");
+    }
 
-    void visitIndexedAccess(IndexedAccessNode indexedAccessNode);
+    default void visitIndexedAccess(IndexedAccessNode indexedAccessNode) {
+        throw new IllegalStateException("visit operation has not been defined");
+    }
 
-    void visitLocalAccess(LocalAccessNode localAccessNode);
+    default void visitLocalAccess(LocalAccessNode localAccessNode) {
+        throw new IllegalStateException("visit operation has not been defined");
+    }
 
-    void visitOr(OrNode orNode);
+    default void visitOr(OrNode orNode) {
+        throw new IllegalStateException("visit operation has not been defined");
+    }
 
-    void visitAnd(AndNode andNode);
+    default void visitAnd(AndNode andNode) {
+        throw new IllegalStateException("visit operation has not been defined");
+    }
 
-    void visitNot(NotNode notNode);
+    default void visitNot(NotNode notNode) {
+        throw new IllegalStateException("visit operation has not been defined");
+    }
 
-    void visitBinaryOperation(BinaryOperationNode binaryOperationNode);
+    default void visitBinaryOperation(BinaryOperationNode binaryOperationNode) {
+        throw new IllegalStateException("visit operation has not been defined");
+    }
 
-    void visitUnaryOperation(UnaryOperationNode unaryOperationNode);
+    default void visitUnaryOperation(UnaryOperationNode unaryOperationNode) {
+        throw new IllegalStateException("visit operation has not been defined");
+    }
 
-    void visitConstant(ConstantNode constantNode);
+    default void visitConstant(ConstantNode constantNode) {
+        throw new IllegalStateException("visit operation has not been defined");
+    }
 
-    void visitTableConstruction(TableConstructionNode tableConstructionNode);
+    default void visitTableConstruction(TableConstructionNode tableConstructionNode) {
+        throw new IllegalStateException("visit operation has not been defined");
+    }
 
-    void visitForStep(ForStepNode forStepNode);
+    default void visitForStep(ForStepNode forStepNode) {
+        throw new IllegalStateException("visit operation has not been defined");
+    }
 
-    void visitJumpDestination(JumpDestinationNode jumpDestinationNode);
+    default void visitJumpDestination(JumpDestinationNode jumpDestinationNode) {
+        throw new IllegalStateException("visit operation has not been defined");
+    }
 }
