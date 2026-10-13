@@ -66,6 +66,19 @@ public class CfgEmitter {
         }
 
 
+        /**
+         * Ends the current cfg block and starts a fresh one to allow jumping to it. Also makes sure that this block is a simple block and thus has no
+         * if condition or branch already set up. Additonally ensures that the current block does not have a regular successor.
+         */
+        private void addContinuationToFreshBlock() {
+            assert $this.defaultSuccessor == null;
+            assert $this.ifCondition == null;
+            assert $this.branchingSuccessor == null;
+            var continuationVisitor = newNestedCfgVisitor();
+            $this.defaultSuccessor = continuationVisitor;
+            $this = continuationVisitor;
+        }
+
         private boolean isFinalized = false;
 
         public CfgNode finalize$() {
@@ -135,18 +148,8 @@ public class CfgEmitter {
 
         @Override
         public void visitLabel(AST.LabelNode n) {
-            assert $this.defaultSuccessor == null;
-            assert $this.ifCondition == null;
-            assert $this.branchingSuccessor == null;
-            var continuationVisitor = newNestedCfgVisitor();
-            $this.defaultSuccessor = continuationVisitor;
-            $this = continuationVisitor;
-            rootVisitor.$rootVisitorOnly_jumpLabels.put(n.label().pos(), continuationVisitor);
-        }
-
-        @Override
-        public void visitWhile(AST.WhileNode n) {
-            // TODO fill in
+            addContinuationToFreshBlock();
+            rootVisitor.$rootVisitorOnly_jumpLabels.put(n.label().pos(), $this);
         }
 
         @Override
@@ -176,7 +179,7 @@ public class CfgEmitter {
 
 
             var successorVisitor = newNestedCfgVisitor();
-            ifCondition = n.trueCondition();
+            $this.ifCondition = n.trueCondition();
             var trueVisitor = newNestedCfgVisitor();
             var falseVisitor = newNestedCfgVisitor();
             $this.branchingSuccessor = trueVisitor;
@@ -191,7 +194,22 @@ public class CfgEmitter {
             if (n.falseBody() != null)
                 n.falseBody().accept(falseVisitor);
 
-            $this.$this = successorVisitor;
+            $this = successorVisitor;
+        }
+
+        @Override
+        public void visitWhile(AST.WhileNode n) {
+            addContinuationToFreshBlock(); // jumps should go to $this
+            var loopStartVisitor = $this;
+            loopStartVisitor.ifCondition = n.condition(); // entry condition
+            var loopBodyVisitor = newNestedCfgVisitor();
+            loopStartVisitor.branchingSuccessor = loopBodyVisitor;
+            n.body().accept(loopBodyVisitor);
+
+            var successorVisitor = newNestedCfgVisitor();
+            assert loopStartVisitor.defaultSuccessor == null;
+            loopStartVisitor.defaultSuccessor = successorVisitor;
+            $this = successorVisitor;
         }
 
         @Override
