@@ -29,6 +29,10 @@ public class CfgNode {
         this.predecessors = new ArrayList<>();
     }
 
+    public CfgNode() {
+        this(new ArrayList<>());
+    }
+
     public void setDefaultSuccessor(CfgNode successor) {
         assert defaultSuccessor == null;
         defaultSuccessor = successor;
