@@ -23,65 +23,127 @@ public class CfgEmitter {
     private record CfgScope(CfgNode cfgNode, ArrayDeque<AST> nodesToProcess) {
     }
 
+    private static void assertCfgNodeHasNoSuccessorOrCondition(CfgNode n) {
+        assert n.ifCondition == null;
+        assert n.getBranchingSuccessor() == null;
+        assert n.getDefaultSuccessor() == null;
+    }
+
     public CfgResult emitCfg() {
-        var trackedCfgRoots = new ArrayList<CfgNode>();
-        var scopesToProcess = new Stack<CfgScope>();
-        scopesToProcess.push(new CfgScope(new CfgNode(), new ArrayDeque<>(List.of(ast.body()))));
+        // TODO make sure each case properly allows inserting a cfg block between currentCfgNode and currentCfgNode.defaultSuccessor (if that one is nonnull)
+        var functionsToEmit = new ArrayDeque<>(List.of(ast));
+        var cfgFuncRoots = new ArrayList<CfgNode>();
+        while (!functionsToEmit.isEmpty()) {
+            var currFuncRoot = functionsToEmit.removeFirst();
+            var scopesToProcess = new Stack<CfgScope>();
+            scopesToProcess.push(new CfgScope(new CfgNode(), new ArrayDeque<>(List.of(currFuncRoot.body()))));
+            cfgFuncRoots.add(scopesToProcess.peek().cfgNode);
 
-        while (!scopesToProcess.isEmpty()) {
-            var currScope = scopesToProcess.peek();
-            var currNodeQueue = currScope.nodesToProcess;
-            if (currNodeQueue.isEmpty()) { // we are done processing the current scope, return the the previous one
-                scopesToProcess.pop();
-                continue;
-            }
+            while (!scopesToProcess.isEmpty()) {
+                var currScope = scopesToProcess.peek();
+                var currNodeQueue = currScope.nodesToProcess;
+                if (currNodeQueue.isEmpty()) { // we are done processing the current scope, return the the previous one
+                    scopesToProcess.pop();
+                    continue;
+                }
 
-            var rawNode = currNodeQueue.removeFirst();
-            var currCfgNode = currScope.cfgNode;
-            switch (rawNode) {
-                case AST.FunctionDefNode n -> {
-                    var newRoot = new CfgNode();
-                    scopesToProcess.push(new CfgScope(newRoot, new ArrayDeque<>(List.of(n.body()))));
-                    trackedCfgRoots.add(newRoot);
-                    // TODO
+                var rawNode = currNodeQueue.removeFirst();
+                var currCfgNode = currScope.cfgNode;
+                switch (rawNode) {
+                    case AST.FunctionDefNode n -> { // TODO replace this node with a CfgFunctionDefNode and turn all of the record nodes into regular classes
+                        functionsToEmit.add(n);
+                    }
+                    case AST.BlockNode n -> {
+                        assert currCfgNode.ifCondition == null;
+                        assert currCfgNode.getBranchingSuccessor() == null;
+
+                        // split current cfg node into fresh pair so we can jump to here
+                        currScope = null; // currScope is no longer valid as it contains old data
+                        var existingScope = scopesToProcess.pop();
+                        var continuation = new CfgNode();
+                        scopesToProcess.push(new CfgScope(continuation, existingScope.nodesToProcess));
+                        @SuppressWarnings("UnnecessaryLocalVariable")
+                        var cfgNodeBeforeBranching = currCfgNode;
+
+                        var prevSuccessor = cfgNodeBeforeBranching.getDefaultSuccessor();
+                        if (prevSuccessor != null)
+                            continuation.setDefaultSuccessor(prevSuccessor);
+
+                        var newRoot = new CfgNode();
+                        scopesToProcess.push(new CfgScope(newRoot, new ArrayDeque<>(List.of(n.statements()))));
+                        cfgNodeBeforeBranching.setDefaultSuccessor(newRoot);
+
+                        //cfgFuncRoots.add(newRoot);
+                    }
+                    case AST.ReturnNode n -> {
+                        currCfgNode.statements.add(n);
+                    }
+                    case AST.ErrorNode n -> {
+                        currCfgNode.statements.add(n);
+                    }
+                    case AST.GotoNode n -> {
+                    }
+                    case AST.LabelNode n -> {
+                    }
+                    case AST.IfNode n -> {
+                        assertCfgNodeHasNoSuccessorOrCondition(currCfgNode);
+                        // Replace the current cfg node with a continuation, create a new scope for the true and false bodies and push them. Also link them to the continuation.
+                        // This means, push continuation first, then false body, then true body.
+
+                        var continuation = new CfgNode();
+
+
+                        // split current cfg node into fresh pair so we can jump to here
+                        currScope = null; // currScope is no longer valid as it contains old data
+                        var existingScope = scopesToProcess.pop();
+                        scopesToProcess.push(new CfgScope(continuation, existingScope.nodesToProcess));
+                        @SuppressWarnings("UnnecessaryLocalVariable")
+                        var cfgNodeBeforeBranching = currCfgNode;
+
+                        cfgNodeBeforeBranching.ifCondition = n.trueCondition();
+
+                        if (n.falseBody() != null) {
+                            var falseRoot = new CfgNode();
+                            scopesToProcess.push(new CfgScope(falseRoot, new ArrayDeque<>(List.of(n.falseBody()))));
+                            cfgNodeBeforeBranching.setDefaultSuccessor(falseRoot);
+                            falseRoot.setDefaultSuccessor(continuation);
+                        } else {
+                            cfgNodeBeforeBranching.setDefaultSuccessor(continuation);
+                        }
+
+                        assert n.trueBody() != null; // an if-statement without a true body doesnt really make sense
+                        {
+                            var trueRoot = new CfgNode();
+                            scopesToProcess.push(new CfgScope(trueRoot, new ArrayDeque<>(List.of(n.trueBody()))));
+                            cfgNodeBeforeBranching.setBranchingSuccessor(trueRoot);
+                            trueRoot.setDefaultSuccessor(continuation);
+                        }
+
+                        assert cfgNodeBeforeBranching.ifCondition != null;
+                        assert cfgNodeBeforeBranching.getBranchingSuccessor() != null;
+                        assert cfgNodeBeforeBranching.getDefaultSuccessor() != null;
+                    }
+                    case AST.WhileNode n -> {
+                    }
+                    case AST.LocalDeclarationNode n -> {
+                        currCfgNode.statements.add(n);
+                    }
+                    case AST.AssignmentNode n -> {
+                        currCfgNode.statements.add(n);
+                    }
+                    case AST.AdjustNumberOfValuesNode n -> {
+                        currCfgNode.statements.add(n);
+                    }
+                    case AST.ForStepNode n -> {
+                    }
+                    case AST.NopNode n -> {
+                    }
+                    default -> throw new IllegalStateException("Unexpected value: %s".formatted(rawNode));
                 }
-                case AST.BlockNode n -> {
-                    var newRoot = new CfgNode();
-                    scopesToProcess.push(new CfgScope(newRoot, new ArrayDeque<>(List.of(n.statements()))));
-                    trackedCfgRoots.add(newRoot);
-                }
-                case AST.ReturnNode n -> {
-                    currCfgNode.statements.add(n);
-                }
-                case AST.ErrorNode n -> {
-                    currCfgNode.statements.add(n);
-                }
-                case AST.GotoNode n -> {
-                }
-                case AST.LabelNode n -> {
-                }
-                case AST.IfNode n -> {
-                }
-                case AST.WhileNode n -> {
-                }
-                case AST.LocalDeclarationNode n -> {
-                    currCfgNode.statements.add(n);
-                }
-                case AST.AssignmentNode n -> {
-                    currCfgNode.statements.add(n);
-                }
-                case AST.AdjustNumberOfValuesNode n -> {
-                    currCfgNode.statements.add(n);
-                }
-                case AST.ForStepNode n -> {
-                }
-                case AST.NopNode n -> {
-                }
-                default -> throw new IllegalStateException("Unexpected value: %s".formatted(rawNode));
             }
         }
 
-        return new CfgResult(trackedCfgRoots.getFirst(), trackedCfgRoots.stream().skip(1).toArray(CfgNode[]::new));
+        return new CfgResult(cfgFuncRoots.getFirst(), cfgFuncRoots.stream().skip(1).toArray(CfgNode[]::new));
     }
 
 //    private static CfgNodePair createCfgFromAst(AST.FunctionDefNode defNode) {
