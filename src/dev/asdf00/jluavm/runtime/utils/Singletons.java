@@ -1,6 +1,6 @@
 package dev.asdf00.jluavm.runtime.utils;
 
-import dev.asdf00.jluavm.parsing.LocalVariable;
+import dev.asdf00.jluavm.parsing.container.LocalVariable;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 
 @SuppressWarnings("unused")

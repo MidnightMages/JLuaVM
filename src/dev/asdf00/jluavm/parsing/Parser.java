@@ -1,20 +1,18 @@
 package dev.asdf00.jluavm.parsing;
 
 import dev.asdf00.jluavm.exceptions.loading.LuaParserException;
-import dev.asdf00.jluavm.parsing.LocalVariable.LocalVariableAccessor;
+import dev.asdf00.jluavm.parsing.container.LocalVariable.LocalVariableAccessor;
 import dev.asdf00.jluavm.parsing.container.Position;
 import dev.asdf00.jluavm.parsing.container.Token;
 import dev.asdf00.jluavm.parsing.container.TokenType;
-import dev.asdf00.jluavm.parsing.ir.ast.AST;
-import dev.asdf00.jluavm.parsing.ir.ast.AST.*;
+import dev.asdf00.jluavm.parsing.ir.CFGBuilder;
+import dev.asdf00.jluavm.parsing.ir.IRElement;
+import dev.asdf00.jluavm.parsing.ir.IRElement.*;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 import dev.asdf00.jluavm.utils.Triple;
 import dev.asdf00.jluavm.utils.Tuple;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.Stack;
+import java.util.*;
 
 import static dev.asdf00.jluavm.parsing.Lexer.STARTING_POS;
 import static dev.asdf00.jluavm.parsing.container.TokenType.*;
@@ -22,6 +20,7 @@ import static dev.asdf00.jluavm.parsing.container.TokenType.*;
 public final class Parser {
     private final SymbolTable symTab;
     private final Lexer lexer;
+    private CFGBuilder cb;
     private TokenType ltok = EOF;  // TokenType of la
     private Token cur;  // current token
     private Token la;  // lookahead token
@@ -56,7 +55,7 @@ public final class Parser {
         return cur.type() == RBRAK || cur.type() == IDENT;
     }
 
-    private AST genAccess(Position pos, LocalVariableAccessor accessor, String ident) {
+    private IRElement genAccess(Position pos, LocalVariableAccessor accessor, String ident) {
         if (accessor != null) {
             return new LocalAccessNode(pos, accessor);
         }
@@ -66,7 +65,7 @@ public final class Parser {
         return new IndexedAccessNode(pos, getEnv(pos), ConstantNode.ofIdent(pos, ident));
     }
 
-    private AST getEnv(Position pos) {
+    private IRElement getEnv(Position pos) {
         if (symTab.isEnvRedeclared()) {
             return new LocalAccessNode(pos, symTab.findLocal("_ENV"));
         } else {
@@ -80,15 +79,16 @@ public final class Parser {
      * =================================================================================================================
      */
 
-    public AST parse() throws LuaParserException {
+    public void parse() throws LuaParserException {
         cur = null;
         la = lexer.next();
         lla = lexer.next();
         ltok = la.type();
-        return Chunk();
+        Chunk();
     }
 
-    private AST Chunk() {
+    private void Chunk() {
+        cb = new CFGBuilder();
         symTab.openFunctionScope(true);
         var block = Block();
         var arguments = new ArrayList<LocalVariableAccessor>();
@@ -98,27 +98,20 @@ public final class Parser {
                 Singletons.EMPTY_LOCAL_ACCESSOR_ARRAY, true, arguments.toArray(LocalVariableAccessor[]::new), block);
     }
 
-    private AST Block() {
+    private void Block() {
         Position _pos = cur == null ? STARTING_POS : cur.pos();
-        var statements = new ArrayList<AST>();
+        var statements = new ArrayList<IRElement>();
         while (STAT_START.contains(ltok)) {
-            AST s = Stat();
-            if (s != null) {
-                if (s instanceof BlockNode b && !b.isLexicalBlock()) {
-                    Collections.addAll(statements, b.statements());
-                } else {
-                    statements.add(s);
-                }
-            }
+            Stat();
         }
         if (ltok == RETURN) {
             scan();
             Position pos = cur.pos();
-            AST[] returnValues;
+            IRElement[] returnValues;
             if (EXP_START.contains(ltok)) {
                 returnValues = ExpList();
             } else {
-                returnValues = new AST[0];
+                returnValues = new IRElement[0];
             }
             if (ltok == SEMICOLON) {
                 scan();
@@ -130,15 +123,15 @@ public final class Parser {
             return statements.get(0);
         } else {
             // TODO add closing statements
-            return new BlockNode(_pos, true, statements.toArray(AST[]::new));
+            return new BlockNode(_pos, true, statements.toArray(IRElement[]::new));
         }
     }
 
     private static final EnumSet<TokenType> STAT_START = EnumSet.of(SEMICOLON, IDENT, LPAR, DCOLON, BREAK, GOTO, DO, WHILE, REPEAT, IF, FOR, FUNCTION, LOCAL,
             NIL, FALSE, TRUE, NUMERAL, LITERAL_STRING, LBRAC);
 
-    private AST Stat() {
-        AST statement;
+    private List<IRElement> Stat() {
+        IRElement statement;
         Position _pos = la.pos();
         switch (ltok) {
             case SEMICOLON -> {
@@ -152,77 +145,91 @@ public final class Parser {
                 if (!symTab.isInsideLoop()) {
                     throw new LuaParserException(_pos, "'break' is not inside a loop");
                 }
-                statement = new GotoNode(_pos, symTab.resolveBreak());
+                cb.jump(symTab.resolveBreak());
             }
             case GOTO -> {
                 scan();
                 symTab.labelNotLast();
                 check(IDENT);
-                statement = new GotoNode(_pos, symTab.resolveJump(cur.stVal()));
+                cb.jump(symTab.resolveJump(cur.stVal()));
             }
             case DCOLON -> {
                 // label
                 scan();
                 check(IDENT);
-                statement = new LabelNode(_pos, symTab.declareJumpLabel(cur.stVal()));
+                cb.label(symTab.declareJumpLabel(cur.stVal()));
                 check(DCOLON);
             }
             case DO -> {
                 scan();
                 symTab.labelNotLast();
                 symTab.openBlockScope();
-                statement = Block();
-                symTab.closeScope();
+                Block();
+                symTab.closeScope(cb);
                 check(END);
             }
             case WHILE -> {
                 scan();
                 symTab.labelNotLast();
-                AST entryCond = Exp();
+                var topLabel = symTab.declareJumpLabel(null);
+                cb.label(topLabel);
+                IRElement entryCond = Exp();
                 check(DO);
+
                 symTab.openLoopScope();
-                AST body = Block();
-                var breakLabelBox = new AST.JumpDestinationNode[1];
-                symTab.closeLoopScope(breakLabelBox); // close loop scope
+                cb.branch(entryCond);
+                cb.enterTrue();
+                Block();
+                cb.jump(topLabel);
+                cb.exitBranch();
+                var breakLabelBox = new IRElement.JumpDestinationNode[1];
+                symTab.closeLoopScope(cb, breakLabelBox); // close loop scope
+                cb.label(breakLabelBox[0]);
+
                 check(END);
-                statement = new WhileNode(_pos, entryCond, body, breakLabelBox[0]);
             }
             case REPEAT -> {
                 scan();
                 symTab.labelNotLast();
+                var topLabel = symTab.declareJumpLabel(null);
+                cb.label(topLabel);
+
                 symTab.openLoopScope();
-                AST body = Block();
+                Block();
                 check(UNTIL);
                 Position exitPos = cur.pos();
-                AST exitCond = Exp();
-                var breakLabelBox = new AST.JumpDestinationNode[1];
+                IRElement exitCond = Exp();
+                var breakLabelBox = new IRElement.JumpDestinationNode[1];
                 symTab.closeLoopScope(breakLabelBox); // close loop scope
-                statement = new WhileNode(_pos,
-                        ConstantNode.ofBoolean(_pos, true),
-                        BlockNode.append(body, new IfNode(exitPos, exitCond, new GotoNode(exitPos, breakLabelBox[0]))),
-                        breakLabelBox[0]);
+
+                cb.branch(new NotNode(exitPos, exitCond));
+                cb.enterTrue();
+                cb.jump(topLabel);
+                cb.exitBranch();
             }
             case IF -> {
                 scan();
                 symTab.labelNotLast();
-                AST condition = Exp();
+                IRElement condition = Exp();
+                cb.branch(condition);
                 check(THEN);
+                cb.enterTrue();
                 symTab.openBlockScope();
-                Position thenPos = cur.pos();
-                AST thenBlock = Block();
+                Block();
                 symTab.closeScope();
-                var elifs = new Stack<Triple<Position, AST, AST>>();
+                cb.exitBranch();
+                var elifs = new Stack<Triple<Position, IRElement, IRElement>>();
                 while (ltok == ELSEIF) {
                     scan();
                     Position elifPos = cur.pos();
-                    AST elifCond = Exp();
+                    IRElement elifCond = Exp();
                     check(THEN);
                     symTab.openBlockScope();
-                    AST elifBlock = Block();
+                    IRElement elifBlock = Block();
                     symTab.closeScope();
                     elifs.push(new Triple<>(elifPos, elifCond, elifBlock));
                 }
-                AST elseBlock = null;
+                IRElement elseBlock = null;
                 if (ltok == ELSE) {
                     scan();
                     symTab.openBlockScope();
@@ -231,7 +238,7 @@ public final class Parser {
                 }
                 check(END);
                 // nest else-ifs properly
-                AST nestedElse = elseBlock;
+                IRElement nestedElse = elseBlock;
                 while (!elifs.isEmpty()) {
                     var elif = elifs.pop();
                     nestedElse = new IfNode(elif.x(), elif.y(), elif.z(), nestedElse);
@@ -252,13 +259,13 @@ public final class Parser {
                     symTab.openBlockScope();
                     LocalVariableAccessor _internalControl = symTab.declareLocal("$internalControl$");
                     // start
-                    AST initialValue = Exp();
+                    IRElement initialValue = Exp();
                     check(COMMA);
                     // end
-                    AST upperBound = Exp();
+                    IRElement upperBound = Exp();
                     Position ubPos = la.pos();
                     LocalVariableAccessor _upperBound = symTab.declareLocal("$upperBound$");
-                    AST step;
+                    IRElement step;
                     LocalVariableAccessor _step = symTab.declareLocal("$step$");
                     if (ltok == COMMA) {
                         scan();
@@ -272,8 +279,8 @@ public final class Parser {
                     LocalVariableAccessor actualCtrlVar = symTab.declareLocal(ctrlToken.stVal(), 0);
                     check(DO);
                     Position bpos = cur.pos();
-                    AST body = Block();
-                    var breakLabelBox = new AST.JumpDestinationNode[1];
+                    IRElement body = Block();
+                    var breakLabelBox = new IRElement.JumpDestinationNode[1];
                     symTab.closeLoopScope(breakLabelBox); // close loop scope
                     symTab.closeScope(); // close scope of internal variables
                     check(END);
@@ -354,14 +361,14 @@ public final class Parser {
                     LocalVariableAccessor itrFunc = symTab.declareLocal("$iteratorFunction$");
                     LocalVariableAccessor state = symTab.declareLocal("$state$");
                     LocalVariableAccessor closing = symTab.declareLocal("$closingVariable$", 3);
-                    AST[] initials = ExpList();
+                    IRElement[] initials = ExpList();
                     check(DO);
                     final Position innerSetupPos = cur.pos();
                     symTab.openLoopScope();
                     // the first one of these is the control variable accessible to lua
                     LocalVariableAccessor[] loopVars = loopVarTokens.stream().map(t -> symTab.declareLocal(t.stVal())).toArray(LocalVariableAccessor[]::new);
-                    AST body = Block();
-                    var breakLabelBox = new AST.JumpDestinationNode[1];
+                    IRElement body = Block();
+                    var breakLabelBox = new IRElement.JumpDestinationNode[1];
                     symTab.closeLoopScope(breakLabelBox); // close loop scope
                     check(END);
                     symTab.closeScope(); // hidden vars scope
@@ -396,7 +403,7 @@ public final class Parser {
                             new LocalDeclarationNode(_pos, internalControlVar),
                             new LocalDeclarationNode(_pos, closing),
                             new AssignmentNode(_pos,
-                                    new AST[]{
+                                    new IRElement[]{
                                             new LocalAccessNode(_pos, itrFunc),
                                             new LocalAccessNode(_pos, state),
                                             new LocalAccessNode(_pos, internalControlVar),
@@ -412,7 +419,7 @@ public final class Parser {
                                                     inLoopDeclarations),
                                             new AssignmentNode(innerSetupPos,
                                                     inLoopSetupAccesses,
-                                                    new AST[]{new FunctionCallNode(innerSetupPos,
+                                                    new IRElement[]{new FunctionCallNode(innerSetupPos,
                                                             new LocalAccessNode(innerSetupPos, itrFunc),
                                                             new LocalAccessNode(innerSetupPos, state),
                                                             new LocalAccessNode(innerSetupPos, internalControlVar))}),
@@ -433,7 +440,7 @@ public final class Parser {
                 symTab.labelNotLast();
                 check(IDENT);
                 Position apos = cur.pos();
-                AST access = genAccess(cur.pos(), symTab.findLocal(cur.stVal()), cur.stVal());
+                IRElement access = genAccess(cur.pos(), symTab.findLocal(cur.stVal()), cur.stVal());
                 while (ltok == DOT) {
                     scan();
                     check(IDENT);
@@ -446,7 +453,7 @@ public final class Parser {
                     check(IDENT);
                     access = new IndexedAccessNode(cur.pos(), access, ConstantNode.of(cur));
                 }
-                AST func = FuncBody(hasSelf);
+                IRElement func = FuncBody(hasSelf);
                 statement = new AssignmentNode(apos, access, func);
             }
             case LOCAL -> {
@@ -457,7 +464,7 @@ public final class Parser {
                     check(IDENT);
                     Position namePos = cur.pos();
                     LocalVariableAccessor funcVar = symTab.declareLocal(cur.stVal());
-                    AST function = FuncBody(false);
+                    IRElement function = FuncBody(false);
                     // insert a fake write to correctly apply upvalue capturing semantics
                     funcVar.getVariable().setWritten(namePos);
                     statement = new BlockNode(_pos, false,
@@ -476,7 +483,7 @@ public final class Parser {
                         attributes = Attrib();
                         localList.add(new Tuple<>(locVar, attributes));
                     }
-                    AST[] expressions;
+                    IRElement[] expressions;
                     Position apos;
                     if (ltok == ASSIGN) {
                         scan();
@@ -485,10 +492,10 @@ public final class Parser {
                     } else {
                         // this is a pure declaration
                         apos = _pos;
-                        expressions = new AST[0];
+                        expressions = new IRElement[0];
                     }
-                    var localAccesses = new AST[localList.size()];
-                    var operations = new AST[localList.size() + 1];
+                    var localAccesses = new IRElement[localList.size()];
+                    var operations = new IRElement[localList.size() + 1];
                     for (int i = 0; i < localAccesses.length; i++) {
                         Tuple<Token, Integer> localDefinition = localList.get(i);
                         Position lPos = localDefinition.x().pos();
@@ -505,6 +512,7 @@ public final class Parser {
             case IDENT, LPAR, NIL, FALSE, TRUE, NUMERAL, LITERAL_STRING, LBRAC -> {
                 symTab.labelNotLast();
                 statement = StatExp();
+                cb.statement(statement);
             }
             default -> throw new InternalLuaParsingError("unexpected statement start '%s'".formatted(ltok.name()));
         }
@@ -531,8 +539,8 @@ public final class Parser {
     // private static final EnumSet<TokenType> DEREF_OR_FUNCCALL_START = EnumSet.of(LBRAK, DOT,
     // COLON, LPAR, LITERAL_STRING, LBRAC);
 
-    private AST StatExp() {
-        AST result;
+    private IRElement StatExp() {
+        IRElement result;
         if (ltok == LPAR) {
             scan();
             result = Exp();
@@ -563,11 +571,11 @@ public final class Parser {
             }
         }
         if (isAssignable()) {
-            var assignTargets = new ArrayList<AST>();
+            var assignTargets = new ArrayList<IRElement>();
             assignTargets.add(result);
             while (ltok == COMMA) {
                 scan();
-                AST assignAccess = OopValExp();
+                IRElement assignAccess = OopValExp();
                 assignTargets.add(assignAccess);
                 if (!isAssignable()) {
                     throw new LuaParserException(la.pos(), "Expected <%s>, got <%s>".formatted(DOT.rep, ltok.rep));
@@ -575,8 +583,8 @@ public final class Parser {
             }
             check(ASSIGN);
             Position apos = cur.pos();
-            AST[] expressions = ExpList();
-            result = new AssignmentNode(apos, assignTargets.toArray(AST[]::new), expressions);
+            IRElement[] expressions = ExpList();
+            result = new AssignmentNode(apos, assignTargets.toArray(IRElement[]::new), expressions);
         } else {
             if (result instanceof AdjustNumberOfValuesNode adjustNode && (adjustNode.multivalue() instanceof FunctionCallNode || adjustNode.multivalue() instanceof OopCallNode)) {
                 // if a function call is a statement, we drop the return values instead of pruning
@@ -589,9 +597,9 @@ public final class Parser {
         return result;
     }
 
-    private AST OopValExp() {
+    private IRElement OopValExp() {
         if (OOP_CALLABLE_LITERAL_START.contains(ltok)) {
-            AST result = OopCallableLiteral();
+            IRElement result = OopCallableLiteral();
             if (ltok == COLON) {
                 result = OopFuncCall(result);
                 loop:
@@ -611,8 +619,8 @@ public final class Parser {
         }
     }
 
-    private AST ValExp() {
-        AST result;
+    private IRElement ValExp() {
+        IRElement result;
         if (ltok == LPAR) {
             scan();
             result = Exp();
@@ -636,8 +644,8 @@ public final class Parser {
         return result;
     }
 
-    private AST DeRef(AST target) {
-        AST index;
+    private IRElement DeRef(IRElement target) {
+        IRElement index;
         if (ltok == LBRAK) {
             scan();
             index = Exp();
@@ -650,9 +658,9 @@ public final class Parser {
         return new IndexedAccessNode(target.pos(), target, index);
     }
 
-    private AST FuncCall(AST callable) {
-        AST object = null;
-        AST func = callable;
+    private IRElement FuncCall(IRElement callable) {
+        IRElement object = null;
+        IRElement func = callable;
         if (ltok == COLON) {
             scan();
             object = callable;
@@ -660,7 +668,7 @@ public final class Parser {
             func = ConstantNode.of(cur);
         }
         Position pos = la.pos();
-        AST[] args = Args();
+        IRElement[] args = Args();
         // _ENV is passed for type extension functions on OOP calls
         // per default, return values are adjusted to 1; this may be stripped later
         return new AdjustNumberOfValuesNode(1, object == null
@@ -668,20 +676,20 @@ public final class Parser {
                 : new OopCallNode(pos, getEnv(pos), object, func, args));
     }
 
-    private AST OopFuncCall(AST object) {
+    private IRElement OopFuncCall(IRElement object) {
         check(COLON);
         // code gen in FunctionCallNode relies on this being a constant ident
         check(IDENT);
-        AST callable = ConstantNode.of(cur);
+        IRElement callable = ConstantNode.of(cur);
         Position pos = la.pos();
-        AST[] args = Args();
+        IRElement[] args = Args();
         // _ENV is passed for type extension functions on OOP calls
         return new AdjustNumberOfValuesNode(pos, 1,
                 new OopCallNode(pos, getEnv(pos), object, callable, args));
     }
 
-    private AST[] ExpList() {
-        var expressions = new ArrayList<AST>();
+    private IRElement[] ExpList() {
+        var expressions = new ArrayList<IRElement>();
         expressions.add(Exp());
         while (ltok == COMMA) {
             scan();
@@ -693,39 +701,39 @@ public final class Parser {
             assert adjustment.requested() == 1 : "an expression should always prune itself to exactly 1 value";
             expressions.set(expressions.size() - 1, adjustment.multivalue());
         }
-        return expressions.toArray(AST[]::new);
+        return expressions.toArray(IRElement[]::new);
     }
 
     private static final EnumSet<TokenType> EXP_START = EnumSet.of(NIL, FALSE, TRUE, NUMERAL, LITERAL_STRING, TDOT,
             FUNCTION, LPAR, IDENT, NOT, HASH, SUB, BXOR, LBRAC);
 
-    private AST Exp() {
+    private IRElement Exp() {
         // or
-        AST result = BinOp1();
+        IRElement result = BinOp1();
         while (ltok == OR) {
             scan();
             Position pos = cur.pos();
-            AST y = BinOp1();
+            IRElement y = BinOp1();
             result = new OrNode(pos, result, y);
         }
         return result;
     }
 
-    private AST BinOp1() {
+    private IRElement BinOp1() {
         // and
-        AST result = BinOp2();
+        IRElement result = BinOp2();
         while (ltok == AND) {
             scan();
             Position pos = cur.pos();
-            AST y = BinOp2();
+            IRElement y = BinOp2();
             result = new AndNode(pos, result, y);
         }
         return result;
     }
 
-    private AST BinOp2() {
+    private IRElement BinOp2() {
         // < > <= >= ~= ==
-        AST result = BinOp3();
+        IRElement result = BinOp3();
         loop:
         for (; ; ) {
             Position opPos = la.pos();
@@ -733,7 +741,7 @@ public final class Parser {
                 case LT, GT, LE, GE -> {
                     var op = ltok;
                     scan();
-                    AST y = BinOp3();
+                    IRElement y = BinOp3();
                     result = switch (op) {
                         case GT -> new BinaryOperationNode(opPos, LT, y, result);
                         case GE -> new BinaryOperationNode(opPos, LE, y, result);
@@ -743,7 +751,7 @@ public final class Parser {
                 case EQ, NE -> {
                     var op = ltok;
                     scan();
-                    AST y = BinOp3();
+                    IRElement y = BinOp3();
                     result = new BinaryOperationNode(opPos, EQ, result, y);
                     if (op == NE) {
                         result = new NotNode(opPos, result);
@@ -757,76 +765,76 @@ public final class Parser {
         return result;
     }
 
-    private AST BinOp3() {
+    private IRElement BinOp3() {
         // |
-        AST result = BinOp4();
+        IRElement result = BinOp4();
         while (ltok == BOR) {
             scan();
             Position pos = cur.pos();
-            AST y = BinOp4();
+            IRElement y = BinOp4();
             result = new BinaryOperationNode(pos, BOR, result, y);
         }
         return result;
     }
 
-    private AST BinOp4() {
+    private IRElement BinOp4() {
         // ~
-        AST result = BinOp5();
+        IRElement result = BinOp5();
         while (ltok == BXOR) {
             scan();
             Position pos = cur.pos();
-            AST y = BinOp5();
+            IRElement y = BinOp5();
             result = new BinaryOperationNode(pos, BXOR, result, y);
         }
         return result;
     }
 
-    private AST BinOp5() {
+    private IRElement BinOp5() {
         // &
-        AST result = BinOp6();
+        IRElement result = BinOp6();
         while (ltok == BAND) {
             scan();
             Position pos = cur.pos();
-            AST y = BinOp6();
+            IRElement y = BinOp6();
             result = new BinaryOperationNode(pos, BAND, result, y);
         }
         return result;
     }
 
-    private AST BinOp6() {
+    private IRElement BinOp6() {
         // << >>
-        AST result = BinOp7();
+        IRElement result = BinOp7();
         while (ltok == SHL || ltok == SHR) {
             var op = ltok;
             scan();
             Position pos = cur.pos();
-            AST y = BinOp7();
+            IRElement y = BinOp7();
             result = new BinaryOperationNode(pos, op, result, y);
         }
         return result;
     }
 
-    private AST BinOp7() {
+    private IRElement BinOp7() {
         // ..
-        AST result = BinOp8();
+        IRElement result = BinOp8();
         while (ltok == DDOT) {
             scan();
             Position pos = cur.pos();
-            AST y = BinOp8();
+            IRElement y = BinOp8();
             result = new BinaryOperationNode(pos, DDOT, result, y);
         }
         return result;
     }
 
-    private AST BinOp8() {
+    private IRElement BinOp8() {
         // + -
-        AST result = BinOp9();
+        IRElement result = BinOp9();
         for (; ; ) {
             if (ltok == ADD || ltok == SUB) {
                 var op = ltok;
                 scan();
                 Position pos = cur.pos();
-                AST y = BinOp9();
+                IRElement y = BinOp9();
                 result = new BinaryOperationNode(pos, op, result, y);
             } else {
                 break;
@@ -835,9 +843,9 @@ public final class Parser {
         return result;
     }
 
-    private AST BinOp9() {
+    private IRElement BinOp9() {
         // * / // %
-        AST result = UnOp();
+        IRElement result = UnOp();
         loop:
         for (; ; ) {
             switch (ltok) {
@@ -845,7 +853,7 @@ public final class Parser {
                     var op = ltok;
                     scan();
                     Position pos = cur.pos();
-                    AST y = UnOp();
+                    IRElement y = UnOp();
                     result = new BinaryOperationNode(pos, op, result, y);
                 }
                 default -> {
@@ -856,7 +864,7 @@ public final class Parser {
         return result;
     }
 
-    private AST UnOp() {
+    private IRElement UnOp() {
         // not # - ~
         var opList = new Stack<Tuple<Position, TokenType>>();
         loop:
@@ -871,7 +879,7 @@ public final class Parser {
                 }
             }
         }
-        AST result = BinOp10();
+        IRElement result = BinOp10();
         while (!opList.isEmpty()) {
             Tuple<Position, TokenType> op = opList.pop();
             result = switch (op.y()) {
@@ -883,19 +891,19 @@ public final class Parser {
         return result;
     }
 
-    private AST BinOp10() {
+    private IRElement BinOp10() {
         // ^
-        AST result = TermExp();
+        IRElement result = TermExp();
         while (ltok == EXPONENT) {
             scan();
             Position pos = cur.pos();
-            AST y = TermExp();
+            IRElement y = TermExp();
             result = new BinaryOperationNode(pos, EXPONENT, result, y);
         }
         return result;
     }
 
-    private AST TermExp() {
+    private IRElement TermExp() {
         // constants, funcdef or ValExp
         switch (ltok) {
             case TDOT -> {
@@ -918,7 +926,7 @@ public final class Parser {
 
     private static final EnumSet<TokenType> OOP_CALLABLE_LITERAL_START = EnumSet.of(NIL, TRUE, FALSE, NUMERAL, LITERAL_STRING, LBRAC);
 
-    private AST OopCallableLiteral() {
+    private IRElement OopCallableLiteral() {
         switch (ltok) {
             case NIL, TRUE, FALSE, NUMERAL, LITERAL_STRING -> {
                 scan();
@@ -933,7 +941,7 @@ public final class Parser {
         }
     }
 
-    private AST FuncBody(boolean hasSelf) {
+    private IRElement FuncBody(boolean hasSelf) {
         check(LPAR);
         Token selfPlaceholder = null;
         if (hasSelf) {
@@ -952,7 +960,7 @@ public final class Parser {
         Position _pos = cur.pos();
         boolean hasParamsArg = !ps.isEmpty() && ps.get(ps.size() - 1).type() == TDOT;
         symTab.openFunctionScope(hasParamsArg, ps.stream().map(tk -> tk.type() == TDOT ? "..." : tk.stVal()).toArray(String[]::new));
-        AST body = Block();
+        IRElement body = Block();
         var arguments = new ArrayList<LocalVariableAccessor>();
         var captures = new ArrayList<LocalVariableAccessor>();
         symTab.closeFunctionScope(arguments, captures);
@@ -986,29 +994,29 @@ public final class Parser {
     @SuppressWarnings("unused")
     private static final EnumSet<TokenType> ARGS_START = EnumSet.of(LPAR, LITERAL_STRING, LBRAC);
 
-    private AST[] Args() {
-        AST[] result;
+    private IRElement[] Args() {
+        IRElement[] result;
         if (ltok == LPAR) {
             scan();
             if (EXP_START.contains(ltok)) {
                 result = ExpList();
             } else {
-                result = new AST[0];
+                result = new IRElement[0];
             }
             check(RPAR);
         } else if (ltok == LITERAL_STRING) {
             scan();
-            result = new AST[]{ConstantNode.of(cur)};
+            result = new IRElement[]{ConstantNode.of(cur)};
         } else {
-            result = new AST[]{TableConstructor()};
+            result = new IRElement[]{TableConstructor()};
         }
         return result;
     }
 
-    private AST TableConstructor() {
+    private IRElement TableConstructor() {
         check(LBRAC);
         Position tpos = cur.pos();
-        ArrayList<Tuple<AST, AST>> keyVals;
+        ArrayList<Tuple<IRElement, IRElement>> keyVals;
         if (ltok == RBRAC) {
             scan();
             keyVals = new ArrayList<>();
@@ -1016,7 +1024,7 @@ public final class Parser {
             keyVals = FieldList();
         }
         // reorder so that the keyless args are last and have ascending integer indices
-        var keylessList = new ArrayList<Tuple<AST, AST>>();
+        var keylessList = new ArrayList<Tuple<IRElement, IRElement>>();
         for (int i = 0; i < keyVals.size(); ) {
             var field = keyVals.get(i);
             if (field.x() == null) {
@@ -1033,8 +1041,8 @@ public final class Parser {
         return new TableConstructionNode(tpos, keyVals.toArray(Tuple[]::new));
     }
 
-    private ArrayList<Tuple<AST, AST>> FieldList() {
-        var fieldList = new ArrayList<Tuple<AST, AST>>();
+    private ArrayList<Tuple<IRElement, IRElement>> FieldList() {
+        var fieldList = new ArrayList<Tuple<IRElement, IRElement>>();
         fieldList.add(Field());
         while ((ltok == COMMA || ltok == SEMICOLON) && lla.type() != RBRAC) {
             FieldSep();
@@ -1047,8 +1055,8 @@ public final class Parser {
         return fieldList;
     }
 
-    private Tuple<AST, AST> Field() {
-        AST key, value;
+    private Tuple<IRElement, IRElement> Field() {
+        IRElement key, value;
         if (ltok == LBRAK) {
             scan();
             key = Exp();

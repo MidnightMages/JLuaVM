@@ -1,8 +1,10 @@
 package dev.asdf00.jluavm.parsing;
 
-import dev.asdf00.jluavm.parsing.LocalVariable.LocalVariableAccessor;
+import dev.asdf00.jluavm.parsing.container.LocalVariable;
+import dev.asdf00.jluavm.parsing.container.LocalVariable.LocalVariableAccessor;
 import dev.asdf00.jluavm.parsing.container.Position;
-import dev.asdf00.jluavm.parsing.ir.ast.AST;
+import dev.asdf00.jluavm.parsing.ir.CFGBuilder;
+import dev.asdf00.jluavm.parsing.ir.IRElement;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -47,7 +49,7 @@ public class SymbolTable {
      * =================================================================================================================
      */
 
-    public AST.JumpDestinationNode resolveBreak() {
+    public IRElement.JumpDestinationNode resolveBreak() {
         // this method assumes that we already verified that we are in fact in a loop
         var c = cur;
         while (!(c instanceof BlockScope b && b.isLoop)) {
@@ -56,7 +58,7 @@ public class SymbolTable {
         return b.breakLabel;
     }
 
-    public AST.JumpDestinationNode resolveJump(String name) {
+    public IRElement.JumpDestinationNode resolveJump(String name) {
         // TODO
         throw new UnsupportedOperationException("goto is not supported yet");
     }
@@ -65,7 +67,7 @@ public class SymbolTable {
         // TODO
     }
 
-    public AST.JumpDestinationNode declareJumpLabel(String name) {
+    public IRElement.JumpDestinationNode declareJumpLabel(String name) {
         // TODO
         throw new UnsupportedOperationException("jump labels are not supported yet");
     }
@@ -76,19 +78,19 @@ public class SymbolTable {
      * =================================================================================================================
      */
 
-    public LocalVariableAccessor[] closeScope() {
-        return closeScope(null, null, null);
+    public LocalVariableAccessor[] closeScope(CFGBuilder cb) {
+        return closeScope(cb, null, null, null);
     }
 
-    public LocalVariableAccessor[] closeFunctionScope(List<LocalVariableAccessor> functionArguments, List<LocalVariableAccessor> captured) {
-        return closeScope(functionArguments, captured, null);
+    public LocalVariableAccessor[] closeFunctionScope(CFGBuilder cb, List<LocalVariableAccessor> functionArguments, List<LocalVariableAccessor> captured) {
+        return closeScope(cb, functionArguments, captured, null);
     }
 
-    public LocalVariableAccessor[] closeLoopScope(AST.JumpDestinationNode[] breakLabelBox) {
-        return closeScope(null, null, breakLabelBox);
+    public LocalVariableAccessor[] closeLoopScope(CFGBuilder cb, IRElement.JumpDestinationNode[] breakLabelBox) {
+        return closeScope(cb, null, null, breakLabelBox);
     }
 
-    public LocalVariableAccessor[] closeScope(List<LocalVariableAccessor> functionArguments, List<LocalVariableAccessor> captured, AST.JumpDestinationNode[] breakLabelBox) {
+    public LocalVariableAccessor[] closeScope(CFGBuilder cb, List<LocalVariableAccessor> functionArguments, List<LocalVariableAccessor> captured, IRElement.JumpDestinationNode[] breakLabelBox) {
         var locals = new ArrayList<LocalVariableAccessor>();
         while (cur instanceof VariableScope varScope) {
             // close variable
@@ -141,7 +143,7 @@ public class SymbolTable {
         final Scope parent;
         final boolean redeclaredEnv;
         final int localCnt;
-        final ArrayList<AST.JumpDestinationNode> labels;
+        final ArrayList<IRElement.JumpDestinationNode> labels;
 
         Scope(Scope parent, boolean redeclaredEnv, int localCnt) {
             this.parent = parent;
@@ -156,8 +158,8 @@ public class SymbolTable {
 
         abstract LocalVariableAccessor findVar(String name, boolean crossedFuncBorder);
 
-        AST.JumpDestinationNode declareNamedLabel(String name) {
-            var label = new AST.JumpDestinationNode(Position.UNKNOWN);
+        IRElement.JumpDestinationNode declareNamedLabel(String name) {
+            var label = new IRElement.JumpDestinationNode(Position.UNKNOWN);
             labels.add(label);
             return label;
         }
@@ -236,7 +238,7 @@ public class SymbolTable {
     private static final class BlockScope extends Scope {
         final boolean isLoop;
 
-        AST.JumpDestinationNode breakLabel = new AST.JumpDestinationNode(Position.UNKNOWN);
+        IRElement.JumpDestinationNode breakLabel = new IRElement.JumpDestinationNode(Position.UNKNOWN);
 
         BlockScope(Scope parent, boolean isLoop) {
             super(parent, parent.redeclaredEnv, parent.localCnt);

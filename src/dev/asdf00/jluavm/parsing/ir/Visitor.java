@@ -1,6 +1,6 @@
-package dev.asdf00.jluavm.parsing.ir.ast;
+package dev.asdf00.jluavm.parsing.ir;
 
-import dev.asdf00.jluavm.parsing.ir.ast.AST.*;
+import dev.asdf00.jluavm.parsing.ir.IRElement.*;
 
 public interface Visitor {
     void visitFunctionDef(FunctionDefNode functionDefNode);

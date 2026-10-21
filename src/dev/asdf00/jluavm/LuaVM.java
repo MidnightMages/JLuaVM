@@ -6,7 +6,7 @@ import dev.asdf00.jluavm.exceptions.loading.InternalLuaLoadingError;
 import dev.asdf00.jluavm.parsing.CompilationState;
 import dev.asdf00.jluavm.parsing.Parser;
 import dev.asdf00.jluavm.parsing.ir.IRFunction;
-import dev.asdf00.jluavm.parsing.ir.ast.AST;
+import dev.asdf00.jluavm.parsing.ir.IRElement;
 import dev.asdf00.jluavm.runtime.types.AbstractGeneratedLuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
@@ -91,7 +91,7 @@ public abstract class LuaVM {
             synchronized (COMPILATION_CACHE_LOCK_OBJ) {
                 cachedCtor = COMPILATION_CACHE.getOrDefault(code, null);
                 if (cachedCtor == null) {
-                    AST rootFunc = new Parser(code).parse();
+                    IRElement rootFunc = new Parser(code).parse();
                     var javaIntermediateCode = new CompilationState(new Supplier<>() {
                         private int cnt = 0;
 
@@ -118,7 +118,7 @@ public abstract class LuaVM {
         if (_ENV == null) {
             throw new InternalLuaLoadingError("got invalid _ENV");
         }
-        AST rootFunc = new Parser(code).parse();
+        IRElement rootFunc = new Parser(code).parse();
 
         // TODO build Lua function from AST
     }

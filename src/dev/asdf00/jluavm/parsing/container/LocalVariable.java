@@ -1,7 +1,6 @@
-package dev.asdf00.jluavm.parsing;
+package dev.asdf00.jluavm.parsing.container;
 
 import dev.asdf00.jluavm.exceptions.loading.LuaParserException;
-import dev.asdf00.jluavm.parsing.container.Position;
 
 public class LocalVariable {
     public final String name;
