@@ -1,10 +1,10 @@
 package dev.asdf00.jluavm.parser;
 
+import dev.asdf00.jluavm.exceptions.loading.LuaLexerException;
+import dev.asdf00.jluavm.exceptions.loading.LuaParserException;
 import dev.asdf00.jluavm.exceptions.loading.LuaSemanticException;
 import dev.asdf00.jluavm.parsing.Parser;
 import dev.asdf00.jluavm.parsing.SymTable;
-import dev.asdf00.jluavm.exceptions.loading.LuaLexerException;
-import dev.asdf00.jluavm.exceptions.loading.LuaParserException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -12,7 +12,8 @@ import java.util.function.Supplier;
 
 import static dev.asdf00.jluavm.Constants.largeValidLuaProgram;
 import static dev.asdf00.jluavm.Util.expandOptions;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class ParserTest {
 
@@ -33,8 +34,7 @@ public class ParserTest {
             var m = rscope.getClass().getDeclaredMethod("toFullString");
             m.setAccessible(true);
             return (String) m.invoke(rscope);
-        }
-        catch (ReflectiveOperationException e) {
+        } catch (ReflectiveOperationException e) {
             throw new RuntimeException(e);
         }
     }
@@ -141,13 +141,13 @@ public class ParserTest {
                 "goto\ntest"
         };
         for (var s : semanticSnippets)
-            assertThrows(LuaSemanticException.class,() -> parse(s), "Testcode: " + s);
+            assertThrows(LuaSemanticException.class, () -> parse(s), "Testcode: " + s);
 
         var lexerSnippets = new String[]{
                 "::1aaa,end::"
         };
         for (var s : lexerSnippets)
-            assertThrows(LuaLexerException.class,() -> parse(s), "Testcode: " + s);
+            assertThrows(LuaLexerException.class, () -> parse(s), "Testcode: " + s);
     }
 
     @Test
@@ -166,10 +166,8 @@ public class ParserTest {
     void assertThrowsLexerOrParserException(Runnable r, Supplier<String> err) {
         try {
             r.run();
-        }
-        catch (LuaLexerException | LuaParserException ignored) {
-        }
-        catch (Exception ex) {
+        } catch (LuaLexerException | LuaParserException ignored) {
+        } catch (Exception ex) {
             Assertions.fail(err.get(), ex);
         }
     }
@@ -239,7 +237,6 @@ public class ParserTest {
     }
 
 
-
     @Test
     void forbiddenVararg() {
         assertThrows(LuaSemanticException.class, () -> parse("""
@@ -271,5 +268,38 @@ public class ParserTest {
                 this is an evil but valid comment[[
                 ]]
                 """);
+    }
+
+    @Test
+    void repeatUntilGotoLocalScope() {
+        // jumping to label "continue" is not allowed as the condition x>3 would rely on local x which was skipped by the gotos
+        assertThrows(LuaParserException.class, () -> parse("""
+                local c = 0
+                repeat
+                    c = c + 1
+                    if c == 2 then
+                        goto continue
+                    end
+                    local x = c + 1
+                    print (x)
+                    ::continue::
+                until x > 3
+                """));
+    }
+
+    @Test
+    void returnGotoLocalScope() {
+        // jumping to label "continue" is not allowed as the return x would rely on local x which was skipped by the gotos
+        assertThrows(LuaParserException.class, () -> parse("""
+                local c = 0
+                c = c + 1
+                if c == 2 then
+                    goto continue
+                end
+                local x = c + 1
+                print (x)
+                ::continue::
+                return x
+                """));
     }
 }
