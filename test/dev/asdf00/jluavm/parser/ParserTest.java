@@ -302,4 +302,12 @@ public class ParserTest {
                 return x
                 """));
     }
+
+    @Test
+    void multiDeclarationMultipleClosables() {
+        // Lua only allows one closable per declaration
+        assertThrows(LuaSemanticException.class, () -> parse("""
+                local a <close>, b <close> = false, false
+                """));
+    }
 }
