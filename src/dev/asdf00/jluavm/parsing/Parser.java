@@ -1,6 +1,8 @@
 package dev.asdf00.jluavm.parsing;
 
 import dev.asdf00.jluavm.exceptions.loading.LuaParserException;
+import dev.asdf00.jluavm.exceptions.loading.LuaSemanticException;
+import dev.asdf00.jluavm.parsing.container.LocalVariable;
 import dev.asdf00.jluavm.parsing.container.LocalVariable.LocalVariableAccessor;
 import dev.asdf00.jluavm.parsing.container.Position;
 import dev.asdf00.jluavm.parsing.container.Token;
@@ -9,7 +11,8 @@ import dev.asdf00.jluavm.parsing.ir.CFGBuilder;
 import dev.asdf00.jluavm.parsing.ir.IRElement;
 import dev.asdf00.jluavm.parsing.ir.IRElement.*;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
-import dev.asdf00.jluavm.utils.Triple;
+import dev.asdf00.jluavm.parsing.ir.ControlFlowGraph;
+import dev.asdf00.jluavm.parsing.ir.JumpLabel;
 import dev.asdf00.jluavm.utils.Tuple;
 
 import java.util.*;
@@ -73,38 +76,56 @@ public final class Parser {
         }
     }
 
+    /**
+     * Emits the initial assignment of freshly declared locals, of which at most one may be to-be-closed. The value of
+     * the to-be-closed variable is checked for closability right after the assignment.
+     */
+    private void genAssignLocals(Position apos, LocalAccessNode[] targets, IRElement[] expressions) {
+        cb.statement(new AssignmentNode(apos, targets, expressions));
+        if (expressions.length == 0) {
+            // all locals are nil, which is closable
+            return;
+        }
+        for (var target : targets) {
+            if (target.local.getVariable().isClosable) {
+                cb.statement(new CheckClosableNode(target.pos, target.local));
+            }
+        }
+    }
+
     /*-
      * =================================================================================================================
      *    PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING   PARSING
      * =================================================================================================================
      */
 
-    public void parse() throws LuaParserException {
+    public FunctionDefNode parse() throws LuaParserException {
         cur = null;
         la = lexer.next();
         lla = lexer.next();
         ltok = la.type();
-        Chunk();
+        return Chunk();
     }
 
-    private void Chunk() {
-        cb = new CFGBuilder();
+    private FunctionDefNode Chunk() {
+        var outerCb = cb;
+        cb = new CFGBuilder(true);
         symTab.openFunctionScope(true);
-        var block = Block();
-        var arguments = new ArrayList<LocalVariableAccessor>();
-        symTab.closeFunctionScope(arguments, null);
+        Block();
+        var closed = symTab.closeFunctionScope(cb);
+        assert closed.captures().length == 0 : "chunk must not capture anything";
         check(EOF);
-        return new FunctionDefNode(new Position(0, 0, 0), true,
-                Singletons.EMPTY_LOCAL_ACCESSOR_ARRAY, true, arguments.toArray(LocalVariableAccessor[]::new), block);
+        ControlFlowGraph cfg = cb.finish(cur.pos());
+        cb = outerCb;
+        return new FunctionDefNode(STARTING_POS, true, Singletons.EMPTY_LOCAL_ACCESSOR_ARRAY, closed.arguments(), cfg);
     }
 
     private void Block() {
-        Position _pos = cur == null ? STARTING_POS : cur.pos();
-        var statements = new ArrayList<IRElement>();
         while (STAT_START.contains(ltok)) {
             Stat();
         }
         if (ltok == RETURN) {
+            symTab.labelNotLast(cb);
             scan();
             Position pos = cur.pos();
             IRElement[] returnValues;
@@ -117,52 +138,45 @@ public final class Parser {
                 scan();
             }
             // TODO check for tailcalls on the last return value
-            statements.add(new ReturnNode(pos, returnValues));
-        }
-        if (statements.size() == 1 /* TODO && !hasClosableVars */) {
-            return statements.get(0);
-        } else {
-            // TODO add closing statements
-            return new BlockNode(_pos, true, statements.toArray(IRElement[]::new));
+            cb.ret(pos, returnValues, symTab.closablesInFunction());
         }
     }
 
     private static final EnumSet<TokenType> STAT_START = EnumSet.of(SEMICOLON, IDENT, LPAR, DCOLON, BREAK, GOTO, DO, WHILE, REPEAT, IF, FOR, FUNCTION, LOCAL,
             NIL, FALSE, TRUE, NUMERAL, LITERAL_STRING, LBRAC);
 
-    private List<IRElement> Stat() {
-        IRElement statement;
+    private void Stat() {
         Position _pos = la.pos();
+        if (ltok != SEMICOLON && ltok != DCOLON) {
+            // labels directly followed by this statement are not at the end of their block
+            symTab.labelNotLast(cb);
+        }
         switch (ltok) {
             case SEMICOLON -> {
                 // nop
                 scan();
-                statement = new NopNode(_pos);
             }
             case BREAK -> {
                 scan();
-                symTab.labelNotLast();
                 if (!symTab.isInsideLoop()) {
                     throw new LuaParserException(_pos, "'break' is not inside a loop");
                 }
-                cb.jump(symTab.resolveBreak());
+                cb.jump(symTab.resolveBreak(), symTab.closablesUntilLoop());
             }
             case GOTO -> {
                 scan();
-                symTab.labelNotLast();
                 check(IDENT);
-                cb.jump(symTab.resolveJump(cur.stVal()));
+                symTab.resolveJump(cb, cur.stVal(), cur.pos());
             }
             case DCOLON -> {
                 // label
                 scan();
                 check(IDENT);
-                cb.label(symTab.declareJumpLabel(cur.stVal()));
+                symTab.declareJumpLabel(cur.stVal(), cur.pos());
                 check(DCOLON);
             }
             case DO -> {
                 scan();
-                symTab.labelNotLast();
                 symTab.openBlockScope();
                 Block();
                 symTab.closeScope(cb);
@@ -170,87 +184,79 @@ public final class Parser {
             }
             case WHILE -> {
                 scan();
-                symTab.labelNotLast();
-                var topLabel = symTab.declareJumpLabel(null);
+                var topLabel = new JumpLabel(_pos);
                 cb.label(topLabel);
                 IRElement entryCond = Exp();
                 check(DO);
 
-                symTab.openLoopScope();
                 cb.branch(entryCond);
                 cb.enterTrue();
+                symTab.openLoopScope();
                 Block();
+                JumpLabel breakLabel = symTab.closeLoopScope(cb);
                 cb.jump(topLabel);
                 cb.exitBranch();
-                var breakLabelBox = new IRElement.JumpDestinationNode[1];
-                symTab.closeLoopScope(cb, breakLabelBox); // close loop scope
-                cb.label(breakLabelBox[0]);
+                cb.label(breakLabel);
 
                 check(END);
             }
             case REPEAT -> {
                 scan();
-                symTab.labelNotLast();
-                var topLabel = symTab.declareJumpLabel(null);
+                var topLabel = new JumpLabel(_pos);
                 cb.label(topLabel);
 
                 symTab.openLoopScope();
                 Block();
                 check(UNTIL);
-                Position exitPos = cur.pos();
+                // the exit condition follows any label at the end of the loop body
+                symTab.labelNotLast(cb);
                 IRElement exitCond = Exp();
-                var breakLabelBox = new IRElement.JumpDestinationNode[1];
-                symTab.closeLoopScope(breakLabelBox); // close loop scope
 
-                cb.branch(new NotNode(exitPos, exitCond));
+                // variables of the loop body are still visible in the exit condition, so the loop is left like a break
+                cb.branch(exitCond);
                 cb.enterTrue();
-                cb.jump(topLabel);
+                cb.jump(symTab.resolveBreak(), symTab.closablesUntilLoop());
                 cb.exitBranch();
+                JumpLabel breakLabel = symTab.closeLoopScope(cb);
+                cb.jump(topLabel);
+                cb.label(breakLabel);
             }
             case IF -> {
                 scan();
-                symTab.labelNotLast();
                 IRElement condition = Exp();
-                cb.branch(condition);
                 check(THEN);
+                cb.branch(condition);
                 cb.enterTrue();
                 symTab.openBlockScope();
                 Block();
-                symTab.closeScope();
-                cb.exitBranch();
-                var elifs = new Stack<Triple<Position, IRElement, IRElement>>();
+                symTab.closeScope(cb);
+                int openBranches = 1;
                 while (ltok == ELSEIF) {
                     scan();
-                    Position elifPos = cur.pos();
                     IRElement elifCond = Exp();
                     check(THEN);
+                    cb.enterFalse();
+                    cb.branch(elifCond);
+                    openBranches++;
+                    cb.enterTrue();
                     symTab.openBlockScope();
-                    IRElement elifBlock = Block();
-                    symTab.closeScope();
-                    elifs.push(new Triple<>(elifPos, elifCond, elifBlock));
+                    Block();
+                    symTab.closeScope(cb);
                 }
-                IRElement elseBlock = null;
                 if (ltok == ELSE) {
                     scan();
+                    cb.enterFalse();
                     symTab.openBlockScope();
-                    elseBlock = Block();
-                    symTab.closeScope();
+                    Block();
+                    symTab.closeScope(cb);
                 }
                 check(END);
-                // nest else-ifs properly
-                IRElement nestedElse = elseBlock;
-                while (!elifs.isEmpty()) {
-                    var elif = elifs.pop();
-                    nestedElse = new IfNode(elif.x(), elif.y(), elif.z(), nestedElse);
+                for (int i = 0; i < openBranches; i++) {
+                    cb.exitBranch();
                 }
-                // overwrite original elseBlock
-                elseBlock = nestedElse;
-                // create node
-                statement = new IfNode(_pos, condition, thenBlock, elseBlock);
             }
             case FOR -> {
                 scan();
-                symTab.labelNotLast();
                 check(IDENT);
                 Token ctrlToken = cur;
                 if (ltok == ASSIGN) {
@@ -275,15 +281,6 @@ public final class Parser {
                         // default step width is 1
                         step = ConstantNode.ofInteger(ubPos, 1);
                     }
-                    symTab.openLoopScope();
-                    LocalVariableAccessor actualCtrlVar = symTab.declareLocal(ctrlToken.stVal(), 0);
-                    check(DO);
-                    Position bpos = cur.pos();
-                    IRElement body = Block();
-                    var breakLabelBox = new IRElement.JumpDestinationNode[1];
-                    symTab.closeLoopScope(breakLabelBox); // close loop scope
-                    symTab.closeScope(); // close scope of internal variables
-                    check(END);
 
                     /*-
                     We use Lua 5.4 semantics here. This will be constructed as:
@@ -294,58 +291,74 @@ public final class Parser {
                           if _step == 0 then
                             error("'for' step is zero")
                           end
-                          while 0 < _step and _internalControl <= _upperBound or _step < 0 and _upperBound <= _internalControl do
+                          if 0 < _step and _internalControl <= _upperBound or _step < 0 and _upperBound <= _internalControl then
+                            ::body::
                             local ctrlVar = _internalControl
-                            do -- new scope to allow jumping to the bottom of the loop (homebrew 'continue')
-                              -- BODY
+                            -- BODY
+                            if stepFor(_internalControl, _upperBound, _step) then
+                              goto body
                             end
-                            try _internalControl = stepFor(_internalControl, _step) catch break end
                           end
+                          ::break::
                         end
-                    'stepFor' may throw a LuaOverflowException, that is immediately caught, which causes a break.
+                    'stepFor' advances _internalControl and fails on overflow or when passing _upperBound.
                      */
 
-                    statement = new BlockNode(_pos, true,
-                            new LocalDeclarationNode(_pos, _internalControl),
-                            new LocalDeclarationNode(_pos, _upperBound),
-                            new LocalDeclarationNode(_pos, _step),
-                            new AssignmentNode(_pos,
-                                    new LocalAccessNode(_pos, _internalControl),
-                                    new ToNumberOrFailNode(_pos, initialValue, "Bad 'for' initial value (number expected, got %s)")),
-                            new AssignmentNode(_pos,
-                                    new LocalAccessNode(_pos, _upperBound),
-                                    new ToNumberOrFailNode(_pos, upperBound, "Bad 'for' limit (number expected, got %s)")),
-                            new AssignmentNode(_pos,
-                                    new LocalAccessNode(_pos, _step),
-                                    new ToNumberOrFailNode(_pos, step, "Bad 'for' step (number expected, got %s)")),
-                            new IfNode(_pos,
-                                    new BinaryOperationNode(_pos, EQ,
+                    cb.statement(new LocalDeclarationNode(_pos, _internalControl));
+                    cb.statement(new LocalDeclarationNode(_pos, _upperBound));
+                    cb.statement(new LocalDeclarationNode(_pos, _step));
+                    cb.statement(new AssignmentNode(_pos,
+                            new LocalAccessNode(_pos, _internalControl),
+                            new ToNumberOrFailNode(_pos, initialValue, "Bad 'for' initial value (number expected, got %s)")));
+                    cb.statement(new AssignmentNode(_pos,
+                            new LocalAccessNode(_pos, _upperBound),
+                            new ToNumberOrFailNode(_pos, upperBound, "Bad 'for' limit (number expected, got %s)")));
+                    cb.statement(new AssignmentNode(_pos,
+                            new LocalAccessNode(_pos, _step),
+                            new ToNumberOrFailNode(_pos, step, "Bad 'for' step (number expected, got %s)")));
+                    cb.branch(new BinaryOperationNode(_pos, EQ,
+                            new LocalAccessNode(_pos, _step),
+                            ConstantNode.ofInteger(_pos, 0)));
+                    cb.enterTrue();
+                    cb.statement(new ErrorNode(_pos, ConstantNode.ofString(_pos, "'for' step is zero")));
+                    cb.exitBranch();
+                    cb.branch(new OrNode(_pos,
+                            new AndNode(_pos,
+                                    new BinaryOperationNode(_pos, LT,
+                                            ConstantNode.ofInteger(_pos, 0),
+                                            new LocalAccessNode(_pos, _step)),
+                                    new BinaryOperationNode(_pos, LE,
+                                            new LocalAccessNode(_pos, _internalControl),
+                                            new LocalAccessNode(_pos, _upperBound))),
+                            new AndNode(_pos,
+                                    new BinaryOperationNode(_pos, LT,
                                             new LocalAccessNode(_pos, _step),
                                             ConstantNode.ofInteger(_pos, 0)),
-                                    new ErrorNode(_pos, ConstantNode.ofString(_pos, "'for' step is zero"))),
-                            new WhileNode(_pos,
-                                    new OrNode(_pos,
-                                            new AndNode(_pos,
-                                                    new BinaryOperationNode(_pos, LT,
-                                                            ConstantNode.ofInteger(_pos, 0),
-                                                            new LocalAccessNode(_pos, _step)),
-                                                    new BinaryOperationNode(_pos, LE,
-                                                            new LocalAccessNode(_pos, _internalControl),
-                                                            new LocalAccessNode(_pos, _upperBound))),
-                                            new AndNode(_pos,
-                                                    new BinaryOperationNode(_pos, LT,
-                                                            new LocalAccessNode(_pos, _step),
-                                                            ConstantNode.ofInteger(_pos, 0)),
-                                                    new BinaryOperationNode(_pos, LE,
-                                                            new LocalAccessNode(_pos, _upperBound),
-                                                            new LocalAccessNode(_pos, _internalControl)))),
-                                    new BlockNode(_pos, true,
-                                            new LocalDeclarationNode(ctrlToken.pos(), actualCtrlVar),
-                                            new AssignmentNode(ctrlToken.pos(), new LocalAccessNode(ctrlToken.pos(), actualCtrlVar),
-                                                    new LocalAccessNode(ctrlToken.pos(), _internalControl)),
-                                            new BlockNode(bpos, true, body),
-                                            new ForStepNode(cur.pos(), _internalControl, _step, breakLabelBox[0])),
-                                    breakLabelBox[0]));
+                                    new BinaryOperationNode(_pos, LE,
+                                            new LocalAccessNode(_pos, _upperBound),
+                                            new LocalAccessNode(_pos, _internalControl)))));
+                    cb.enterTrue();
+                    var bodyLabel = new JumpLabel(_pos);
+                    cb.label(bodyLabel);
+
+                    symTab.openLoopScope();
+                    Position ctrlPos = ctrlToken.pos();
+                    LocalVariableAccessor actualCtrlVar = symTab.declareLocal(ctrlToken.stVal(), LocalVariable.Attributes.NONE);
+                    cb.statement(new LocalDeclarationNode(ctrlPos, actualCtrlVar));
+                    cb.statement(new AssignmentNode(ctrlPos, new LocalAccessNode(ctrlPos, actualCtrlVar),
+                            new LocalAccessNode(ctrlPos, _internalControl)));
+                    check(DO);
+                    Block();
+                    JumpLabel breakLabel = symTab.closeLoopScope(cb);
+                    check(END);
+
+                    cb.branch(new ForStepNode(cur.pos(), _internalControl, _upperBound, _step));
+                    cb.enterTrue();
+                    cb.jump(bodyLabel);
+                    cb.exitBranch();
+                    cb.exitBranch();
+                    cb.label(breakLabel);
+                    symTab.closeScope(cb); // close scope of internal variables
                 } else {
                     // foreach
                     var loopVarTokens = new ArrayList<Token>();
@@ -360,84 +373,78 @@ public final class Parser {
                     LocalVariableAccessor internalControlVar = symTab.declareLocal("$internalControlVar$");
                     LocalVariableAccessor itrFunc = symTab.declareLocal("$iteratorFunction$");
                     LocalVariableAccessor state = symTab.declareLocal("$state$");
-                    LocalVariableAccessor closing = symTab.declareLocal("$closingVariable$", 3);
+                    LocalVariableAccessor closing = symTab.declareLocal("$closingVariable$",
+                            LocalVariable.Attributes.CONSTANT | LocalVariable.Attributes.CLOSABLE);
                     IRElement[] initials = ExpList();
                     check(DO);
                     final Position innerSetupPos = cur.pos();
-                    symTab.openLoopScope();
-                    // the first one of these is the control variable accessible to lua
-                    LocalVariableAccessor[] loopVars = loopVarTokens.stream().map(t -> symTab.declareLocal(t.stVal())).toArray(LocalVariableAccessor[]::new);
-                    IRElement body = Block();
-                    var breakLabelBox = new IRElement.JumpDestinationNode[1];
-                    symTab.closeLoopScope(breakLabelBox); // close loop scope
-                    check(END);
-                    symTab.closeScope(); // hidden vars scope
 
                     /*-
                     This gets expanded to:
                         do
                           local itrFunc, state, internalControlVar, closing<close> = initials  -- as a multi assignment
-                          while true do
-                            local internalControlVar, var2, ..., varN = itrFunc(state, internalControlVar)
-                            if internalControlVar == nil then
-                              break
-                            end
-                            local var1 = internalControlVar
-                            -- BODY
+                          ::top::
+                          local var1, var2, ..., varN
+                          internalControlVar, var2, ..., varN = itrFunc(state, internalControlVar)
+                          if internalControlVar == nil then
+                            goto break
                           end
+                          var1 = internalControlVar
+                          -- BODY
+                          goto top
+                          ::break::
                         end
                      */
 
-                    var inLoopDeclarations = new LocalDeclarationNode[loopVars.length];
-                    var inLoopSetupAccesses = new LocalAccessNode[loopVars.length];
-                    for (int i = 0; i < inLoopSetupAccesses.length; i++) {
-                        inLoopDeclarations[i] = new LocalDeclarationNode(innerSetupPos, loopVars[i]);
+                    cb.statement(new LocalDeclarationNode(_pos, itrFunc));
+                    cb.statement(new LocalDeclarationNode(_pos, state));
+                    cb.statement(new LocalDeclarationNode(_pos, internalControlVar));
+                    cb.statement(new LocalDeclarationNode(_pos, closing));
+                    genAssignLocals(_pos, new LocalAccessNode[]{
+                                    new LocalAccessNode(_pos, itrFunc),
+                                    new LocalAccessNode(_pos, state),
+                                    new LocalAccessNode(_pos, internalControlVar),
+                                    new LocalAccessNode(_pos, closing)
+                            },
+                            initials);
+                    var topLabel = new JumpLabel(innerSetupPos);
+                    cb.label(topLabel);
+
+                    symTab.openLoopScope();
+                    // the first one of these is the control variable accessible to lua
+                    LocalVariableAccessor[] loopVars = loopVarTokens.stream().map(t -> symTab.declareLocal(t.stVal())).toArray(LocalVariableAccessor[]::new);
+                    var inLoopSetupAccesses = new IRElement[loopVars.length];
+                    for (int i = 0; i < loopVars.length; i++) {
+                        cb.statement(new LocalDeclarationNode(innerSetupPos, loopVars[i]));
                         inLoopSetupAccesses[i] = new LocalAccessNode(innerSetupPos, loopVars[i]);
                     }
-                    LocalAccessNode externalControl = inLoopSetupAccesses[0];
                     inLoopSetupAccesses[0] = new LocalAccessNode(innerSetupPos, internalControlVar);
+                    cb.statement(new AssignmentNode(innerSetupPos,
+                            inLoopSetupAccesses,
+                            new FunctionCallNode(innerSetupPos,
+                                    new LocalAccessNode(innerSetupPos, itrFunc),
+                                    new LocalAccessNode(innerSetupPos, state),
+                                    new LocalAccessNode(innerSetupPos, internalControlVar))));
+                    cb.branch(new BinaryOperationNode(innerSetupPos, EQ,
+                            new LocalAccessNode(innerSetupPos, internalControlVar),
+                            ConstantNode.ofNil(innerSetupPos)));
+                    cb.enterTrue();
+                    cb.jump(symTab.resolveBreak(), symTab.closablesUntilLoop());
+                    cb.exitBranch();
+                    cb.statement(new AssignmentNode(innerSetupPos,
+                            new LocalAccessNode(innerSetupPos, loopVars[0]),
+                            new LocalAccessNode(innerSetupPos, internalControlVar)));
 
-                    statement = new BlockNode(_pos, true,
-                            new LocalDeclarationNode(_pos, itrFunc),
-                            new LocalDeclarationNode(_pos, state),
-                            new LocalDeclarationNode(_pos, internalControlVar),
-                            new LocalDeclarationNode(_pos, closing),
-                            new AssignmentNode(_pos,
-                                    new IRElement[]{
-                                            new LocalAccessNode(_pos, itrFunc),
-                                            new LocalAccessNode(_pos, state),
-                                            new LocalAccessNode(_pos, internalControlVar),
-                                            new LocalAccessNode(_pos, closing)
-                                    },
-                                    initials),
-                            new WhileNode(_pos,
-                                    ConstantNode.ofBoolean(_pos, true),
-                                    new BlockNode(innerSetupPos, true,
-                                            // TODO missing declarations
-                                            // here
-                                            new BlockNode(innerSetupPos, false,
-                                                    inLoopDeclarations),
-                                            new AssignmentNode(innerSetupPos,
-                                                    inLoopSetupAccesses,
-                                                    new IRElement[]{new FunctionCallNode(innerSetupPos,
-                                                            new LocalAccessNode(innerSetupPos, itrFunc),
-                                                            new LocalAccessNode(innerSetupPos, state),
-                                                            new LocalAccessNode(innerSetupPos, internalControlVar))}),
-                                            new IfNode(innerSetupPos,
-                                                    new BinaryOperationNode(innerSetupPos, EQ,
-                                                            inLoopSetupAccesses[0],
-                                                            ConstantNode.ofNil(innerSetupPos)),
-                                                    new GotoNode(innerSetupPos, breakLabelBox[0])),
-                                            new AssignmentNode(innerSetupPos,
-                                                    externalControl,
-                                                    inLoopSetupAccesses[0]),
-                                            body),
-                                    breakLabelBox[0]));
+                    Block();
+                    JumpLabel breakLabel = symTab.closeLoopScope(cb);
+                    check(END);
+                    cb.jump(topLabel);
+                    cb.label(breakLabel);
+                    symTab.closeScope(cb); // hidden vars scope
                 }
             }
             case FUNCTION -> {
                 scan();
-                symTab.labelNotLast();
                 check(IDENT);
                 Position apos = cur.pos();
                 IRElement access = genAccess(cur.pos(), symTab.findLocal(cur.stVal()), cur.stVal());
@@ -454,11 +461,10 @@ public final class Parser {
                     access = new IndexedAccessNode(cur.pos(), access, ConstantNode.of(cur));
                 }
                 IRElement func = FuncBody(hasSelf);
-                statement = new AssignmentNode(apos, access, func);
+                cb.statement(new AssignmentNode(apos, access, func));
             }
             case LOCAL -> {
                 scan();
-                symTab.labelNotLast();
                 if (ltok == FUNCTION) {
                     scan();
                     check(IDENT);
@@ -467,9 +473,8 @@ public final class Parser {
                     IRElement function = FuncBody(false);
                     // insert a fake write to correctly apply upvalue capturing semantics
                     funcVar.getVariable().setWritten(namePos);
-                    statement = new BlockNode(_pos, false,
-                            new LocalDeclarationNode(namePos, funcVar),
-                            new AssignmentNode(namePos, new LocalAccessNode(namePos, funcVar), function));
+                    cb.statement(new LocalDeclarationNode(namePos, funcVar));
+                    cb.statement(new AssignmentNode(namePos, new LocalAccessNode(namePos, funcVar), function));
                 } else {
                     check(IDENT);
                     var localList = new ArrayList<Tuple<Token, Integer>>();
@@ -494,40 +499,36 @@ public final class Parser {
                         apos = _pos;
                         expressions = new IRElement[0];
                     }
-                    var localAccesses = new IRElement[localList.size()];
-                    var operations = new IRElement[localList.size() + 1];
+                    if (localList.stream().filter(l -> l.y() == (LocalVariable.Attributes.CONSTANT | LocalVariable.Attributes.CLOSABLE)).count() > 1) {
+                        throw new LuaSemanticException(_pos, "multiple to-be-closed variables in local list");
+                    }
+                    var localAccesses = new LocalAccessNode[localList.size()];
                     for (int i = 0; i < localAccesses.length; i++) {
                         Tuple<Token, Integer> localDefinition = localList.get(i);
                         Position lPos = localDefinition.x().pos();
                         LocalVariableAccessor local = symTab.declareLocal(localDefinition.x().stVal(), localDefinition.y());
                         // create declarations and pseudo accesses
-                        operations[i] = new LocalDeclarationNode(lPos, local);
+                        cb.statement(new LocalDeclarationNode(lPos, local));
                         localAccesses[i] = new LocalAccessNode(lPos, local);
                     }
-                    // add the assignment node
-                    operations[operations.length - 1] = new AssignmentNode(apos, localAccesses, expressions);
-                    statement = new BlockNode(_pos, false, operations);
+                    genAssignLocals(apos, localAccesses, expressions);
                 }
             }
-            case IDENT, LPAR, NIL, FALSE, TRUE, NUMERAL, LITERAL_STRING, LBRAC -> {
-                symTab.labelNotLast();
-                statement = StatExp();
-                cb.statement(statement);
-            }
+            case IDENT, LPAR, NIL, FALSE, TRUE, NUMERAL, LITERAL_STRING, LBRAC -> cb.statement(StatExp());
             default -> throw new InternalLuaParsingError("unexpected statement start '%s'".formatted(ltok.name()));
         }
-        return statement;
     }
 
     private int Attrib() {
-        int rVal = 0;
+        int rVal = LocalVariable.Attributes.NONE;
         if (ltok == LT) {
             scan();
             check(IDENT);
             if ("const".equals(cur.stVal())) {
-                rVal = 1;
+                rVal = LocalVariable.Attributes.CONSTANT;
             } else if ("close".equals(cur.stVal())) {
-                rVal = 3;
+                // closables are implicitly constant
+                rVal = LocalVariable.Attributes.CONSTANT | LocalVariable.Attributes.CLOSABLE;
             } else {
                 throw new LuaParserException(cur.pos(), "Only 'const' and 'close' are allowed as attributes, not '%s'!".formatted(cur.stVal()));
             }
@@ -586,10 +587,10 @@ public final class Parser {
             IRElement[] expressions = ExpList();
             result = new AssignmentNode(apos, assignTargets.toArray(IRElement[]::new), expressions);
         } else {
-            if (result instanceof AdjustNumberOfValuesNode adjustNode && (adjustNode.multivalue() instanceof FunctionCallNode || adjustNode.multivalue() instanceof OopCallNode)) {
+            if (result instanceof AdjustNumberOfValuesNode adjustNode && (adjustNode.multivalue instanceof FunctionCallNode || adjustNode.multivalue instanceof OopCallNode)) {
                 // if a function call is a statement, we drop the return values instead of pruning
                 // them
-                result = new AdjustNumberOfValuesNode(0, adjustNode.multivalue());
+                result = new AdjustNumberOfValuesNode(0, adjustNode.multivalue);
             } else {
                 throw new LuaParserException(cur.pos(), "(At %s) Expected <%s>, got <%s>".formatted(cur.pos(), EQ.rep, cur.type().rep));
             }
@@ -655,7 +656,7 @@ public final class Parser {
             check(IDENT);
             index = ConstantNode.of(cur);
         }
-        return new IndexedAccessNode(target.pos(), target, index);
+        return new IndexedAccessNode(target.pos, target, index);
     }
 
     private IRElement FuncCall(IRElement callable) {
@@ -698,8 +699,8 @@ public final class Parser {
         if (!expressions.isEmpty() && expressions.getLast() instanceof AdjustNumberOfValuesNode adjustment) {
             // in expression lists, we strip value pruning for the last value,
             // effectively flattening the multivalue into the expression-list
-            assert adjustment.requested() == 1 : "an expression should always prune itself to exactly 1 value";
-            expressions.set(expressions.size() - 1, adjustment.multivalue());
+            assert adjustment.requested == 1 : "an expression should always prune itself to exactly 1 value";
+            expressions.set(expressions.size() - 1, adjustment.multivalue);
         }
         return expressions.toArray(IRElement[]::new);
     }
@@ -959,14 +960,15 @@ public final class Parser {
         check(RPAR);
         Position _pos = cur.pos();
         boolean hasParamsArg = !ps.isEmpty() && ps.get(ps.size() - 1).type() == TDOT;
-        symTab.openFunctionScope(hasParamsArg, ps.stream().map(tk -> tk.type() == TDOT ? "..." : tk.stVal()).toArray(String[]::new));
-        IRElement body = Block();
-        var arguments = new ArrayList<LocalVariableAccessor>();
-        var captures = new ArrayList<LocalVariableAccessor>();
-        symTab.closeFunctionScope(arguments, captures);
+        symTab.openFunctionScope(hasParamsArg, ps.stream().filter(tk -> tk.type() != TDOT).map(Token::stVal).toArray(String[]::new));
+        var outerCb = cb;
+        cb = new CFGBuilder(hasParamsArg);
+        Block();
+        var closed = symTab.closeFunctionScope(cb);
         check(END);
-        return new FunctionDefNode(_pos, false, captures.toArray(LocalVariableAccessor[]::new),
-                hasParamsArg, arguments.toArray(LocalVariableAccessor[]::new), body);
+        ControlFlowGraph cfg = cb.finish(cur.pos());
+        cb = outerCb;
+        return new FunctionDefNode(_pos, false, closed.captures(), closed.arguments(), cfg);
     }
 
     private ArrayList<Token> ParList() {
@@ -1030,7 +1032,7 @@ public final class Parser {
             if (field.x() == null) {
                 keyVals.remove(i);
                 // keyless field with ascending integer key
-                keylessList.add(new Tuple<>(ConstantNode.ofInteger(field.y().pos(), keylessList.size() + 1), field.y()));
+                keylessList.add(new Tuple<>(ConstantNode.ofInteger(field.y().pos, keylessList.size() + 1), field.y()));
                 // incremented by removing element
             } else {
                 // normal increment

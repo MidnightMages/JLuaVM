@@ -3,18 +3,25 @@ package dev.asdf00.jluavm.parsing.container;
 import dev.asdf00.jluavm.exceptions.loading.LuaParserException;
 
 public class LocalVariable {
+
+    public static final class Attributes {
+        public static final int NONE = 0b00;
+        public static final int CONSTANT = 0b01;
+        public static final int CLOSABLE = 0b10;
+    }
+
     public final String name;
     public final boolean isDeclaredConstant;
     public final boolean isClosable;
     public int argIdx;
-    int writtenCnt;
-    boolean isCaptured;
+    public boolean isCaptured;
+    private int writtenCnt;
     private int positionInFrame;
 
-    LocalVariable(String name, int attributes) {
+    public LocalVariable(String name, int attributes) {
         this.name = name;
-        this.isDeclaredConstant = (attributes & 1) == 1;
-        this.isClosable = (attributes & 2) == 2;
+        this.isDeclaredConstant = (attributes & Attributes.CONSTANT) == Attributes.CONSTANT;
+        this.isClosable = (attributes & Attributes.CLOSABLE) == Attributes.CLOSABLE;
         argIdx = -1;
         isCaptured = false;
         writtenCnt = 0;
@@ -44,8 +51,8 @@ public class LocalVariable {
     }
 
     public class LocalVariableAccessor implements Cloneable {
-        int upScopeDist = 0;
-        int captureIdx = -1;
+        public int upScopeDist = 0;
+        public int captureIdx = -1;
 
         public boolean isUpvalue() {
             return upScopeDist > 0;
@@ -64,7 +71,7 @@ public class LocalVariable {
         }
 
         @Override
-        protected LocalVariableAccessor clone() {
+        public LocalVariableAccessor clone() {
             try {
                 return (LocalVariableAccessor) super.clone();
             } catch (CloneNotSupportedException e) {
