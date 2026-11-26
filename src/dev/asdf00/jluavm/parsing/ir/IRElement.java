@@ -6,6 +6,8 @@ import dev.asdf00.jluavm.parsing.container.Token;
 import dev.asdf00.jluavm.parsing.container.TokenType;
 import dev.asdf00.jluavm.utils.Tuple;
 
+import java.util.HashMap;
+
 /**
  * Statements and expressions stored inside the {@link BasicBlock}s of a {@link ControlFlowGraph}. Control flow itself
  * is not represented by these nodes but by the {@link Terminator}s of the blocks.
@@ -286,6 +288,28 @@ public abstract sealed class IRElement {
             this.controlVar = controlVar;
             this.upperBound = upperBound;
             this.step = step;
+        }
+    }
+
+    private static final HashMap<Class<?>, Integer> NODE_IDS = new HashMap<>();
+
+    public static int getElemId(Class<?> elemClazz) {
+        return NODE_IDS.get(elemClazz);
+    }
+
+    public static int maxElemId() {
+        // currently we have 20 classes
+        return NODE_IDS.size() - 1;
+    }
+
+    {
+        var NODE_IDS = new HashMap<Class<?>, Integer>();
+        for (var innerCls : IRElement.class.getDeclaredClasses()) {
+            if (!IRElement.class.isAssignableFrom(innerCls)) {
+                // skip all non sub-classes
+                continue;
+            }
+            NODE_IDS.put(innerCls, NODE_IDS.size());
         }
     }
 }

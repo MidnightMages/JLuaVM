@@ -17,6 +17,10 @@ public final class ControlFlowGraph {
         this.entry = entry;
     }
 
+    public int maxBlockId() {
+        return blocks.stream().mapToInt(b -> b.id).max().orElse(-1);
+    }
+
     @Override
     public String toString() {
         var sb = new StringBuilder();
