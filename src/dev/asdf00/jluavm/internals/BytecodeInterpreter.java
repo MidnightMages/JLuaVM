@@ -1,6 +1,7 @@
 package dev.asdf00.jluavm.internals;
 
 import dev.asdf00.jluavm.internals.bc.BytecodeGenerator.BytecodeOperations;
+import dev.asdf00.jluavm.parsing.ir.IRElement;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 
 public class BytecodeInterpreter {
@@ -8,7 +9,10 @@ public class BytecodeInterpreter {
     public static Object runFunc(Object[] constants, short[] bc, int bcIdx, int maxStackSize, int maxLocalCnt, Object[] args) {
         Object[] locals = new Object[maxLocalCnt];
         Object[] stack = new Object[maxStackSize];
-        int sp = 0;
+
+        // Points to the topmost element; -1 means the stack is empty; We likely should only ever use sp-- and ++sp.
+        int sp = -1;
+
         while (true) {
             switch (bc[bcIdx] & 0xFF) {
                 case BytecodeOperations.ADD -> {
@@ -35,6 +39,7 @@ public class BytecodeInterpreter {
                 }
                 case BytecodeOperations.LUA_NOT -> {
                     stack[sp] = bi_isTruthy(stack[sp]) ? LuaObject.FALSE : LuaObject.TRUE;
+                    bcIdx++;
                 }
                 case BytecodeOperations.LOAD_CONSTANT -> {
                     stack[++sp] = ((IRElement.ConstantNode) constants[bcIdx++]).data;
@@ -51,7 +56,7 @@ public class BytecodeInterpreter {
 //                    // todo adjust innerArgs for func
 //                    // Object result = runFunc(func.constants, func.bytecode, 0, func.maxStackSize, func.maxLocalCnt, innerArgs)
 //                    Object result = null;
-//                    stack[sp++] = result;
+//                    stack[++sp] = result;
 //                    bcIdx++;
 //                }
 //                case 3 -> {
@@ -69,17 +74,17 @@ public class BytecodeInterpreter {
         Object a = stack[sp--], b = stack[sp--];
         if (a instanceof Long al) {
             if (b instanceof Long bl) {
-                stack[sp++] = al + bl;
+                stack[++sp] = al + bl;
             } else if (b instanceof Double bd) {
-                stack[sp++] = al + bd;
+                stack[++sp] = al + bd;
             } else {
                 // meta right
             }
         } else if (a instanceof Double ad) {
             if (b instanceof Long bl) {
-                stack[sp++] = ad + bl;
+                stack[++sp] = ad + bl;
             } else if (b instanceof Double bd) {
-                stack[sp++] = ad + bd;
+                stack[++sp] = ad + bd;
             } else {
                 // meta right
             }
@@ -89,7 +94,9 @@ public class BytecodeInterpreter {
     }
 
     private static boolean bi_isTruthy(Object o) {
-        assert o != null; // if this is null something went probably wrong im guessing
-        return o != LuaObject.NIL && o != LuaObject.FALSE;
+        if (o instanceof Boolean b)
+            return b;
+
+        return o != null;
     }
 }
