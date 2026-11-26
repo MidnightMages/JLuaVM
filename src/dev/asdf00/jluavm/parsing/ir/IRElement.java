@@ -234,35 +234,72 @@ public abstract sealed class IRElement {
     }
 
     public static final class ConstantNode extends IRElement {
-        public final Token tok;
+        public final ConstantType type;
+        public final Object data;
 
-        public ConstantNode(Position pos, Token tok) {
+        private ConstantNode(Position pos, ConstantType type, Object data) {
             super(pos);
-            this.tok = tok;
+            this.type = type;
+            this.data = data;
         }
 
-        public static ConstantNode of(Token tok) {
-            return new ConstantNode(tok.pos(), tok);
+        public static ConstantNode ofString(Token sourceToken) {
+            assert sourceToken.type() == TokenType.LITERAL_STRING;
+            return ofString(sourceToken.pos(), sourceToken.stVal());
         }
 
-        public static ConstantNode ofString(Position pos, String name) {
-            return of(new Token(TokenType.LITERAL_STRING, pos, name));
+        public static ConstantNode ofIdent(Token sourceToken) {
+            assert sourceToken.type() == TokenType.IDENT;
+            return ofIdent(sourceToken.pos(), sourceToken.stVal());
         }
 
-        public static ConstantNode ofIdent(Position pos, String name) {
-            return of(new Token(TokenType.IDENT, pos, name));
+        public static ConstantNode ofInteger(Token sourceToken) {
+            assert sourceToken.type() == TokenType.NUMERAL;
+            assert sourceToken.lVal() >= 0;
+            return ofInteger(sourceToken.pos(), sourceToken.lVal());
         }
 
-        public static ConstantNode ofInteger(Position pos, long value) {
-            return of(new Token(TokenType.NUMERAL, pos, String.valueOf(value), -1, value));
+        public static ConstantNode ofDouble(Token sourceToken) {
+            assert sourceToken.type() == TokenType.NUMERAL;
+            assert sourceToken.nVal() >= 0;
+            return new ConstantNode(sourceToken.pos(), ConstantType.Double, sourceToken.nVal());
         }
 
-        public static ConstantNode ofBoolean(Position pos, boolean value) {
-            return of(new Token(value ? TokenType.TRUE : TokenType.FALSE, pos));
+        public static ConstantNode ofBoolean(Token sourceToken, boolean value) {
+            assert sourceToken.type() == TokenType.TRUE || sourceToken.type() == TokenType.FALSE;
+            return new ConstantNode(sourceToken.pos(), ConstantType.Boolean, value);
+        }
+
+        public static ConstantNode ofNil(Token sourceToken) {
+            assert sourceToken.type() == TokenType.NIL;
+            return ofNil(sourceToken.pos());
+        }
+
+        // =============== UNCHECKED, TOKEN-FREE VERSIONS ===============
+        public static ConstantNode ofString(Position pos, String stVal) {
+            return new ConstantNode(pos, ConstantType.String, stVal);
+        }
+
+        public static ConstantNode ofIdent(Position pos, String identName) {
+            return new ConstantNode(pos, ConstantType.Ident, identName);
+        }
+
+        public static ConstantNode ofInteger(Position pos, long lVal) {
+            return new ConstantNode(pos, ConstantType.Integer, lVal);
         }
 
         public static ConstantNode ofNil(Position pos) {
-            return of(new Token(TokenType.NIL, pos));
+            return new ConstantNode(pos, ConstantType.Nil, null);
+        }
+        // ==============================================================
+
+        public enum ConstantType {
+            Ident,
+            String,
+            Integer,
+            Double,
+            Boolean,
+            Nil
         }
     }
 

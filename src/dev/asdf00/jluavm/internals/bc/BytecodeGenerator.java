@@ -175,6 +175,9 @@ public class BytecodeGenerator {
             }
             case 17 -> {
                 assert elem.getClass() == ConstantNode.class;
+                var n = (ConstantNode) elem;
+                constants[bcIdx] = n.data;
+                bytecode[bcIdx++] = BytecodeOperations.LOAD_CONSTANT;
 
             }
             case 18 -> {
@@ -233,5 +236,10 @@ public class BytecodeGenerator {
          * Pop and discard the current stack element
          */
         public static final byte STACK_POP = 22;
+
+        /**
+         * Push current {@link #constants} element to the stack
+         */
+        public static final byte LOAD_CONSTANT = 24;
     }
 }

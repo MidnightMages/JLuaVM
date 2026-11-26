@@ -36,6 +36,9 @@ public class BytecodeInterpreter {
                 case BytecodeOperations.LUA_NOT -> {
                     stack[sp] = bi_isTruthy(stack[sp]) ? LuaObject.FALSE : LuaObject.TRUE;
                 }
+                case BytecodeOperations.LOAD_CONSTANT -> {
+                    stack[++sp] = ((IRElement.ConstantNode) constants[bcIdx++]).data;
+                }
 //                case 1 -> {
 //                    // example Call
 //                    // argument count is encoded in the upper bytecode byte

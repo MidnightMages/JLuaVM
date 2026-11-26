@@ -8,14 +8,16 @@ import dev.asdf00.jluavm.parsing.container.Position;
 import dev.asdf00.jluavm.parsing.container.Token;
 import dev.asdf00.jluavm.parsing.container.TokenType;
 import dev.asdf00.jluavm.parsing.ir.CFGBuilder;
+import dev.asdf00.jluavm.parsing.ir.ControlFlowGraph;
 import dev.asdf00.jluavm.parsing.ir.IRElement;
 import dev.asdf00.jluavm.parsing.ir.IRElement.*;
-import dev.asdf00.jluavm.runtime.utils.Singletons;
-import dev.asdf00.jluavm.parsing.ir.ControlFlowGraph;
 import dev.asdf00.jluavm.parsing.ir.JumpLabel;
+import dev.asdf00.jluavm.runtime.utils.Singletons;
 import dev.asdf00.jluavm.utils.Tuple;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.Stack;
 
 import static dev.asdf00.jluavm.parsing.Lexer.STARTING_POS;
 import static dev.asdf00.jluavm.parsing.container.TokenType.*;
@@ -451,14 +453,14 @@ public final class Parser {
                 while (ltok == DOT) {
                     scan();
                     check(IDENT);
-                    access = new IndexedAccessNode(cur.pos(), access, ConstantNode.of(cur));
+                    access = new IndexedAccessNode(cur.pos(), access, ConstantNode.ofIdent(cur));
                 }
                 boolean hasSelf = false;
                 if (ltok == COLON) {
                     scan();
                     hasSelf = true;
                     check(IDENT);
-                    access = new IndexedAccessNode(cur.pos(), access, ConstantNode.of(cur));
+                    access = new IndexedAccessNode(cur.pos(), access, ConstantNode.ofIdent(cur));
                 }
                 IRElement func = FuncBody(hasSelf);
                 cb.statement(new AssignmentNode(apos, access, func));
@@ -559,7 +561,7 @@ public final class Parser {
         } else {
             assert OOP_CALLABLE_LITERAL_START.contains(ltok) : "unallowed token " + ltok;
             scan();
-            result = OopFuncCall(ConstantNode.of(cur));
+            result = OopFuncCall(ConstantNode.ofIdent(cur));
         }
         loop:
         for (; ; ) {
@@ -654,7 +656,7 @@ public final class Parser {
         } else {
             check(DOT);
             check(IDENT);
-            index = ConstantNode.of(cur);
+            index = ConstantNode.ofIdent(cur);
         }
         return new IndexedAccessNode(target.pos, target, index);
     }
@@ -666,7 +668,7 @@ public final class Parser {
             scan();
             object = callable;
             check(IDENT);
-            func = ConstantNode.of(cur);
+            func = ConstantNode.ofIdent(cur);
         }
         Position pos = la.pos();
         IRElement[] args = Args();
@@ -681,7 +683,7 @@ public final class Parser {
         check(COLON);
         // code gen in FunctionCallNode relies on this being a constant ident
         check(IDENT);
-        IRElement callable = ConstantNode.of(cur);
+        IRElement callable = ConstantNode.ofIdent(cur);
         Position pos = la.pos();
         IRElement[] args = Args();
         // _ENV is passed for type extension functions on OOP calls
@@ -930,8 +932,17 @@ public final class Parser {
     private IRElement OopCallableLiteral() {
         switch (ltok) {
             case NIL, TRUE, FALSE, NUMERAL, LITERAL_STRING -> {
+                var oldLtok = ltok;
                 scan();
-                return ConstantNode.of(cur);
+                return switch (oldLtok) {
+                    case NIL -> ConstantNode.ofNil(cur);
+                    case TRUE, FALSE -> ConstantNode.ofBoolean(cur, oldLtok == TRUE);
+
+                    // nval and lval are >=0 if parsing succeeded as unary minus is an operator
+                    case NUMERAL -> cur.nVal() >= 0 ? ConstantNode.ofDouble(cur) : ConstantNode.ofInteger(cur);
+                    case LITERAL_STRING -> ConstantNode.ofString(cur);
+                    default -> throw new IllegalStateException("Unexpected value: %s".formatted(oldLtok));
+                };
             }
             case LBRAC -> {
                 return TableConstructor();
@@ -1008,7 +1019,7 @@ public final class Parser {
             check(RPAR);
         } else if (ltok == LITERAL_STRING) {
             scan();
-            result = new IRElement[]{ConstantNode.of(cur)};
+            result = new IRElement[]{ConstantNode.ofString(cur)};
         } else {
             result = new IRElement[]{TableConstructor()};
         }
@@ -1067,7 +1078,7 @@ public final class Parser {
             value = Exp();
         } else if (ltok == IDENT && lla.type() == ASSIGN) {
             scan();
-            key = ConstantNode.of(cur);
+            key = ConstantNode.ofIdent(cur);
             scan();  // ASSIGN
             value = Exp();
         } else {
