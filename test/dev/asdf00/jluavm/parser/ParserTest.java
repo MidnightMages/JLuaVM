@@ -4,7 +4,6 @@ import dev.asdf00.jluavm.exceptions.loading.LuaLexerException;
 import dev.asdf00.jluavm.exceptions.loading.LuaParserException;
 import dev.asdf00.jluavm.exceptions.loading.LuaSemanticException;
 import dev.asdf00.jluavm.parsing.Parser;
-import dev.asdf00.jluavm.parsing.SymTable;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -23,21 +22,21 @@ public class ParserTest {
         return parser;
     }
 
-    private String getSymTab(Parser parser) {
-        try {
-            var f = Parser.class.getDeclaredField("symTab");
-            f.setAccessible(true);
-            var st = (SymTable) f.get(parser);
-            f = SymTable.class.getDeclaredField("prevScope");
-            f.setAccessible(true);
-            var rscope = f.get(st);
-            var m = rscope.getClass().getDeclaredMethod("toFullString");
-            m.setAccessible(true);
-            return (String) m.invoke(rscope);
-        } catch (ReflectiveOperationException e) {
-            throw new RuntimeException(e);
-        }
-    }
+//    private String getSymTab(Parser parser) {
+//        try {
+//            var f = Parser.class.getDeclaredField("symTab");
+//            f.setAccessible(true);
+//            var st = (SymTable) f.get(parser);
+//            f = SymTable.class.getDeclaredField("prevScope");
+//            f.setAccessible(true);
+//            var rscope = f.get(st);
+//            var m = rscope.getClass().getDeclaredMethod("toFullString");
+//            m.setAccessible(true);
+//            return (String) m.invoke(rscope);
+//        } catch (ReflectiveOperationException e) {
+//            throw new RuntimeException(e);
+//        }
+//    }
 
     @Test
     void simple() {

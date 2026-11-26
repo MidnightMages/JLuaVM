@@ -3,20 +3,15 @@ package dev.asdf00.jluavm;
 import dev.asdf00.jluavm.api.functions.ApiFunctionRegistry;
 import dev.asdf00.jluavm.exceptions.LuaLoadingException;
 import dev.asdf00.jluavm.exceptions.loading.InternalLuaLoadingError;
-import dev.asdf00.jluavm.parsing.CompilationState;
 import dev.asdf00.jluavm.parsing.Parser;
-import dev.asdf00.jluavm.parsing.ir.IRFunction;
 import dev.asdf00.jluavm.parsing.ir.IRElement;
 import dev.asdf00.jluavm.runtime.types.AbstractGeneratedLuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaFunction;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 import dev.asdf00.jluavm.runtime.utils.Singletons;
 
-import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -25,7 +20,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 public abstract class LuaVM {
 
@@ -86,28 +80,29 @@ public abstract class LuaVM {
     // =================================================================================================================
 
     public static Constructor<? extends AbstractGeneratedLuaFunction>[] compile(String code) throws LuaLoadingException {
-        var cachedCtor = COMPILATION_CACHE.getOrDefault(code, null);
-        if (cachedCtor == null) {
-            synchronized (COMPILATION_CACHE_LOCK_OBJ) {
-                cachedCtor = COMPILATION_CACHE.getOrDefault(code, null);
-                if (cachedCtor == null) {
-                    IRElement rootFunc = new Parser(code).parse();
-                    var javaIntermediateCode = new CompilationState(new Supplier<>() {
-                        private int cnt = 0;
-
-                        @Override
-                        public String get() {
-                            return "GeneratedLuaFunc_" + cnt++;
-                        }
-                    }, code);
-                    rootFunc.generate(javaIntermediateCode);
-                    javaIntermediateCode.resolveAllPatches();
-                    cachedCtor = javaIntermediateCode.loadAndLinkAllClasses();
-                    COMPILATION_CACHE.put(code, cachedCtor); // TODO could optimize this cache by stripping comments maybe?
-                }
-            }
-        }
-        return cachedCtor;
+//        var cachedCtor = COMPILATION_CACHE.getOrDefault(code, null);
+//        if (cachedCtor == null) {
+//            synchronized (COMPILATION_CACHE_LOCK_OBJ) {
+//                cachedCtor = COMPILATION_CACHE.getOrDefault(code, null);
+//                if (cachedCtor == null) {
+//                    IRElement rootFunc = new Parser(code).parse();
+//                    var javaIntermediateCode = new CompilationState(new Supplier<>() {
+//                        private int cnt = 0;
+//
+//                        @Override
+//                        public String get() {
+//                            return "GeneratedLuaFunc_" + cnt++;
+//                        }
+//                    }, code);
+//                    rootFunc.generate(javaIntermediateCode);
+//                    javaIntermediateCode.resolveAllPatches();
+//                    cachedCtor = javaIntermediateCode.loadAndLinkAllClasses();
+//                    COMPILATION_CACHE.put(code, cachedCtor); // TODO could optimize this cache by stripping comments maybe?
+//                }
+//            }
+//        }
+//        return cachedCtor;
+        throw new UnsupportedOperationException();
     }
 
     public static LuaFunction load(String code, LuaObject _ENV) throws LuaLoadingException, InternalLuaLoadingError {
@@ -121,6 +116,7 @@ public abstract class LuaVM {
         IRElement rootFunc = new Parser(code).parse();
 
         // TODO build Lua function from AST
+        throw new UnsupportedOperationException();
     }
 
     public void triggerEvent(HookType hookType) {
@@ -145,27 +141,27 @@ public abstract class LuaVM {
         }
     };
 
-    public void dumpJICFor(String luaCode, Path into) {
-        IRFunction rootFunc = new Parser(luaCode).parse();
-        var javaIntermediateCode = new CompilationState(J_CLASS_NAME_GEN, luaCode);
-        rootFunc.generate(javaIntermediateCode);
-        javaIntermediateCode.resolveAllPatches();
-        var lld = into.resolve("dev/asdf00/jluavm/lualoaded");
-        try {
-            if (!Files.exists(lld)) {
-                Files.createDirectory(lld);
-            }
-            for (var jic : javaIntermediateCode.functionJavaCode) {
-                Files.writeString(lld.resolve(jic.x() + ".java"), jic.y());
-            }
-            String depts = javaIntermediateCode.innerFunctionDependencies.stream().map(lst -> String.join(",", lst.stream().map(Object::toString).toArray(String[]::new)))
-                    .collect(Collectors.joining(";"));
-            Files.writeString(lld.resolve("depts.txt"), depts);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        System.out.println("successfully dumped files!");
-    }
+//    public void dumpJICFor(String luaCode, Path into) {
+//        IRFunction rootFunc = new Parser(luaCode).parse();
+//        var javaIntermediateCode = new CompilationState(J_CLASS_NAME_GEN, luaCode);
+//        rootFunc.generate(javaIntermediateCode);
+//        javaIntermediateCode.resolveAllPatches();
+//        var lld = into.resolve("dev/asdf00/jluavm/lualoaded");
+//        try {
+//            if (!Files.exists(lld)) {
+//                Files.createDirectory(lld);
+//            }
+//            for (var jic : javaIntermediateCode.functionJavaCode) {
+//                Files.writeString(lld.resolve(jic.x() + ".java"), jic.y());
+//            }
+//            String depts = javaIntermediateCode.innerFunctionDependencies.stream().map(lst -> String.join(",", lst.stream().map(Object::toString).toArray(String[]::new)))
+//                    .collect(Collectors.joining(";"));
+//            Files.writeString(lld.resolve("depts.txt"), depts);
+//        } catch (IOException e) {
+//            throw new RuntimeException(e);
+//        }
+//        System.out.println("successfully dumped files!");
+//    }
 
     public void withDumpedRoot(String depFile, Class<? extends LuaFunction>... jClasses) {
         @SuppressWarnings("unchecked")
