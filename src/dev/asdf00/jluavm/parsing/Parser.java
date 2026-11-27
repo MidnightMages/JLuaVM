@@ -698,7 +698,8 @@ public final class Parser {
             scan();
             expressions.add(Exp());
         }
-        if (!expressions.isEmpty() && expressions.getLast() instanceof AdjustNumberOfValuesNode adjustment) {
+        //noinspection SequencedCollectionMethodCanBeUsed
+        if (!expressions.isEmpty() && expressions.get(expressions.size() - 1) instanceof AdjustNumberOfValuesNode adjustment) {
             // in expression lists, we strip value pruning for the last value,
             // effectively flattening the multivalue into the expression-list
             assert adjustment.requested == 1 : "an expression should always prune itself to exactly 1 value";
