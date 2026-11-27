@@ -2,6 +2,7 @@ package dev.asdf00.jluavm.internals;
 
 import dev.asdf00.jluavm.internals.bc.BytecodeGenerator.BytecodeOperations;
 import dev.asdf00.jluavm.parsing.ir.IRElement;
+import dev.asdf00.jluavm.runtime.types.LuaNil;
 import dev.asdf00.jluavm.runtime.types.LuaObject;
 
 public class BytecodeInterpreter {
@@ -94,9 +95,6 @@ public class BytecodeInterpreter {
     }
 
     private static boolean bi_isTruthy(Object o) {
-        if (o instanceof Boolean b)
-            return b;
-
-        return o != null;
+        return o != LuaNil.NIL && o != Boolean.FALSE;
     }
 }
