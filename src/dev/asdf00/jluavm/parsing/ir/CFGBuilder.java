@@ -11,6 +11,7 @@ import dev.asdf00.jluavm.runtime.utils.Singletons;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.function.Supplier;
 
 /**
  * Incrementally builds the {@link ControlFlowGraph} of a single function while parsing.
@@ -209,11 +210,15 @@ public final class CFGBuilder {
         assert cfg.entry.allPredecessors().stream().allMatch(p -> p.hasBackEdgeTo(cfg.entry)) : "forward edge into entry";
         for (var b : cfg.blocks) {
             assert b.terminator() != null : "B%d is not terminated".formatted(b.id);
-            assert switch (b.terminator()) {
-                case Jump j -> j.toClose != null;
-                case Return r -> r.toClose != null;
-                case Branch br -> true;
-            } : "B%d has no close list".formatted(b.id);
+            assert ((Supplier<Boolean>) () -> {
+                if (b.terminator() instanceof Jump j) {
+                    return j.toClose != null;
+                } else if (b.terminator() instanceof Return r) {
+                    return r.toClose != null;
+                } else {
+                    return b.terminator() instanceof Branch;
+                }
+            }).get() : "B%d has no close list".formatted(b.id);
             for (var succ : b.successors()) {
                 assert cfg.blocks.contains(succ) : "B%d jumps to removed block B%d".formatted(b.id, succ.id);
                 var list = b.hasBackEdgeTo(succ) ? succ.backEdgePredecessors : succ.predecessors;
