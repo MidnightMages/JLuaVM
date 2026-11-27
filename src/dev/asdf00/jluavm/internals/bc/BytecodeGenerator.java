@@ -46,6 +46,8 @@ public class BytecodeGenerator {
         switch (IRElement.getElemId(elem.getClass())) {
             case 0 -> {
                 assert elem.getClass() == ErrorNode.class;
+                constants[bcIdx] = (ErrorNode) elem;
+                bytecode[bcIdx++] = BytecodeOperations.ERROR_NODE;
 
             }
             case 1 -> {
@@ -241,5 +243,7 @@ public class BytecodeGenerator {
          * Push current {@link #constants} element to the stack
          */
         public static final byte LOAD_CONSTANT = 24;
+
+        public static final byte ERROR_NODE = 25;
     }
 }

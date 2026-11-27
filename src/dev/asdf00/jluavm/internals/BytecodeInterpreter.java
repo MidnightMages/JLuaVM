@@ -1,5 +1,6 @@
 package dev.asdf00.jluavm.internals;
 
+import dev.asdf00.jluavm.exceptions.LuaError;
 import dev.asdf00.jluavm.internals.bc.BytecodeGenerator.BytecodeOperations;
 import dev.asdf00.jluavm.parsing.ir.IRElement;
 import dev.asdf00.jluavm.runtime.types.LuaNil;
@@ -44,6 +45,9 @@ public class BytecodeInterpreter {
                 }
                 case BytecodeOperations.LOAD_CONSTANT -> {
                     stack[++sp] = ((IRElement.ConstantNode) constants[bcIdx++]).data;
+                }
+                case BytecodeOperations.ERROR_NODE -> {
+                    throw new LuaError((IRElement.ErrorNode) constants[bcIdx++]);
                 }
 //                case 1 -> {
 //                    // example Call
